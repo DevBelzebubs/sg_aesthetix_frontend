@@ -31,6 +31,23 @@ const team = [
   { name: "Sergio", role: "Beard Artist" },
 ];
 
+const availableSlots = ["10:00", "11:30", "13:00", "15:30", "17:00", "18:30"];
+
+const testimonials = [
+  {
+    name: "Carlos M.",
+    quote: "La mejor barbería del barrio. Siempre salgo impecable.",
+  },
+  {
+    name: "Andrés P.",
+    quote: "Reservar online me ahorra tiempo y el servicio es top.",
+  },
+  {
+    name: "Julián R.",
+    quote: "Excelente atención, ambiente premium y puntualidad total.",
+  },
+];
+
 export default async function LandingPage({ params }: LandingPageProps) {
   const { slug } = await params;
 
@@ -84,6 +101,65 @@ export default async function LandingPage({ params }: LandingPageProps) {
             </div>
           </div>
         </div>
+      </section>
+
+      <section
+        id="reservas"
+        className="grid gap-6 rounded-[2rem] border border-black/10 bg-[var(--tenant-surface)] p-6 shadow-xl shadow-black/5 lg:grid-cols-[1.2fr_1fr] lg:p-8"
+      >
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--tenant-muted)]">
+            Reservas rápidas
+          </p>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight">
+            Agenda tu cita en menos de 1 minuto
+          </h2>
+          <p className="mt-3 max-w-2xl text-[var(--tenant-muted)]">
+            Selecciona servicio, horario y confirma. Recibes recordatorio y
+            atención prioritaria al llegar.
+          </p>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            {["Servicio", "Barbero", "Horario"].map((item, index) => (
+              <div
+                key={item}
+                className="rounded-2xl border border-black/10 bg-white/80 p-4"
+              >
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--tenant-muted)]">
+                  Paso {index + 1}
+                </p>
+                <p className="mt-2 text-sm font-semibold">{item}</p>
+              </div>
+            ))}
+          </div>
+
+          <Link
+            href={`/${slug}/reservar`}
+            className="mt-6 inline-flex rounded-full bg-[var(--tenant-primary)] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-black/20 transition hover:-translate-y-0.5"
+          >
+            Empezar reserva
+          </Link>
+        </div>
+
+        <aside className="rounded-3xl border border-black/10 bg-gradient-to-br from-white to-zinc-100 p-5">
+          <p className="text-sm font-semibold">Hoy hay disponibilidad</p>
+          <p className="mt-1 text-xs text-[var(--tenant-muted)]">Sábado · 4 de abril</p>
+
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            {availableSlots.map((slot) => (
+              <span
+                key={slot}
+                className="rounded-xl border border-black/10 bg-white px-2 py-2 text-center text-xs font-semibold"
+              >
+                {slot}
+              </span>
+            ))}
+          </div>
+
+          <p className="mt-4 text-xs text-[var(--tenant-muted)]">
+            *Horarios sujetos a cambios en tiempo real.
+          </p>
+        </aside>
       </section>
 
       <section id="servicios" className="space-y-6">
@@ -145,6 +221,43 @@ export default async function LandingPage({ params }: LandingPageProps) {
             </article>
           ))}
         </div>
+      </section>
+
+      <section className="space-y-6">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--tenant-muted)]">
+            Testimonios
+          </p>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight">Lo que dicen nuestros clientes</h2>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          {testimonials.map((testimonial) => (
+            <article
+              key={testimonial.name}
+              className="rounded-3xl border border-black/10 bg-[var(--tenant-surface)] p-6 shadow-lg shadow-black/5"
+            >
+              <p className="text-sm leading-relaxed text-[var(--tenant-muted)]">
+                “{testimonial.quote}”
+              </p>
+              <p className="mt-4 text-sm font-semibold">{testimonial.name}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-[2rem] border border-black/10 bg-[var(--tenant-primary)] p-8 text-white shadow-2xl shadow-black/20 sm:p-10">
+        <h2 className="text-3xl font-bold tracking-tight">¿Listo para tu próximo look?</h2>
+        <p className="mt-3 max-w-2xl text-sm text-white/85 sm:text-base">
+          Agenda ahora y asegura tu horario preferido. Nuestra agenda se llena
+          rápido durante la tarde.
+        </p>
+        <Link
+          href={`/${slug}/reservar`}
+          className="mt-6 inline-flex rounded-full bg-white px-6 py-3 text-sm font-semibold text-[var(--tenant-primary)] transition hover:opacity-90"
+        >
+          Reservar mi turno
+        </Link>
       </section>
     </div>
   );
