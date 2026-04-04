@@ -1,16 +1,17 @@
 import { ModulePageShell } from "@/components/dashboard/module-page-shell";
 
 const appointments = [
-  { time: "10:00", client: "Carlos Méndez", service: "Corte + barba", status: "Confirmada" },
-  { time: "11:30", client: "Luis Paredes", service: "Corte clásico", status: "Pendiente" },
-  { time: "13:00", client: "Andrés Torres", service: "Afeitado premium", status: "En atención" },
+  { time: "10:00", client: "Carlos Méndez", service: "Corte + barba", status: "CONFIRMED" },
+  { time: "11:30", client: "Luis Paredes", service: "Corte clásico", status: "PENDING" },
+  { time: "13:00", client: "Andrés Torres", service: "Afeitado premium", status: "IN_PROGRESS" },
 ];
 
 export default function AgendaPage() {
   return (
     <ModulePageShell
       title="Agenda diaria"
-      description="Organiza las citas del día y revisa el estado de cada atención."
+      description="Vista de reservas por día con estados de cita, reprogramación y control de solapamientos por empleado."
+      rf={["RF-24", "RF-25", "RF-26", "RF-27", "RF-29", "RF-31"]}
     >
       <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
         <table className="min-w-full text-sm">

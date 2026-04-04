@@ -1,16 +1,17 @@
 import { ModulePageShell } from "@/components/dashboard/module-page-shell";
 
 const employees = [
-  { name: "Alejandro Ruiz", role: "Barbero", load: "8 citas hoy" },
-  { name: "Matías Soto", role: "Barbero", load: "6 citas hoy" },
-  { name: "Sergio Lara", role: "Recepción", load: "Turno completo" },
+  { name: "Alejandro Ruiz", role: "Barber", load: "8 citas" },
+  { name: "Matías Soto", role: "Barber", load: "6 citas" },
+  { name: "Sergio Lara", role: "Recepción", load: "Asistencia completa" },
 ];
 
 export default function EmpleadosPage() {
   return (
     <ModulePageShell
       title="Empleados"
-      description="Gestiona el equipo, sus horarios y su rendimiento de forma simple."
+      description="Gestión de perfiles, horarios semanales, asistencia, comisiones y rendimiento individual."
+      rf={["RF-18", "RF-19", "RF-20", "RF-21", "RF-22", "RF-23"]}
     >
       <div className="grid gap-4 md:grid-cols-3">
         {employees.map((employee) => (

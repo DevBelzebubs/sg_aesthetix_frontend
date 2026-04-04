@@ -10,7 +10,8 @@ export default function InventarioPage() {
   return (
     <ModulePageShell
       title="Inventario"
-      description="Controla productos, entradas, salidas y alertas por stock bajo."
+      description="Registro de productos, movimientos y alertas de stock mínimo con trazabilidad por usuario."
+      rf={["RF-42", "RF-43", "RF-44", "RF-45", "RF-46", "RF-47"]}
     >
       <div className="grid gap-4 md:grid-cols-3">
         {stock.map((item) => (
@@ -18,7 +19,7 @@ export default function InventarioPage() {
             <p className="text-base font-semibold">{item.product}</p>
             <p className="mt-1 text-xs uppercase tracking-[0.14em] text-zinc-500">{item.category}</p>
             <p className="mt-4 text-sm text-zinc-700">Stock actual: {item.level}</p>
-            <p className="text-sm text-zinc-700">Mínimo recomendado: {item.min}</p>
+            <p className="text-sm text-zinc-700">Stock mínimo: {item.min}</p>
           </article>
         ))}
       </div>
