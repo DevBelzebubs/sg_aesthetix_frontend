@@ -1,20 +1,18 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState } from "react";
 import Link from "next/link";
 import { CalendarClock, Home, Scissors, UserRound } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 const navigation = [
   { href: "/empleado", label: "Mi jornada", icon: Home },
-  { href: "/empleado#servicios", label: "Servicios vinculados", icon: Scissors },
-  { href: "/empleado#agenda", label: "Agenda de hoy", icon: CalendarClock },
+  { href: "/empleado/servicios", label: "Mis servicios", icon: Scissors },
+  { href: "/empleado/citas", label: "Mis citas", icon: CalendarClock },
 ];
 
 export default function EmployeeLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [activeNav, setActiveNav] = useState("/empleado");
 
   return (
     <div className="min-h-screen bg-zinc-100 text-zinc-800">
@@ -22,10 +20,10 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
         <aside className="h-fit rounded-[2rem] border border-zinc-200 bg-white p-4 shadow-sm lg:sticky lg:top-6">
           <div className="rounded-3xl bg-zinc-900 p-5 text-white">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-300">
-              Workspace
+              Panel
             </p>
-            <p className="mt-2 text-xl font-bold">Panel de empleado</p>
-            <p className="mt-2 text-sm text-zinc-300">Vista operativa para el equipo de corte.</p>
+            <p className="mt-2 text-xl font-bold">Mi espacio</p>
+            <p className="mt-2 text-sm text-zinc-300">Revisa tus servicios y tus citas del dia.</p>
           </div>
 
           <div className="mt-4 rounded-3xl border border-zinc-200 bg-zinc-50 p-4">
@@ -42,17 +40,13 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
 
           <nav className="mt-4 space-y-1">
             {navigation.map((item) => {
-              const active =
-                item.href === "/empleado"
-                  ? pathname === "/empleado" && activeNav === "/empleado"
-                  : activeNav === item.href;
+              const active = pathname === item.href;
               const Icon = item.icon;
 
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => setActiveNav(item.href)}
                   className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
                     active
                       ? "bg-gradient-to-r from-zinc-900 to-zinc-700 text-white shadow-sm"

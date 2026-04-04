@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Clock3, DollarSign, Plus, Search, ShieldCheck, Sparkles } from "lucide-react";
+import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 
 type ServiceStatus = "Activo" | "Borrador" | "Oculto";
 
@@ -74,6 +75,7 @@ export function ServicesManagement() {
     ...emptyDraft,
     ...toDraft(initialServices[0]),
   });
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const filteredServices = useMemo(() => {
     return services.filter((service) => {
@@ -121,7 +123,7 @@ export function ServicesManagement() {
             <div>
               <p className="text-sm font-semibold text-zinc-900">Catalogo de servicios</p>
               <p className="mt-1 text-sm text-zinc-600">
-                Organiza tipos, duracion, precio y asignacion antes de conectar CRUD real.
+                Ordena tus servicios, cambia precios y elige quien los atiende.
               </p>
             </div>
 
@@ -144,7 +146,7 @@ export function ServicesManagement() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className="w-full bg-transparent text-sm outline-none placeholder:text-zinc-400"
-              placeholder="Buscar por nombre, tipo o descripcion"
+              placeholder="Buscar por nombre o descripcion"
             />
           </label>
         </div>
@@ -291,7 +293,7 @@ export function ServicesManagement() {
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={saveService}
+              onClick={() => setIsConfirmOpen(true)}
               className="rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800"
             >
               {selectedId ? "Guardar servicio" : "Crear servicio"}
@@ -307,27 +309,43 @@ export function ServicesManagement() {
         </div>
 
         <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-zinc-900">Campos que ira al API</p>
+          <p className="text-sm font-semibold text-zinc-900">Datos del servicio</p>
           <div className="mt-4 space-y-3 text-sm text-zinc-600">
             <p className="flex items-center gap-2">
               <Clock3 size={15} />
-              Duracion operativa y buffers
+              Tiempo aproximado del servicio
             </p>
             <p className="flex items-center gap-2">
               <DollarSign size={15} />
-              Precio base y sobrecosto opcional
+              Precio base del servicio
             </p>
             <p className="flex items-center gap-2">
               <Sparkles size={15} />
-              Descripcion publica y orden de exposicion
+              Descripcion para mostrar al cliente
             </p>
             <p className="flex items-center gap-2">
               <ShieldCheck size={15} />
-              Estado publicado o interno
+              Si esta visible o no
             </p>
           </div>
         </div>
       </aside>
+
+      <ConfirmationModal
+        open={isConfirmOpen}
+        title={selectedId ? "Confirmar cambios" : "Confirmar nuevo servicio"}
+        description={
+          selectedId
+            ? "Se guardaran los cambios hechos en este servicio."
+            : "Se creara un nuevo servicio con los datos que llenaste."
+        }
+        confirmLabel={selectedId ? "Si, guardar" : "Si, crear"}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={() => {
+          saveService();
+          setIsConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }

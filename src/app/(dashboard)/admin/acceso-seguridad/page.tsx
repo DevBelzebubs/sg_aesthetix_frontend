@@ -10,22 +10,22 @@ const users = [
 const securityControls = [
   {
     title: "Roles y permisos",
-    description: "Define que puede ver o editar cada perfil del equipo administrativo.",
+    description: "Decide que puede ver o cambiar cada persona.",
     icon: UserCog,
   },
   {
-    title: "Politicas de contrasena",
-    description: "Configura longitud minima, renovacion periodica y bloqueo por intentos.",
+    title: "Claves",
+    description: "Define reglas para que las claves sean mas seguras.",
     icon: LockKeyhole,
   },
   {
-    title: "Sesiones y dispositivos",
-    description: "Revisa sesiones activas y fuerza cierre cuando detectes actividad sospechosa.",
+    title: "Equipos conectados",
+    description: "Revisa desde donde entran y cierra accesos si hace falta.",
     icon: Smartphone,
   },
   {
     title: "Verificacion adicional",
-    description: "Prepara el flujo para doble factor en accesos con privilegios altos.",
+    description: "Agrega un paso extra para cuidar las cuentas mas importantes.",
     icon: ShieldCheck,
   },
 ];
@@ -34,16 +34,15 @@ export default function AccesoSeguridadPage() {
   return (
     <ModulePageShell
       title="Acceso y seguridad"
-      description="Administracion de credenciales internas, roles, sesiones activas y politicas de proteccion para el panel."
-      rf={["RF-06", "RF-07", "RF-08", "RF-09", "RF-11", "RF-12"]}
+      description="Revisa quien entra al sistema y cuida el acceso de tu equipo."
     >
       <div className="grid gap-4 xl:grid-cols-[1.3fr_0.9fr]">
         <div className="space-y-4">
           <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-zinc-100 bg-gradient-to-r from-sky-50 to-cyan-50 px-4 py-3">
               <div>
-                <p className="text-sm font-semibold text-zinc-900">Usuarios con acceso</p>
-                <p className="text-xs text-zinc-500">Vista inicial para gestionar permisos del panel</p>
+                <p className="text-sm font-semibold text-zinc-900">Personas con acceso</p>
+                <p className="text-xs text-zinc-500">Mira quien puede entrar y cuando fue su ultimo ingreso</p>
               </div>
               <div className="rounded-full bg-sky-600 px-3 py-1 text-xs font-semibold text-white">
                 {users.length} cuentas
@@ -86,9 +85,9 @@ export default function AccesoSeguridadPage() {
                 <KeyRound size={18} className="text-zinc-700" />
               </div>
               <div>
-                <p className="text-lg font-semibold text-zinc-900">Resumen operativo</p>
+                <p className="text-lg font-semibold text-zinc-900">Resumen rapido</p>
                 <p className="text-sm text-zinc-600">
-                  Este modulo queda listo para conectar alta de usuarios, restablecimiento de clave y auditoria.
+                  Aqui puedes ver de forma simple el estado del acceso de tu equipo.
                 </p>
               </div>
             </div>
@@ -96,13 +95,13 @@ export default function AccesoSeguridadPage() {
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                  MFA
+                  Doble verificacion
                 </p>
                 <p className="mt-2 text-xl font-bold text-zinc-900">Pendiente</p>
               </div>
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                  Politicas
+                  Reglas
                 </p>
                 <p className="mt-2 text-xl font-bold text-zinc-900">3 activas</p>
               </div>

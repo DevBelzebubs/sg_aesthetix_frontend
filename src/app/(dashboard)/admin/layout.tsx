@@ -34,12 +34,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#faf5ff,transparent_18%),radial-gradient(circle_at_top_right,#ecfeff,transparent_20%),#fafafa] text-zinc-800">
+    <div className="min-h-screen bg-zinc-50 text-zinc-800">
       <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[260px_1fr]">
         <aside className="h-fit rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm lg:sticky lg:top-6">
           <div className="px-2">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
-              Panel
+              Menu
             </p>
             <p className="pt-1 text-lg font-bold text-zinc-900">SG Aesthetix</p>
           </div>
@@ -50,8 +50,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 <Shield size={16} />
               </div>
               <div>
-                <p className="text-sm font-semibold text-zinc-900">Sesion protegida</p>
-                <p className="text-xs text-zinc-600">Administrador principal</p>
+                <p className="text-sm font-semibold text-zinc-900">Cuenta principal</p>
+                <p className="text-xs text-zinc-600">Solo para personas autorizadas</p>
               </div>
             </div>
           </div>

@@ -2,25 +2,26 @@
 
 import { useState } from "react";
 import { Building2, PencilLine, Plus, Trash2 } from "lucide-react";
+import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 
-type TenantRecord = {
+type BusinessRecord = {
   id: string;
   name: string;
-  slug: string;
-  plan: string;
+  link: string;
+  category: string;
   status: "Activo" | "Inactivo";
 };
 
-const initialTenants: TenantRecord[] = [
-  { id: "tenant-01", name: "Barberia Central", slug: "barberia-central", plan: "PRO", status: "Activo" },
-  { id: "tenant-02", name: "Gentlemen Cut", slug: "gentlemen-cut", plan: "BASIC", status: "Inactivo" },
+const initialBusinesses: BusinessRecord[] = [
+  { id: "barberia-central", name: "Barberia Central", link: "barberia-central", category: "Barberia", status: "Activo" },
+  { id: "gentlemen-cut", name: "Gentlemen Cut", link: "gentlemen-cut", category: "Barberia", status: "Inactivo" },
 ];
 
-const emptyDraft: TenantRecord = {
+const emptyDraft: BusinessRecord = {
   id: "",
   name: "",
-  slug: "",
-  plan: "BASIC",
+  link: "",
+  category: "Barberia",
   status: "Activo",
 };
 
@@ -28,15 +29,17 @@ const inputClassName =
   "w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm outline-none transition placeholder:text-zinc-400 focus:border-zinc-900";
 
 export function BusinessManagement() {
-  const [tenants, setTenants] = useState(initialTenants);
-  const [selectedId, setSelectedId] = useState(initialTenants[0]?.id ?? "");
-  const [draft, setDraft] = useState(initialTenants[0] ?? emptyDraft);
+  const [businesses, setBusinesses] = useState(initialBusinesses);
+  const [selectedId, setSelectedId] = useState(initialBusinesses[0]?.id ?? "");
+  const [draft, setDraft] = useState(initialBusinesses[0] ?? emptyDraft);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
-  const selectedTenant = tenants.find((tenant) => tenant.id === selectedId);
+  const selectedBusiness = businesses.find((business) => business.id === selectedId);
 
-  const handleSelect = (tenant: TenantRecord) => {
-    setSelectedId(tenant.id);
-    setDraft(tenant);
+  const handleSelect = (business: BusinessRecord) => {
+    setSelectedId(business.id);
+    setDraft(business);
   };
 
   const handleCreateMode = () => {
@@ -45,20 +48,20 @@ export function BusinessManagement() {
   };
 
   const handleSave = () => {
-    if (!draft.name || !draft.slug) {
+    if (!draft.name || !draft.link) {
       return;
     }
 
     if (!selectedId) {
-      const nextTenant = { ...draft, id: slugify(draft.slug) };
-      setTenants((current) => [nextTenant, ...current]);
-      setSelectedId(nextTenant.id);
-      setDraft(nextTenant);
+      const nextBusiness = { ...draft, id: slugify(draft.link) };
+      setBusinesses((current) => [nextBusiness, ...current]);
+      setSelectedId(nextBusiness.id);
+      setDraft(nextBusiness);
       return;
     }
 
-    setTenants((current) =>
-      current.map((tenant) => (tenant.id === selectedId ? { ...draft, id: selectedId } : tenant)),
+    setBusinesses((current) =>
+      current.map((business) => (business.id === selectedId ? { ...draft, id: selectedId } : business)),
     );
   };
 
@@ -67,17 +70,17 @@ export function BusinessManagement() {
       return;
     }
 
-    const nextTenants = tenants.filter((tenant) => tenant.id !== selectedId);
-    setTenants(nextTenants);
+    const nextBusinesses = businesses.filter((business) => business.id !== selectedId);
+    setBusinesses(nextBusinesses);
 
-    if (nextTenants.length === 0) {
+    if (nextBusinesses.length === 0) {
       setSelectedId("");
       setDraft(emptyDraft);
       return;
     }
 
-    setSelectedId(nextTenants[0].id);
-    setDraft(nextTenants[0]);
+    setSelectedId(nextBusinesses[0].id);
+    setDraft(nextBusinesses[0]);
   };
 
   return (
@@ -90,39 +93,39 @@ export function BusinessManagement() {
             className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
           >
             <Plus size={16} />
-            Nuevo tenant
+            Nuevo negocio
           </button>
         </div>
 
         <div className="grid gap-4">
-          {tenants.map((tenant) => (
+          {businesses.map((business) => (
             <article
-              key={tenant.id}
-              onClick={() => handleSelect(tenant)}
+              key={business.id}
+              onClick={() => handleSelect(business)}
               className={`cursor-pointer rounded-3xl border p-5 shadow-sm transition ${
-                selectedId === tenant.id
+                selectedId === business.id
                   ? "border-violet-300 bg-gradient-to-br from-violet-50 to-fuchsia-50"
                   : "border-zinc-200 bg-white hover:-translate-y-0.5 hover:shadow-md"
               }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-lg font-semibold text-zinc-900">{tenant.name}</p>
-                  <p className="mt-1 text-sm text-zinc-600">{tenant.slug}</p>
+                  <p className="text-lg font-semibold text-zinc-900">{business.name}</p>
+                  <p className="mt-1 text-sm text-zinc-600">{business.link}</p>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${tenant.status === "Activo" ? "bg-emerald-100 text-emerald-900" : "bg-zinc-100 text-zinc-700"}`}>
-                  {tenant.status}
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${business.status === "Activo" ? "bg-emerald-100 text-emerald-900" : "bg-zinc-100 text-zinc-700"}`}>
+                  {business.status}
                 </span>
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl bg-white px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Plan</p>
-                  <p className="mt-2 text-sm font-semibold text-zinc-900">{tenant.plan}</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Rubro</p>
+                  <p className="mt-2 text-sm font-semibold text-zinc-900">{business.category}</p>
                 </div>
                 <div className="rounded-2xl bg-white px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Tenant ID</p>
-                  <p className="mt-2 text-sm font-semibold text-zinc-900">{tenant.id}</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Enlace</p>
+                  <p className="mt-2 text-sm font-semibold text-zinc-900">{business.id}</p>
                 </div>
               </div>
             </article>
@@ -138,9 +141,9 @@ export function BusinessManagement() {
             </div>
             <div>
               <p className="text-sm font-semibold text-zinc-900">
-                {selectedId ? "Editar tenant" : "Crear tenant"}
+                {selectedId ? "Editar negocio" : "Crear negocio"}
               </p>
-              <p className="text-sm text-zinc-600">CRUD visual listo para integrarse con backend.</p>
+              <p className="text-sm text-zinc-600">Cambia los datos principales de forma simple.</p>
             </div>
           </div>
 
@@ -152,23 +155,23 @@ export function BusinessManagement() {
                 onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
               />
             </Field>
-            <Field label="Slug">
+            <Field label="Enlace">
               <input
                 className={inputClassName}
-                value={draft.slug}
-                onChange={(event) => setDraft((current) => ({ ...current, slug: event.target.value }))}
+                value={draft.link}
+                onChange={(event) => setDraft((current) => ({ ...current, link: event.target.value }))}
               />
             </Field>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Plan">
+              <Field label="Rubro">
                 <select
                   className={inputClassName}
-                  value={draft.plan}
-                  onChange={(event) => setDraft((current) => ({ ...current, plan: event.target.value }))}
+                  value={draft.category}
+                  onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value }))}
                 >
-                  <option>BASIC</option>
-                  <option>PRO</option>
-                  <option>ENTERPRISE</option>
+                  <option>Barberia</option>
+                  <option>Salon</option>
+                  <option>Estetica</option>
                 </select>
               </Field>
               <Field label="Estado">
@@ -178,7 +181,7 @@ export function BusinessManagement() {
                   onChange={(event) =>
                     setDraft((current) => ({
                       ...current,
-                      status: event.target.value as TenantRecord["status"],
+                      status: event.target.value as BusinessRecord["status"],
                     }))
                   }
                 >
@@ -192,16 +195,16 @@ export function BusinessManagement() {
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={handleSave}
+              onClick={() => setIsConfirmOpen(true)}
               className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800"
             >
               <PencilLine size={16} />
-              {selectedId ? "Guardar tenant" : "Crear tenant"}
+              {selectedId ? "Guardar negocio" : "Crear negocio"}
             </button>
             <button
               type="button"
-              onClick={handleDelete}
-              disabled={!selectedTenant}
+              onClick={() => setIsDeleteConfirmOpen(true)}
+              disabled={!selectedBusiness}
               className="inline-flex items-center gap-2 rounded-full border border-red-200 px-5 py-2.5 text-sm font-semibold text-red-700 transition enabled:hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Trash2 size={16} />
@@ -210,6 +213,34 @@ export function BusinessManagement() {
           </div>
         </div>
       </aside>
+
+      <ConfirmationModal
+        open={isConfirmOpen}
+        title={selectedId ? "Confirmar cambios" : "Confirmar nuevo negocio"}
+        description={
+          selectedId
+            ? "Se guardaran los cambios hechos en este negocio."
+            : "Se creara un nuevo negocio con los datos que llenaste."
+        }
+        confirmLabel={selectedId ? "Si, guardar" : "Si, crear"}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={() => {
+          handleSave();
+          setIsConfirmOpen(false);
+        }}
+      />
+
+      <ConfirmationModal
+        open={isDeleteConfirmOpen}
+        title="Confirmar eliminacion"
+        description="Este negocio se eliminara de la lista actual."
+        confirmLabel="Si, eliminar"
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={() => {
+          handleDelete();
+          setIsDeleteConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }
@@ -224,5 +255,5 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function slugify(value: string) {
-  return `tenant-${value.toLowerCase().trim().replace(/\s+/g, "-")}`;
+  return value.toLowerCase().trim().replace(/\s+/g, "-");
 }

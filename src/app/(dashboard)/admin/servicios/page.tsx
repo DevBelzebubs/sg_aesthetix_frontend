@@ -5,7 +5,7 @@ export default function ServiciosPage() {
   return (
     <ModulePageShell
       title="Servicios"
-      description="CRUD de servicios por tenant, asignacion a empleados, activacion o desactivacion y metadata lista para publicacion."
+      description="Crea servicios, cambia precios, tiempos y decide quienes los atienden."
     >
       <ServicesManagement />
     </ModulePageShell>

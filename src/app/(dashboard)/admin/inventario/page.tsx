@@ -5,7 +5,7 @@ export default function InventarioPage() {
   return (
     <ModulePageShell
       title="Inventario"
-      description="Registro de productos, movimientos y alertas de stock minimo con trazabilidad por usuario."
+      description="Mira tus productos, edita cantidades y detecta lo que ya falta reponer."
     >
       <InventoryManagement />
     </ModulePageShell>

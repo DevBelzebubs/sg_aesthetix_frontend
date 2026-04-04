@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CalendarClock, Filter, Mail, Phone, Plus, Search, Star, UserRound } from "lucide-react";
+import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 
 type EmployeeRecord = {
   id: string;
@@ -79,6 +80,7 @@ export function EmployeesManagement() {
     ...emptyDraft,
     ...toDraft(initialEmployees[0]),
   });
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const filteredEmployees = useMemo(() => {
     return employees.filter((employee) => {
@@ -141,9 +143,9 @@ export function EmployeesManagement() {
         <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white to-amber-50 p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-zinc-900">Equipo activo</p>
+              <p className="text-sm font-semibold text-zinc-900">Tu equipo</p>
               <p className="mt-1 text-sm text-zinc-600">
-                Filtra perfiles y deja lista la capa para conectar listado real.
+                Busca personas del equipo y actualiza sus datos.
               </p>
             </div>
 
@@ -166,7 +168,7 @@ export function EmployeesManagement() {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar por nombre, rol o especialidad"
+                placeholder="Buscar por nombre, puesto o especialidad"
                 className="w-full bg-transparent text-sm outline-none placeholder:text-zinc-400"
               />
             </label>
@@ -258,10 +260,10 @@ export function EmployeesManagement() {
       <aside className="space-y-4">
         <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white to-sky-50 p-5 shadow-sm">
           <p className="text-sm font-semibold text-zinc-900">
-            {selectedId ? "Editar empleado" : "Alta de empleado"}
+            {selectedId ? "Editar empleado" : "Nuevo empleado"}
           </p>
           <p className="mt-1 text-sm text-zinc-600">
-            Formulario local listo para conectarse a create/update en backend.
+            Completa los datos basicos del equipo.
           </p>
 
           <div className="mt-4 grid gap-3">
@@ -352,7 +354,7 @@ export function EmployeesManagement() {
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={handleSave}
+              onClick={() => setIsConfirmOpen(true)}
               className="rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800"
             >
               {selectedId ? "Guardar cambios" : "Crear empleado"}
@@ -374,7 +376,7 @@ export function EmployeesManagement() {
         </div>
 
         <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm">
-          <p className="text-sm font-semibold text-zinc-900">Payload esperado</p>
+          <p className="text-sm font-semibold text-zinc-900">Datos que se guardaran</p>
           <div className="mt-4 space-y-3 text-sm text-zinc-600">
             <p className="flex items-center gap-2">
               <UserRound size={15} />
@@ -391,6 +393,22 @@ export function EmployeesManagement() {
           </div>
         </div>
       </aside>
+
+      <ConfirmationModal
+        open={isConfirmOpen}
+        title={selectedId ? "Confirmar cambios" : "Confirmar nuevo empleado"}
+        description={
+          selectedId
+            ? "Se guardaran los cambios hechos en este empleado."
+            : "Se creara un nuevo empleado con los datos que llenaste."
+        }
+        confirmLabel={selectedId ? "Si, guardar" : "Si, crear"}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={() => {
+          handleSave();
+          setIsConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }

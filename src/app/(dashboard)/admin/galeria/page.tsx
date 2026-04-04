@@ -5,7 +5,7 @@ export default function GaleriaAdminPage() {
   return (
     <ModulePageShell
       title="Catalogo de estilos"
-      description="CRUD de estilos de corte, tags, orden y activacion para exponer en la landing publica."
+      description="Ordena las fotos y estilos que quieres mostrar en tu pagina."
     >
       <GalleryManagement />
     </ModulePageShell>

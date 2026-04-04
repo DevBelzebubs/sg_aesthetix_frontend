@@ -5,7 +5,7 @@ export default function EmpleadosPage() {
   return (
     <ModulePageShell
       title="Empleados"
-      description="Gestion de perfiles, horarios semanales, asistencia, comisiones y rendimiento individual."
+      description="Organiza tu equipo, revisa sus datos y ajusta la informacion que necesites."
     >
       <EmployeesManagement />
     </ModulePageShell>

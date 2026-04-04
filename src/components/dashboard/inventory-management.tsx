@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AlertTriangle, Boxes, PackagePlus, Search, TrendingDown, TrendingUp } from "lucide-react";
+import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 
 type InventoryItem = {
   sku: string;
@@ -61,6 +62,7 @@ export function InventoryManagement() {
   const [query, setQuery] = useState("");
   const [selectedSku, setSelectedSku] = useState(initialInventory[0]?.sku ?? "");
   const [draft, setDraft] = useState(initialInventory[0] ?? emptyDraft);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const filteredInventory = useMemo(() => {
     return inventory.filter((item) => {
@@ -96,7 +98,7 @@ export function InventoryManagement() {
             <div>
               <p className="text-sm font-semibold text-zinc-900">Control de stock</p>
               <p className="mt-1 text-sm text-zinc-600">
-                Gestiona productos, minimos y movimientos con una interfaz ya preparada para API.
+                Revisa tus productos, las cantidades y lo que hace falta reponer.
               </p>
             </div>
             <button
@@ -108,7 +110,7 @@ export function InventoryManagement() {
               className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
             >
               <PackagePlus size={16} />
-              Nuevo item
+              Nuevo producto
             </button>
           </div>
 
@@ -118,7 +120,7 @@ export function InventoryManagement() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className="w-full bg-transparent text-sm outline-none placeholder:text-zinc-400"
-              placeholder="Buscar por producto, categoria o SKU"
+              placeholder="Buscar por producto o categoria"
             />
           </label>
         </div>
@@ -162,7 +164,7 @@ export function InventoryManagement() {
                 {lowStock ? (
                   <div className="mt-4 flex items-center gap-2 rounded-2xl bg-amber-50 px-3 py-3 text-sm text-amber-900">
                     <AlertTriangle size={16} />
-                    Requiere reposicion
+                    Hace falta reponer
                   </div>
                 ) : null}
 
@@ -174,7 +176,7 @@ export function InventoryManagement() {
                   }}
                   className="mt-5 rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100"
                 >
-                  Editar item
+                  Editar producto
                 </button>
               </article>
             );
@@ -249,10 +251,10 @@ export function InventoryManagement() {
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={saveItem}
+              onClick={() => setIsConfirmOpen(true)}
               className="rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800"
             >
-              {selectedSku ? "Guardar item" : "Crear item"}
+              {selectedSku ? "Guardar producto" : "Crear producto"}
             </button>
             <button
               type="button"
@@ -265,14 +267,30 @@ export function InventoryManagement() {
         </div>
 
         <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-zinc-900">Conexiones esperadas</p>
+          <p className="text-sm font-semibold text-zinc-900">Proximo paso</p>
           <ul className="mt-4 space-y-3 text-sm text-zinc-600">
-            <li>Listado por tenant y busqueda por SKU</li>
-            <li>Mutaciones para entrada, salida y ajuste</li>
-            <li>Alertas de stock minimo y auditoria por usuario</li>
+            <li>Traer la lista real de productos</li>
+            <li>Guardar entradas, salidas y cambios de cantidad</li>
+            <li>Mostrar avisos cuando un producto este por acabarse</li>
           </ul>
         </div>
       </aside>
+
+      <ConfirmationModal
+        open={isConfirmOpen}
+        title={selectedSku ? "Confirmar cambios" : "Confirmar nuevo producto"}
+        description={
+          selectedSku
+            ? "Se guardaran los cambios hechos en este producto."
+            : "Se creara un nuevo producto con los datos que llenaste."
+        }
+        confirmLabel={selectedSku ? "Si, guardar" : "Si, crear"}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={() => {
+          saveItem();
+          setIsConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }

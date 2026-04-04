@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Eye, EyeOff, Images, Plus, Search, Tags } from "lucide-react";
+import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 
 type GalleryItem = {
   id: string;
@@ -68,6 +69,7 @@ export function GalleryManagement() {
     ...emptyDraft,
     ...toDraft(initialGallery[0]),
   });
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const filteredGallery = useMemo(() => {
     return gallery.filter((item) => {
@@ -113,7 +115,7 @@ export function GalleryManagement() {
             <div>
               <p className="text-sm font-semibold text-zinc-900">Catalogo visual</p>
               <p className="mt-1 text-sm text-zinc-600">
-                Gestiona orden, estado y metadata de cada pieza antes de integrar media real.
+                Ordena las fotos y estilos que quieres mostrar a tus clientes.
               </p>
             </div>
             <button
@@ -135,7 +137,7 @@ export function GalleryManagement() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className="w-full bg-transparent text-sm outline-none placeholder:text-zinc-400"
-              placeholder="Buscar por titulo, descripcion o tag"
+              placeholder="Buscar por titulo o descripcion"
             />
           </label>
         </div>
@@ -246,7 +248,7 @@ export function GalleryManagement() {
                 />
               </Field>
             </div>
-            <Field label="Cover label">
+            <Field label="Iniciales">
               <input
                 className={inputClassName}
                 value={draft.cover}
@@ -261,7 +263,7 @@ export function GalleryManagement() {
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={saveItem}
+              onClick={() => setIsConfirmOpen(true)}
               className="rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800"
             >
               {selectedId ? "Guardar estilo" : "Crear estilo"}
@@ -277,23 +279,39 @@ export function GalleryManagement() {
         </div>
 
         <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-zinc-900">Preparado para backend</p>
+          <p className="text-sm font-semibold text-zinc-900">Proximo paso</p>
           <div className="mt-4 space-y-3 text-sm text-zinc-600">
             <p className="flex items-center gap-2">
               <Images size={15} />
-              Integracion posterior con Cloudinary u origen media
+              Cargar fotos reales en lugar de muestras
             </p>
             <p className="flex items-center gap-2">
               <Tags size={15} />
-              Metadata indexable para landing publica
+              Guardar etiquetas para ordenar mejor la galeria
             </p>
             <p className="flex items-center gap-2">
               {draft.status === "Publicado" ? <Eye size={15} /> : <EyeOff size={15} />}
-              Estado de visibilidad controlado desde admin
+              Elegir si se muestra o se oculta
             </p>
           </div>
         </div>
       </aside>
+
+      <ConfirmationModal
+        open={isConfirmOpen}
+        title={selectedId ? "Confirmar cambios" : "Confirmar nuevo estilo"}
+        description={
+          selectedId
+            ? "Se guardaran los cambios hechos en este estilo."
+            : "Se creara un nuevo estilo con los datos que llenaste."
+        }
+        confirmLabel={selectedId ? "Si, guardar" : "Si, crear"}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={() => {
+          saveItem();
+          setIsConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }

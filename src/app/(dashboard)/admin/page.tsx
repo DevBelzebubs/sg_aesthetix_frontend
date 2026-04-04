@@ -26,7 +26,7 @@ const kpis = [
 const modules = [
   {
     title: "Acceso y seguridad",
-    desc: "Gestiona usuarios internos, roles, contrasenas y sesiones activas.",
+    desc: "Revisa quien puede entrar y que puede hacer cada persona.",
     href: "/admin/acceso-seguridad",
     icon: KeyRound,
   },
@@ -38,43 +38,43 @@ const modules = [
   },
   {
     title: "Equipo de trabajo",
-    desc: "Administra empleados, horarios y rendimiento.",
+    desc: "Mira tu equipo, edita sus datos y organiza sus turnos.",
     href: "/admin/empleados",
     icon: Briefcase,
   },
   {
     title: "Agenda",
-    desc: "Visualiza y gestiona citas de tus clientes.",
+    desc: "Mira las citas del dia, cambia horarios o elimina una reserva.",
     href: "/admin/agenda",
     icon: Calendar,
   },
   {
     title: "Clientes",
-    desc: "Consulta historial, preferencias y ficha completa de cada cliente.",
+    desc: "Encuentra clientes, corrige sus datos o elimina registros.",
     href: "/admin/clientes",
     icon: User,
   },
   {
     title: "Fidelizacion",
-    desc: "Activa beneficios, puntos y campanas para clientes recurrentes.",
+    desc: "Crea beneficios simples para que tus clientes vuelvan.",
     href: "/admin/fidelizacion",
     icon: Heart,
   },
   {
     title: "Inventario",
-    desc: "Controla productos, stock y movimientos.",
+    desc: "Controla productos, cantidades y avisos de reposicion.",
     href: "/admin/inventario",
     icon: Boxes,
   },
   {
     title: "Galeria",
-    desc: "Organiza el contenido visual que se muestra en el sitio publico.",
+    desc: "Ordena las fotos y estilos que veran tus clientes.",
     href: "/admin/galeria",
     icon: Image,
   },
   {
     title: "Negocio",
-    desc: "Gestiona datos generales, plan y estado operativo del tenant.",
+    desc: "Edita los datos principales de tu negocio.",
     href: "/admin/configuracion/empresa",
     icon: Building2,
   },
@@ -83,11 +83,11 @@ const modules = [
 export default function AdminHomePage() {
   return (
     <section className="space-y-6">
-      <header className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white to-fuchsia-50 p-6 shadow-sm">
+      <header className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <p className="text-sm text-zinc-500">Bienvenido de nuevo</p>
         <h1 className="mt-1 text-3xl font-bold text-zinc-900">Resumen del negocio</h1>
         <p className="mt-2 text-sm text-zinc-600">
-          Aqui tienes un vistazo rapido de lo que esta pasando hoy.
+          Aqui tienes lo mas importante del dia, sin tanta vuelta.
         </p>
       </header>
 
@@ -117,14 +117,14 @@ export default function AdminHomePage() {
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-              Modulos
+              Secciones
             </p>
             <h2 className="mt-1 text-2xl font-bold tracking-tight text-zinc-900">
-              Accesos rapidos del panel
+              Accesos rapidos
             </h2>
           </div>
           <div className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">
-            {modules.length} modulos
+            {modules.length} secciones
           </div>
         </div>
 
@@ -149,7 +149,7 @@ export default function AdminHomePage() {
                 <p className="mt-3 text-sm text-zinc-600">{module.desc}</p>
 
                 <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-zinc-900">
-                  Ir al modulo
+                  Abrir
                   <ArrowRight size={16} className="transition group-hover:translate-x-1" />
                 </span>
               </Link>

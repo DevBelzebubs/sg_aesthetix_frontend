@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Gift, PencilLine, Plus, Trash2 } from "lucide-react";
+import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 
 type LoyaltyRule = {
   id: string;
@@ -47,6 +48,8 @@ export function LoyaltyManagement() {
   const [rules, setRules] = useState(initialRules);
   const [selectedId, setSelectedId] = useState(initialRules[0]?.id ?? "");
   const [draft, setDraft] = useState(initialRules[0] ?? emptyDraft);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const selectedRule = rules.find((rule) => rule.id === selectedId);
 
@@ -106,7 +109,7 @@ export function LoyaltyManagement() {
             className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
           >
             <Plus size={16} />
-            Nueva regla
+            Nuevo beneficio
           </button>
         </div>
 
@@ -133,7 +136,7 @@ export function LoyaltyManagement() {
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl bg-white px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Canje</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Uso</p>
                   <p className="mt-2 text-sm font-semibold text-zinc-900">{rule.redeemValue}</p>
                 </div>
                 <div className="rounded-2xl bg-white px-4 py-3">
@@ -154,9 +157,9 @@ export function LoyaltyManagement() {
             </div>
             <div>
               <p className="text-sm font-semibold text-zinc-900">
-                {selectedId ? "Editar regla" : "Crear regla"}
+                {selectedId ? "Editar beneficio" : "Crear beneficio"}
               </p>
-              <p className="text-sm text-zinc-600">Configura acumulacion y canje por tenant.</p>
+              <p className="text-sm text-zinc-600">Define como gana y usa sus beneficios el cliente.</p>
             </div>
           </div>
 
@@ -168,14 +171,14 @@ export function LoyaltyManagement() {
                 onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
               />
             </Field>
-            <Field label="Acumulacion">
+            <Field label="Como se gana">
               <input
                 className={inputClassName}
                 value={draft.earnRate}
                 onChange={(event) => setDraft((current) => ({ ...current, earnRate: event.target.value }))}
               />
             </Field>
-            <Field label="Canje">
+            <Field label="Como se usa">
               <input
                 className={inputClassName}
                 value={draft.redeemValue}
@@ -209,15 +212,15 @@ export function LoyaltyManagement() {
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={handleSave}
+              onClick={() => setIsConfirmOpen(true)}
               className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800"
             >
               <PencilLine size={16} />
-              {selectedId ? "Guardar regla" : "Crear regla"}
+              {selectedId ? "Guardar beneficio" : "Crear beneficio"}
             </button>
             <button
               type="button"
-              onClick={handleDelete}
+              onClick={() => setIsDeleteConfirmOpen(true)}
               disabled={!selectedRule}
               className="inline-flex items-center gap-2 rounded-full border border-red-200 px-5 py-2.5 text-sm font-semibold text-red-700 transition enabled:hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -227,6 +230,34 @@ export function LoyaltyManagement() {
           </div>
         </div>
       </aside>
+
+      <ConfirmationModal
+        open={isConfirmOpen}
+        title={selectedId ? "Confirmar cambios" : "Confirmar nuevo beneficio"}
+        description={
+          selectedId
+            ? "Se guardaran los cambios hechos en este beneficio."
+            : "Se creara un nuevo beneficio con los datos que llenaste."
+        }
+        confirmLabel={selectedId ? "Si, guardar" : "Si, crear"}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={() => {
+          handleSave();
+          setIsConfirmOpen(false);
+        }}
+      />
+
+      <ConfirmationModal
+        open={isDeleteConfirmOpen}
+        title="Confirmar eliminacion"
+        description="Este beneficio se eliminara de la lista actual."
+        confirmLabel="Si, eliminar"
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={() => {
+          handleDelete();
+          setIsDeleteConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }

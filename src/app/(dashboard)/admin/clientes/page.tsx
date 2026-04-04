@@ -5,7 +5,7 @@ export default function ClientesPage() {
   return (
     <ModulePageShell
       title="Clientes"
-      description="Listado, edicion y baja de clientes registrados desde el canal publico o de reservas."
+      description="Encuentra clientes, corrige sus datos y elimina registros cuando haga falta."
     >
       <CustomersManagement />
     </ModulePageShell>

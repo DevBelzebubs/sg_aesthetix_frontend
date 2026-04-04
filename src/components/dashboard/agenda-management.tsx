@@ -9,6 +9,7 @@ import {
   Trash2,
   UserRound,
 } from "lucide-react";
+import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 
 type AppointmentStatus = "Confirmada" | "Pendiente" | "En curso" | "Completada";
 
@@ -70,6 +71,8 @@ export function AgendaManagement() {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(initialAppointments[0]?.id ?? "");
   const [draft, setDraft] = useState(initialAppointments[0] ?? emptyDraft);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const filteredAppointments = useMemo(() => {
     const text = query.toLowerCase();
@@ -126,16 +129,16 @@ export function AgendaManagement() {
       <div className="space-y-4">
         <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
           <div className="grid gap-4 md:grid-cols-3">
-            <KpiCard title="Citas hoy" value={String(appointments.length)} detail="Agenda operativa" />
+            <KpiCard title="Citas hoy" value={String(appointments.length)} detail="Turnos del dia" />
             <KpiCard
               title="Pendientes"
               value={String(appointments.filter((item) => item.status === "Pendiente").length)}
-              detail="Por validar"
+              detail="Por confirmar"
             />
             <KpiCard
               title="En curso"
               value={String(appointments.filter((item) => item.status === "En curso").length)}
-              detail="Atencion activa"
+              detail="Siendo atendidas"
             />
           </div>
 
@@ -145,7 +148,7 @@ export function AgendaManagement() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className="w-full bg-transparent text-sm outline-none placeholder:text-zinc-400"
-              placeholder="Buscar por cliente, servicio, empleado u hora"
+              placeholder="Buscar por cliente, servicio, persona o hora"
             />
           </label>
         </div>
@@ -199,7 +202,7 @@ export function AgendaManagement() {
         <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
           <p className="text-sm font-semibold text-zinc-900">Editar cita</p>
           <p className="mt-1 text-sm text-zinc-600">
-            Reprograma, cambia estado o ajusta la asignacion antes de conectar backend.
+            Cambia la hora, el estado o la persona que atendera la cita.
           </p>
 
           <div className="mt-4 grid gap-3">
@@ -269,7 +272,7 @@ export function AgendaManagement() {
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={handleSave}
+              onClick={() => setIsConfirmOpen(true)}
               disabled={!selectedAppointment}
               className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition enabled:hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -278,7 +281,7 @@ export function AgendaManagement() {
             </button>
             <button
               type="button"
-              onClick={handleDelete}
+              onClick={() => setIsDeleteConfirmOpen(true)}
               disabled={!selectedAppointment}
               className="inline-flex items-center gap-2 rounded-full border border-red-200 px-5 py-2.5 text-sm font-semibold text-red-700 transition enabled:hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -306,6 +309,30 @@ export function AgendaManagement() {
           </div>
         </div>
       </aside>
+
+      <ConfirmationModal
+        open={isConfirmOpen}
+        title="Confirmar cambios"
+        description="Se guardaran los cambios hechos en esta cita."
+        confirmLabel="Si, guardar"
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={() => {
+          handleSave();
+          setIsConfirmOpen(false);
+        }}
+      />
+
+      <ConfirmationModal
+        open={isDeleteConfirmOpen}
+        title="Confirmar eliminacion"
+        description="Esta cita se eliminara de la agenda actual."
+        confirmLabel="Si, eliminar"
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={() => {
+          handleDelete();
+          setIsDeleteConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }

@@ -5,7 +5,7 @@ export default function FidelizacionPage() {
   return (
     <ModulePageShell
       title="Fidelizacion"
-      description="CRUD de reglas de puntos, configuracion por tenant y base para acumulacion, canje y expiracion."
+      description="Crea beneficios simples para premiar a quienes vuelven seguido."
     >
       <LoyaltyManagement />
     </ModulePageShell>

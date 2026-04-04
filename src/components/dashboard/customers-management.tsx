@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { PencilLine, Search, Trash2, UserRound } from "lucide-react";
+import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 
 type CustomerRecord = {
   id: string;
@@ -61,6 +62,8 @@ export function CustomersManagement() {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(initialCustomers[0]?.id ?? "");
   const [draft, setDraft] = useState(initialCustomers[0] ?? emptyDraft);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const filteredCustomers = useMemo(() => {
     return customers.filter((customer) => {
@@ -113,9 +116,9 @@ export function CustomersManagement() {
     <div className="grid gap-6 xl:grid-cols-[1.18fr_0.92fr]">
       <div className="space-y-4">
         <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white to-sky-50 p-5 shadow-sm">
-          <p className="text-sm font-semibold text-zinc-900">Clientes autogestionados</p>
+          <p className="text-sm font-semibold text-zinc-900">Clientes registrados</p>
           <p className="mt-1 text-sm text-zinc-600">
-            El alta ocurre desde la experiencia del cliente. En admin dejamos listo listar, editar y borrar.
+            Tus clientes se registran solos. Aqui solo los buscas, editas o eliminas.
           </p>
 
           <label className="mt-4 flex items-center gap-3 rounded-2xl border border-zinc-200 px-4 py-3">
@@ -170,7 +173,7 @@ export function CustomersManagement() {
             </div>
             <div>
               <p className="text-sm font-semibold text-zinc-900">Editar cliente</p>
-              <p className="text-sm text-zinc-600">Solo mantenimiento y limpieza de datos.</p>
+              <p className="text-sm text-zinc-600">Corrige datos cuando haga falta.</p>
             </div>
           </div>
 
@@ -234,7 +237,7 @@ export function CustomersManagement() {
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={handleSave}
+              onClick={() => setIsConfirmOpen(true)}
               disabled={!selectedCustomer}
               className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition enabled:hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -243,7 +246,7 @@ export function CustomersManagement() {
             </button>
             <button
               type="button"
-              onClick={handleDelete}
+              onClick={() => setIsDeleteConfirmOpen(true)}
               disabled={!selectedCustomer}
               className="inline-flex items-center gap-2 rounded-full border border-red-200 px-5 py-2.5 text-sm font-semibold text-red-700 transition enabled:hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -254,14 +257,38 @@ export function CustomersManagement() {
         </div>
 
         <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm">
-          <p className="text-sm font-semibold text-zinc-900">Integracion pendiente</p>
+          <p className="text-sm font-semibold text-zinc-900">Proximo paso</p>
           <ul className="mt-4 space-y-3 text-sm text-zinc-600">
-            <li>GET listado tenant-scoped con busqueda</li>
-            <li>PATCH para correccion de datos del cliente</li>
-            <li>DELETE o desactivacion logica con auditoria</li>
+            <li>Traer la lista real de clientes</li>
+            <li>Guardar cambios hechos desde esta vista</li>
+            <li>Eliminar o desactivar clientes segun la regla del negocio</li>
           </ul>
         </div>
       </aside>
+
+      <ConfirmationModal
+        open={isConfirmOpen}
+        title="Confirmar cambios"
+        description="Se guardaran los cambios hechos en los datos del cliente."
+        confirmLabel="Si, guardar"
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={() => {
+          handleSave();
+          setIsConfirmOpen(false);
+        }}
+      />
+
+      <ConfirmationModal
+        open={isDeleteConfirmOpen}
+        title="Confirmar eliminacion"
+        description="Este cliente se eliminara de la lista actual."
+        confirmLabel="Si, eliminar"
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={() => {
+          handleDelete();
+          setIsDeleteConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }
