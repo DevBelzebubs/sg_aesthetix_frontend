@@ -15,7 +15,6 @@ export async function generateMetadata({
   const { slug } = await params;
   const tenant = await resolveTenantBySlug(slug);
   const theme = await getThemeSettingsByTenantId(tenant.tenantId);
-
   return {
     title: `${theme.brandName} | Barbería`,
     description: `Sitio público de ${theme.brandName}: información, servicios, equipo y reservas en línea.`,
@@ -46,52 +45,56 @@ export default async function PublicLandingLayout({
       style={themeVariables}
       className="relative min-h-screen overflow-x-hidden bg-[var(--tenant-background)] text-[var(--tenant-text)]"
     >
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.18),transparent_32%),radial-gradient(circle_at_left,rgba(17,24,39,0.10),transparent_40%)]" />
-
-      <header className="sticky top-0 z-20 border-b border-black/10 bg-white/85 backdrop-blur-xl">
+      {/* Navbar — full width, cuadrado, minimalista */}
+      <header className="sticky top-0 z-20 border-b border-black/10 bg-white/95 backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
+          {/* Logo */}
           <Link href={basePath} className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--tenant-primary)] text-sm font-bold text-white shadow-lg shadow-black/15">
+            <span className="inline-flex h-9 w-9 items-center justify-center bg-[var(--tenant-primary)] text-xs font-bold text-white">
               SG
             </span>
-            <span className="text-base font-semibold tracking-tight sm:text-lg">
+            <span className="text-sm font-semibold tracking-[0.06em] uppercase">
               {theme.brandName}
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-5 text-sm font-medium text-[var(--tenant-muted)] md:flex">
-            <Link href={basePath} className="transition hover:text-[var(--tenant-text)]">
+          {/* Nav desktop */}
+          <nav className="hidden items-center gap-8 text-xs font-semibold tracking-[0.14em] uppercase text-[var(--tenant-muted)] md:flex">
+            <Link href={basePath} className="transition hover:text-black">
               Inicio
             </Link>
-            <Link
-              href={`${basePath}/galeria`}
-              className="transition hover:text-[var(--tenant-text)]"
-            >
+            <Link href={`${basePath}/galeria`} className="transition hover:text-black">
               Galería
+            </Link>
+            <Link href={`${basePath}/galeria`} className="transition hover:text-black">
+              Productos
             </Link>
             <Link
               href={`${basePath}/reservar`}
-              className="rounded-full bg-[var(--tenant-primary)] px-5 py-2.5 text-white shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:opacity-95"
+              className="bg-[var(--tenant-primary)] px-5 py-2.5 text-white transition hover:opacity-90"
             >
               Reservar
             </Link>
           </nav>
 
+          {/* Nav mobile */}
           <Link
             href={`${basePath}/reservar`}
-            className="rounded-full bg-[var(--tenant-primary)] px-4 py-2 text-sm font-semibold text-white md:hidden"
+            className="bg-[var(--tenant-primary)] px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase text-white md:hidden"
           >
             Reservar
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl px-6 py-10 sm:py-14">{children}</main>
+      <main className="mx-auto w-full max-w-6xl px-6 py-10 sm:py-14">
+        {children}
+      </main>
 
       <footer className="mt-auto border-t border-black/10 bg-white/90">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-6 text-sm text-[var(--tenant-muted)] sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-6 text-xs tracking-[0.1em] uppercase text-[var(--tenant-muted)] sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} {theme.brandName}</p>
-          <p>Barbería premium · Reservas online · Atención personalizada</p>
+          <p>Barbería · Reservas online · Atención personalizada</p>
         </div>
       </footer>
     </div>
