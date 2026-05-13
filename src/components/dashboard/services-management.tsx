@@ -1,119 +1,105 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Clock3, DollarSign, Plus, Search, ShieldCheck, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Clock3, DollarSign, Loader2, Plus, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
+import { createClient } from "@/lib/supabase/client";
 
-type ServiceStatus = "Activo" | "Borrador" | "Oculto";
-
-type ServiceRecord = {
+type Service = {
   id: string;
-  name: string;
-  type: string;
-  duration: number;
-  price: number;
-  status: ServiceStatus;
-  assignedTo: string[];
-  description: string;
+  nombre: string;
+  descripcion: string | null;
+  precio: number;
+  duracion_minutos: number;
+  puntos_otorgados: number;
+  esta_activo: boolean;
+  categoria_servicio_id: number;
 };
 
-const initialServices: ServiceRecord[] = [
-  {
-    id: "corte-clasico",
-    name: "Corte clasico",
-    type: "CLASSIC",
-    duration: 45,
-    price: 18,
-    status: "Activo",
-    assignedTo: ["Alejandro Ruiz", "Matias Soto"],
-    description: "Servicio base con lavado ligero y acabado.",
-  },
-  {
-    id: "corte-barba",
-    name: "Corte + barba",
-    type: "COMBO",
-    duration: 60,
-    price: 25,
-    status: "Activo",
-    assignedTo: ["Alejandro Ruiz"],
-    description: "Combo premium con perfilado completo y acabado.",
-  },
-  {
-    id: "kids-cut",
-    name: "Kids cut",
-    type: "KIDS",
-    duration: 30,
-    price: 14,
-    status: "Borrador",
-    assignedTo: ["Matias Soto"],
-    description: "Servicio agil para ninos con tiempo reducido.",
-  },
-];
-
-type ServiceDraft = Omit<ServiceRecord, "id" | "assignedTo"> & {
-  assignedTo: string;
-};
+type ServiceDraft = Omit<Service, "id">;
 
 const emptyDraft: ServiceDraft = {
-  name: "",
-  type: "STANDARD",
-  duration: 45,
-  price: 0,
-  status: "Activo",
-  assignedTo: "",
-  description: "",
+  nombre: "",
+  descripcion: "",
+  precio: 0,
+  duracion_minutos: 45,
+  puntos_otorgados: 0,
+  esta_activo: true,
+  categoria_servicio_id: 1,
 };
 
 const inputClassName =
   "w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm outline-none transition placeholder:text-zinc-400 focus:border-zinc-900";
 
 export function ServicesManagement() {
-  const [services, setServices] = useState(initialServices);
+  const supabase = createClient();
+
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState(initialServices[0]?.id ?? "");
-  const [draft, setDraft] = useState<ServiceDraft>({
-    ...emptyDraft,
-    ...toDraft(initialServices[0]),
-  });
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<ServiceDraft>(emptyDraft);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+  useEffect(() => { fetchServices(); }, []);
+
+  async function fetchServices() {
+    setLoading(true);
+    const { data } = await supabase
+      .from("servicios")
+      .select("*")
+      .order("nombre", { ascending: true });
+    setServices(data ?? []);
+    if (data && data.length > 0) {
+      setSelectedId(data[0].id);
+      setDraft(toDraft(data[0]));
+    }
+    setLoading(false);
+  }
 
   const filteredServices = useMemo(() => {
-    return services.filter((service) => {
-      return (
-        service.name.toLowerCase().includes(query.toLowerCase()) ||
-        service.type.toLowerCase().includes(query.toLowerCase()) ||
-        service.description.toLowerCase().includes(query.toLowerCase())
-      );
-    });
+    return services.filter((s) =>
+      s.nombre.toLowerCase().includes(query.toLowerCase()) ||
+      s.descripcion?.toLowerCase().includes(query.toLowerCase())
+    );
   }, [query, services]);
 
-  const selectedService = services.find((service) => service.id === selectedId);
+  const selectedService = services.find((s) => s.id === selectedId);
 
-  const saveService = () => {
-    if (!draft.name) {
-      return;
-    }
-
-    const nextRecord: ServiceRecord = {
-      id: selectedId || slugify(draft.name),
-      ...draft,
-      assignedTo: draft.assignedTo
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean),
-    };
-
+  async function saveService() {
+    if (!draft.nombre) return;
+    setSaving(true);
     if (selectedId) {
-      setServices((current) =>
-        current.map((service) => (service.id === selectedId ? nextRecord : service)),
-      );
-      return;
+      await supabase.from("servicios").update({
+        ...draft,
+        actualizado_en: new Date().toISOString(),
+      }).eq("id", selectedId);
+    } else {
+      await supabase.from("servicios").insert({
+        ...draft,
+        creado_en: new Date().toISOString(),
+        actualizado_en: new Date().toISOString(),
+      });
     }
+    await fetchServices();
+    setSaving(false);
+  }
 
-    setServices((current) => [nextRecord, ...current]);
-    setSelectedId(nextRecord.id);
-    setDraft(toDraft(nextRecord));
-  };
+  async function deleteService() {
+    if (!selectedId) return;
+    await supabase.from("servicios").delete().eq("id", selectedId);
+    setSelectedId(null);
+    setDraft(emptyDraft);
+    await fetchServices();
+  }
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-20">
+      <Loader2 size={24} className="animate-spin text-zinc-400" />
+    </div>
+  );
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.15fr_0.95fr]">
@@ -126,13 +112,9 @@ export function ServicesManagement() {
                 Ordena tus servicios, cambia precios y elige quien los atiende.
               </p>
             </div>
-
             <button
               type="button"
-              onClick={() => {
-                setSelectedId("");
-                setDraft(emptyDraft);
-              }}
+              onClick={() => { setSelectedId(null); setDraft(emptyDraft); }}
               className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
             >
               <Plus size={16} />
@@ -144,7 +126,7 @@ export function ServicesManagement() {
             <Search size={16} className="text-zinc-400" />
             <input
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(e) => setQuery(e.target.value)}
               className="w-full bg-transparent text-sm outline-none placeholder:text-zinc-400"
               placeholder="Buscar por nombre o descripcion"
             />
@@ -159,7 +141,7 @@ export function ServicesManagement() {
                 <th className="px-4 py-3">Duracion</th>
                 <th className="px-4 py-3">Precio</th>
                 <th className="px-4 py-3">Estado</th>
-                <th className="px-4 py-3">Asignados</th>
+                <th className="px-4 py-3">Puntos</th>
               </tr>
             </thead>
             <tbody>
@@ -169,25 +151,22 @@ export function ServicesManagement() {
                   className={`cursor-pointer border-t border-zinc-100 transition hover:bg-zinc-50 ${
                     selectedId === service.id ? "bg-zinc-50" : ""
                   }`}
-                  onClick={() => {
-                    setSelectedId(service.id);
-                    setDraft(toDraft(service));
-                  }}
+                  onClick={() => { setSelectedId(service.id); setDraft(toDraft(service)); }}
                 >
                   <td className="px-4 py-3">
-                    <p className="font-semibold text-zinc-900">{service.name}</p>
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                      {service.type}
-                    </p>
+                    <p className="font-semibold text-zinc-900">{service.nombre}</p>
+                    <p className="text-xs text-zinc-500 line-clamp-1">{service.descripcion}</p>
                   </td>
-                  <td className="px-4 py-3 text-zinc-700">{service.duration} min</td>
-                  <td className="px-4 py-3 text-zinc-700">${service.price}</td>
+                  <td className="px-4 py-3 text-zinc-700">{service.duracion_minutos} min</td>
+                  <td className="px-4 py-3 text-zinc-700">S/{service.precio}</td>
                   <td className="px-4 py-3">
-                    <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">
-                      {service.status}
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      service.esta_activo ? "bg-green-100 text-green-700" : "bg-zinc-100 text-zinc-500"
+                    }`}>
+                      {service.esta_activo ? "Activo" : "Inactivo"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-zinc-700">{service.assignedTo.length}</td>
+                  <td className="px-4 py-3 text-zinc-700">{service.puntos_otorgados}</td>
                 </tr>
               ))}
             </tbody>
@@ -202,131 +181,65 @@ export function ServicesManagement() {
           </p>
           <div className="mt-4 grid gap-3">
             <Field label="Nombre">
-              <input
-                className={inputClassName}
-                value={draft.name}
-                onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
-                placeholder="Nombre comercial"
-              />
-            </Field>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Tipo">
-                <select
-                  className={inputClassName}
-                  value={draft.type}
-                  onChange={(event) => setDraft((current) => ({ ...current, type: event.target.value }))}
-                >
-                  <option>STANDARD</option>
-                  <option>PREMIUM</option>
-                  <option>CLASSIC</option>
-                  <option>COMBO</option>
-                  <option>KIDS</option>
-                </select>
-              </Field>
-              <Field label="Estado">
-                <select
-                  className={inputClassName}
-                  value={draft.status}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      status: event.target.value as ServiceStatus,
-                    }))
-                  }
-                >
-                  <option>Activo</option>
-                  <option>Borrador</option>
-                  <option>Oculto</option>
-                </select>
-              </Field>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Duracion">
-                <input
-                  type="number"
-                  className={inputClassName}
-                  value={draft.duration}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      duration: Number(event.target.value),
-                    }))
-                  }
-                />
-              </Field>
-              <Field label="Precio">
-                <input
-                  type="number"
-                  className={inputClassName}
-                  value={draft.price}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      price: Number(event.target.value),
-                    }))
-                  }
-                />
-              </Field>
-            </div>
-            <Field label="Asignado a">
-              <input
-                className={inputClassName}
-                value={draft.assignedTo}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, assignedTo: event.target.value }))
-                }
-                placeholder="Alejandro Ruiz, Matias Soto"
-              />
+              <input className={inputClassName} value={draft.nombre}
+                onChange={(e) => setDraft((d) => ({ ...d, nombre: e.target.value }))}
+                placeholder="Nombre del servicio" />
             </Field>
             <Field label="Descripcion">
-              <textarea
-                className={`${inputClassName} min-h-28 resize-none`}
-                value={draft.description}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, description: event.target.value }))
-                }
-                placeholder="Describe el servicio y que incluye"
-              />
+              <textarea className={`${inputClassName} min-h-24 resize-none`} value={draft.descripcion ?? ""}
+                onChange={(e) => setDraft((d) => ({ ...d, descripcion: e.target.value }))} />
             </Field>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Precio (S/)">
+                <input type="number" className={inputClassName} value={draft.precio}
+                  onChange={(e) => setDraft((d) => ({ ...d, precio: Number(e.target.value) }))} />
+              </Field>
+              <Field label="Duracion (min)">
+                <input type="number" className={inputClassName} value={draft.duracion_minutos}
+                  onChange={(e) => setDraft((d) => ({ ...d, duracion_minutos: Number(e.target.value) }))} />
+              </Field>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Puntos otorgados">
+                <input type="number" className={inputClassName} value={draft.puntos_otorgados}
+                  onChange={(e) => setDraft((d) => ({ ...d, puntos_otorgados: Number(e.target.value) }))} />
+              </Field>
+              <Field label="Estado">
+                <select className={inputClassName} value={draft.esta_activo ? "activo" : "inactivo"}
+                  onChange={(e) => setDraft((d) => ({ ...d, esta_activo: e.target.value === "activo" }))}>
+                  <option value="activo">Activo</option>
+                  <option value="inactivo">Inactivo</option>
+                </select>
+              </Field>
+            </div>
           </div>
 
           <div className="mt-5 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => setIsConfirmOpen(true)}
-              className="rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800"
-            >
-              {selectedId ? "Guardar servicio" : "Crear servicio"}
+            <button type="button" onClick={() => setIsConfirmOpen(true)}
+              disabled={!draft.nombre}
+              className="rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:opacity-40">
+              {saving ? "Guardando..." : selectedId ? "Guardar cambios" : "Crear servicio"}
             </button>
-            <button
-              type="button"
-              onClick={() => setDraft(selectedService ? toDraft(selectedService) : emptyDraft)}
-              className="rounded-full border border-zinc-200 px-5 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100"
-            >
+            <button type="button" onClick={() => setDraft(selectedService ? toDraft(selectedService) : emptyDraft)}
+              className="rounded-full border border-zinc-200 px-5 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100">
               Restablecer
             </button>
+            {selectedId && (
+              <button type="button" onClick={() => setIsDeleteOpen(true)}
+                className="rounded-full border border-red-200 px-5 py-2.5 text-sm font-semibold text-red-500 transition hover:bg-red-50">
+                Eliminar
+              </button>
+            )}
           </div>
         </div>
 
         <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
           <p className="text-sm font-semibold text-zinc-900">Datos del servicio</p>
           <div className="mt-4 space-y-3 text-sm text-zinc-600">
-            <p className="flex items-center gap-2">
-              <Clock3 size={15} />
-              Tiempo aproximado del servicio
-            </p>
-            <p className="flex items-center gap-2">
-              <DollarSign size={15} />
-              Precio base del servicio
-            </p>
-            <p className="flex items-center gap-2">
-              <Sparkles size={15} />
-              Descripcion para mostrar al cliente
-            </p>
-            <p className="flex items-center gap-2">
-              <ShieldCheck size={15} />
-              Si esta visible o no
-            </p>
+            <p className="flex items-center gap-2"><Clock3 size={15} />Tiempo aproximado del servicio</p>
+            <p className="flex items-center gap-2"><DollarSign size={15} />Precio base del servicio</p>
+            <p className="flex items-center gap-2"><Sparkles size={15} />Descripcion para mostrar al cliente</p>
+            <p className="flex items-center gap-2"><ShieldCheck size={15} />Si esta visible o no</p>
           </div>
         </div>
       </aside>
@@ -334,17 +247,19 @@ export function ServicesManagement() {
       <ConfirmationModal
         open={isConfirmOpen}
         title={selectedId ? "Confirmar cambios" : "Confirmar nuevo servicio"}
-        description={
-          selectedId
-            ? "Se guardaran los cambios hechos en este servicio."
-            : "Se creara un nuevo servicio con los datos que llenaste."
-        }
-        confirmLabel={selectedId ? "Si, guardar" : "Si, crear"}
+        description={selectedId ? "Se guardaran los cambios." : "Se creara un nuevo servicio."}
+        confirmLabel={saving ? "Guardando..." : selectedId ? "Si, guardar" : "Si, crear"}
         onClose={() => setIsConfirmOpen(false)}
-        onConfirm={() => {
-          saveService();
-          setIsConfirmOpen(false);
-        }}
+        onConfirm={async () => { await saveService(); setIsConfirmOpen(false); }}
+      />
+
+      <ConfirmationModal
+        open={isDeleteOpen}
+        title="Eliminar servicio"
+        description="Esta accion no se puede deshacer."
+        confirmLabel="Si, eliminar"
+        onClose={() => setIsDeleteOpen(false)}
+        onConfirm={async () => { await deleteService(); setIsDeleteOpen(false); }}
       />
     </div>
   );
@@ -359,22 +274,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function toDraft(service?: ServiceRecord): ServiceDraft {
-  if (!service) {
-    return emptyDraft;
-  }
-
+function toDraft(item: Service): ServiceDraft {
   return {
-    name: service.name,
-    type: service.type,
-    duration: service.duration,
-    price: service.price,
-    status: service.status,
-    assignedTo: service.assignedTo.join(", "),
-    description: service.description,
+    nombre: item.nombre,
+    descripcion: item.descripcion,
+    precio: item.precio,
+    duracion_minutos: item.duracion_minutos,
+    puntos_otorgados: item.puntos_otorgados,
+    esta_activo: item.esta_activo,
+    categoria_servicio_id: item.categoria_servicio_id,
   };
-}
-
-function slugify(value: string) {
-  return value.toLowerCase().trim().replace(/\s+/g, "-");
 }
