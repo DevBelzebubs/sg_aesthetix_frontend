@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getThemeSettingsByTenantId } from "@/lib/theme/get-theme-settings";
 import { resolveTenantBySlug } from "@/lib/tenant/resolve-tenant";
 import { TapeDecor } from "@/components/tape-decor";
+import { NavbarPublic } from "@/components/public/NavbarPublic";
 
 type PublicLandingLayoutProps = {
   children: ReactNode;
@@ -47,51 +48,12 @@ export default async function PublicLandingLayout({
       className="relative min-h-screen overflow-x-hidden bg-[var(--tenant-background)] text-[var(--tenant-text)]"
     >
       {/* Navbar — full width, cuadrado, minimalista */}
-      <header className="sticky top-0 z-20 border-b border-black/10 bg-white/95 backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-          {/* Logo */}
-          <Link href={basePath} className="flex items-center gap-3">
-            <img
-              src="https://res.cloudinary.com/dxuk9bogw/image/upload/v1777199390/Dise%C3%B1o_sin_t%C3%ADtulo_5_skeslj.png"
-              alt={theme.brandName}
-              className="h-18 w-auto object-contain"
-            />
-          </Link>
+      <NavbarPublic
+        slug={tenant.slug}
+        basePath={basePath}
+        brandName={theme.brandName}
+      />
 
-          {/* Nav desktop */}
-          <nav className="hidden items-center gap-8 text-xs font-semibold tracking-[0.14em] uppercase text-[var(--tenant-muted)] md:flex">
-            <Link href={basePath} className="transition hover:text-black">
-              Inicio
-            </Link>
-            <Link
-              href={`${basePath}/galeria`}
-              className="transition hover:text-black"
-            >
-              Galería
-            </Link>
-            <Link
-              href={`${basePath}/productos`}
-              className="transition hover:text-black"
-            >
-              Productos
-            </Link>
-            <Link
-              href={`${basePath}/reservar`}
-              className="bg-[var(--tenant-primary)] px-5 py-2.5 text-white transition hover:opacity-90"
-            >
-              Reservar
-            </Link>
-          </nav>
-
-          {/* Nav mobile */}
-          <Link
-            href={`${basePath}/reservar`}
-            className="bg-[var(--tenant-primary)] px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase text-white md:hidden"
-          >
-            Reservar
-          </Link>
-        </div>
-      </header>
       <main className="mx-auto w-full max-w-6xl px-6 pt-10 sm:pt-2">
         {children}
       </main>
@@ -218,7 +180,19 @@ export default async function PublicLandingLayout({
             © {new Date().getFullYear()} {theme.brandName} · Todos los derechos
             reservados
           </p>
-          <p>Barbería · Reservas online · Atención personalizada</p>
+          <div className="flex items-center gap-4">
+            <p>Barbería · Reservas online · Atención personalizada</p>
+            <Link
+              href={`${basePath}/libro-reclamaciones`}
+              className="flex-shrink-0"
+            >
+              <img
+                src="https://res.cloudinary.com/dxuk9bogw/image/upload/v1776155530/7f85d794-58b5-47d0-850d-d06179563fb2.png"
+                alt="Libro de Reclamaciones"
+                className="h-8 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
+              />
+            </Link>
+          </div>
         </div>
       </footer>
     </div>

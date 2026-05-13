@@ -1,111 +1,117 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Eye, EyeOff, Images, Plus, Search, Tags } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Eye, EyeOff, Images, Plus, Search, Tags, Loader2 } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
+import { createClient } from "@/lib/supabase/client";
 
 type GalleryItem = {
   id: string;
-  title: string;
-  description: string;
-  tags: string[];
-  status: "Publicado" | "Borrador";
-  order: number;
-  cover: string;
+  titulo: string;
+  descripcion: string;
+  imagen_url: string;
+  orden: number;
+  esta_activo: boolean;
+  servicio_id: string | null;
 };
 
-const initialGallery: GalleryItem[] = [
-  {
-    id: "style-01",
-    title: "Fade texturizado",
-    description: "Corte moderno con laterales bajos y volumen superior.",
-    tags: ["Fade", "Moderno", "Top seller"],
-    status: "Publicado",
-    order: 1,
-    cover: "FT",
-  },
-  {
-    id: "style-02",
-    title: "Beard premium",
-    description: "Perfilado de barba con toalla caliente y acabado premium.",
-    tags: ["Barba", "Premium"],
-    status: "Publicado",
-    order: 2,
-    cover: "BP",
-  },
-  {
-    id: "style-03",
-    title: "Corte kids",
-    description: "Formato agil para ninos con duracion reducida.",
-    tags: ["Kids", "Clasico"],
-    status: "Borrador",
-    order: 3,
-    cover: "CK",
-  },
-];
-
-type GalleryDraft = Omit<GalleryItem, "tags"> & {
-  tags: string;
+type GalleryDraft = {
+  titulo: string;
+  descripcion: string;
+  imagen_url: string;
+  orden: number;
+  esta_activo: boolean;
 };
 
 const emptyDraft: GalleryDraft = {
-  id: "",
-  title: "",
-  description: "",
-  tags: "",
-  status: "Borrador",
-  order: 1,
-  cover: "NA",
+  titulo: "",
+  descripcion: "",
+  imagen_url: "",
+  orden: 1,
+  esta_activo: false,
 };
 
 const inputClassName =
   "w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm outline-none transition placeholder:text-zinc-400 focus:border-zinc-900";
 
 export function GalleryManagement() {
-  const [gallery, setGallery] = useState(initialGallery);
+  const supabase = createClient();
+
+  const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState(initialGallery[0]?.id ?? "");
-  const [draft, setDraft] = useState<GalleryDraft>({
-    ...emptyDraft,
-    ...toDraft(initialGallery[0]),
-  });
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<GalleryDraft>(emptyDraft);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+  useEffect(() => {
+    fetchGallery();
+  }, []);
+
+  async function fetchGallery() {
+    setLoading(true);
+    const { data } = await supabase
+      .from("galeria_cortes")
+      .select("*")
+      .order("orden", { ascending: true });
+    setGallery(data ?? []);
+    if (data && data.length > 0) {
+      setSelectedId(data[0].id);
+      setDraft(toDraft(data[0]));
+    }
+    setLoading(false);
+  }
 
   const filteredGallery = useMemo(() => {
-    return gallery.filter((item) => {
-      return (
-        item.title.toLowerCase().includes(query.toLowerCase()) ||
-        item.description.toLowerCase().includes(query.toLowerCase()) ||
-        item.tags.some((tag) => tag.toLowerCase().includes(query.toLowerCase()))
-      );
-    });
+    return gallery.filter((item) =>
+      item.titulo?.toLowerCase().includes(query.toLowerCase()) ||
+      item.descripcion?.toLowerCase().includes(query.toLowerCase())
+    );
   }, [gallery, query]);
 
   const selectedItem = gallery.find((item) => item.id === selectedId);
 
-  const saveItem = () => {
-    if (!draft.title) {
-      return;
-    }
-
-    const nextItem: GalleryItem = {
-      ...draft,
-      id: selectedId || slugify(draft.title),
-      tags: draft.tags
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean),
-    };
-
+  async function saveItem() {
+    setSaving(true);
     if (selectedId) {
-      setGallery((current) => current.map((item) => (item.id === selectedId ? nextItem : item)));
-      return;
+      await supabase.from("galeria_cortes").update({
+        titulo: draft.titulo,
+        descripcion: draft.descripcion,
+        imagen_url: draft.imagen_url,
+        orden: draft.orden,
+        esta_activo: draft.esta_activo,
+        actualizado_en: new Date().toISOString(),
+      }).eq("id", selectedId);
+    } else {
+      await supabase.from("galeria_cortes").insert({
+        titulo: draft.titulo,
+        descripcion: draft.descripcion,
+        imagen_url: draft.imagen_url,
+        orden: draft.orden,
+        esta_activo: draft.esta_activo,
+        creado_en: new Date().toISOString(),
+        actualizado_en: new Date().toISOString(),
+      });
     }
+    await fetchGallery();
+    setSaving(false);
+  }
 
-    setGallery((current) => [nextItem, ...current]);
-    setSelectedId(nextItem.id);
-    setDraft(toDraft(nextItem));
-  };
+  async function deleteItem() {
+    if (!selectedId) return;
+    await supabase.from("galeria_cortes").delete().eq("id", selectedId);
+    setSelectedId(null);
+    setDraft(emptyDraft);
+    await fetchGallery();
+  }
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-20">
+      <Loader2 size={24} className="animate-spin text-zinc-400" />
+    </div>
+  );
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.18fr_0.92fr]">
@@ -120,10 +126,7 @@ export function GalleryManagement() {
             </div>
             <button
               type="button"
-              onClick={() => {
-                setSelectedId("");
-                setDraft(emptyDraft);
-              }}
+              onClick={() => { setSelectedId(null); setDraft(emptyDraft); }}
               className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
             >
               <Plus size={16} />
@@ -135,7 +138,7 @@ export function GalleryManagement() {
             <Search size={16} className="text-zinc-400" />
             <input
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(e) => setQuery(e.target.value)}
               className="w-full bg-transparent text-sm outline-none placeholder:text-zinc-400"
               placeholder="Buscar por titulo o descripcion"
             />
@@ -146,49 +149,49 @@ export function GalleryManagement() {
           {filteredGallery.map((item) => (
             <article
               key={item.id}
-              className={`rounded-3xl border bg-white p-4 shadow-sm transition ${
+              className={`rounded-3xl border bg-white shadow-sm transition ${
                 selectedId === item.id
                   ? "border-zinc-900 shadow-md"
                   : "border-zinc-200 hover:-translate-y-1 hover:shadow-md"
               }`}
             >
-              <div className="rounded-2xl bg-gradient-to-br from-zinc-900 to-zinc-700 p-5 text-white">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold">{item.cover}</span>
-                  <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">
-                    Orden {item.order}
+              {item.imagen_url ? (
+                <img
+                  src={item.imagen_url}
+                  alt={item.titulo ?? ""}
+                  className="h-48 w-full rounded-t-3xl object-cover"
+                />
+              ) : (
+                <div className="flex h-48 items-center justify-center rounded-t-3xl bg-gradient-to-br from-zinc-900 to-zinc-700">
+                  <span className="text-2xl font-black text-white">
+                    {item.titulo?.slice(0, 2).toUpperCase() ?? "NA"}
                   </span>
                 </div>
-                <p className="mt-8 text-lg font-semibold">{item.title}</p>
-              </div>
+              )}
 
-              <p className="mt-4 text-sm text-zinc-600">{item.description}</p>
+              <div className="p-4">
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-zinc-900">{item.titulo}</p>
+                  <span className="text-xs text-zinc-400">#{item.orden}</span>
+                </div>
+                <p className="mt-1 text-sm text-zinc-600 line-clamp-2">{item.descripcion}</p>
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                {item.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700"
-                  >
-                    {tag}
+                <div className="mt-3 flex items-center justify-between">
+                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    item.esta_activo
+                      ? "bg-green-100 text-green-700"
+                      : "bg-zinc-100 text-zinc-500"
+                  }`}>
+                    {item.esta_activo ? "Publicado" : "Borrador"}
                   </span>
-                ))}
-              </div>
-
-              <div className="mt-4 flex items-center justify-between">
-                <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">
-                  {item.status}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedId(item.id);
-                    setDraft(toDraft(item));
-                  }}
-                  className="rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100"
-                >
-                  Editar pieza
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedId(item.id); setDraft(toDraft(item)); }}
+                    className="rounded-full border border-zinc-200 px-4 py-1.5 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100"
+                  >
+                    Editar
+                  </button>
+                </div>
               </div>
             </article>
           ))}
@@ -204,69 +207,62 @@ export function GalleryManagement() {
             <Field label="Titulo">
               <input
                 className={inputClassName}
-                value={draft.title}
-                onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
+                value={draft.titulo}
+                onChange={(e) => setDraft((d) => ({ ...d, titulo: e.target.value }))}
               />
             </Field>
             <Field label="Descripcion">
               <textarea
-                className={`${inputClassName} min-h-28 resize-none`}
-                value={draft.description}
-                onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))}
+                className={`${inputClassName} min-h-24 resize-none`}
+                value={draft.descripcion}
+                onChange={(e) => setDraft((d) => ({ ...d, descripcion: e.target.value }))}
               />
             </Field>
-            <Field label="Tags">
+            <Field label="URL de imagen">
               <input
                 className={inputClassName}
-                value={draft.tags}
-                onChange={(event) => setDraft((current) => ({ ...current, tags: event.target.value }))}
-                placeholder="Fade, moderno, top seller"
+                value={draft.imagen_url}
+                onChange={(e) => setDraft((d) => ({ ...d, imagen_url: e.target.value }))}
+                placeholder="https://..."
               />
             </Field>
+            {draft.imagen_url && (
+              <img
+                src={draft.imagen_url}
+                alt="preview"
+                className="h-40 w-full rounded-2xl object-cover"
+              />
+            )}
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Estado">
-                <select
-                  className={inputClassName}
-                  value={draft.status}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      status: event.target.value as GalleryDraft["status"],
-                    }))
-                  }
-                >
-                  <option>Publicado</option>
-                  <option>Borrador</option>
-                </select>
-              </Field>
               <Field label="Orden">
                 <input
                   type="number"
                   className={inputClassName}
-                  value={draft.order}
-                  onChange={(event) => setDraft((current) => ({ ...current, order: Number(event.target.value) }))}
+                  value={draft.orden}
+                  onChange={(e) => setDraft((d) => ({ ...d, orden: Number(e.target.value) }))}
                 />
               </Field>
+              <Field label="Estado">
+                <select
+                  className={inputClassName}
+                  value={draft.esta_activo ? "publicado" : "borrador"}
+                  onChange={(e) => setDraft((d) => ({ ...d, esta_activo: e.target.value === "publicado" }))}
+                >
+                  <option value="publicado">Publicado</option>
+                  <option value="borrador">Borrador</option>
+                </select>
+              </Field>
             </div>
-            <Field label="Iniciales">
-              <input
-                className={inputClassName}
-                value={draft.cover}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, cover: event.target.value.slice(0, 2) }))
-                }
-                placeholder="FT"
-              />
-            </Field>
           </div>
 
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
               onClick={() => setIsConfirmOpen(true)}
-              className="rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800"
+              disabled={!draft.titulo || !draft.imagen_url}
+              className="rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:opacity-40"
             >
-              {selectedId ? "Guardar estilo" : "Crear estilo"}
+              {selectedId ? "Guardar cambios" : "Crear estilo"}
             </button>
             <button
               type="button"
@@ -275,22 +271,25 @@ export function GalleryManagement() {
             >
               Restablecer
             </button>
+            {selectedId && (
+              <button
+                type="button"
+                onClick={() => setIsDeleteOpen(true)}
+                className="rounded-full border border-red-200 px-5 py-2.5 text-sm font-semibold text-red-500 transition hover:bg-red-50"
+              >
+                Eliminar
+              </button>
+            )}
           </div>
         </div>
 
         <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
           <p className="text-sm font-semibold text-zinc-900">Proximo paso</p>
           <div className="mt-4 space-y-3 text-sm text-zinc-600">
+            <p className="flex items-center gap-2"><Images size={15} />Cargar fotos reales en lugar de muestras</p>
+            <p className="flex items-center gap-2"><Tags size={15} />Ordenar por numero de orden</p>
             <p className="flex items-center gap-2">
-              <Images size={15} />
-              Cargar fotos reales en lugar de muestras
-            </p>
-            <p className="flex items-center gap-2">
-              <Tags size={15} />
-              Guardar etiquetas para ordenar mejor la galeria
-            </p>
-            <p className="flex items-center gap-2">
-              {draft.status === "Publicado" ? <Eye size={15} /> : <EyeOff size={15} />}
+              {draft.esta_activo ? <Eye size={15} /> : <EyeOff size={15} />}
               Elegir si se muestra o se oculta
             </p>
           </div>
@@ -300,17 +299,19 @@ export function GalleryManagement() {
       <ConfirmationModal
         open={isConfirmOpen}
         title={selectedId ? "Confirmar cambios" : "Confirmar nuevo estilo"}
-        description={
-          selectedId
-            ? "Se guardaran los cambios hechos en este estilo."
-            : "Se creara un nuevo estilo con los datos que llenaste."
-        }
-        confirmLabel={selectedId ? "Si, guardar" : "Si, crear"}
+        description={selectedId ? "Se guardaran los cambios hechos en este estilo." : "Se creara un nuevo estilo."}
+        confirmLabel={saving ? "Guardando..." : selectedId ? "Si, guardar" : "Si, crear"}
         onClose={() => setIsConfirmOpen(false)}
-        onConfirm={() => {
-          saveItem();
-          setIsConfirmOpen(false);
-        }}
+        onConfirm={async () => { await saveItem(); setIsConfirmOpen(false); }}
+      />
+
+      <ConfirmationModal
+        open={isDeleteOpen}
+        title="Eliminar estilo"
+        description="Esta accion no se puede deshacer."
+        confirmLabel="Si, eliminar"
+        onClose={() => setIsDeleteOpen(false)}
+        onConfirm={async () => { await deleteItem(); setIsDeleteOpen(false); }}
       />
     </div>
   );
@@ -325,22 +326,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function toDraft(item?: GalleryItem): GalleryDraft {
-  if (!item) {
-    return emptyDraft;
-  }
-
+function toDraft(item: GalleryItem): GalleryDraft {
   return {
-    id: item.id,
-    title: item.title,
-    description: item.description,
-    tags: item.tags.join(", "),
-    status: item.status,
-    order: item.order,
-    cover: item.cover,
+    titulo: item.titulo ?? "",
+    descripcion: item.descripcion ?? "",
+    imagen_url: item.imagen_url ?? "",
+    orden: item.orden,
+    esta_activo: item.esta_activo,
   };
-}
-
-function slugify(value: string) {
-  return value.toLowerCase().trim().replace(/\s+/g, "-");
 }

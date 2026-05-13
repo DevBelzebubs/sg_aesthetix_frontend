@@ -1,94 +1,111 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { AlertTriangle, Boxes, PackagePlus, Search, TrendingDown, TrendingUp } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, Boxes, PackagePlus, Search, TrendingDown, TrendingUp, Loader2 } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
+import { createClient } from "@/lib/supabase/client";
 
-type InventoryItem = {
-  sku: string;
-  product: string;
-  category: string;
-  stock: number;
-  minStock: number;
-  supplier: string;
-  lastMovement: string;
+type Product = {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  sku: string | null;
+  precio_costo: number | null;
+  precio_venta: number;
+  stock_actual: number;
+  stock_minimo: number;
+  puntos_otorgados: number;
+  esta_activo: boolean;
+  categoria_producto_id: number;
 };
 
-const initialInventory: InventoryItem[] = [
-  {
-    sku: "EST-001",
-    product: "Cera mate",
-    category: "Estilizado",
-    stock: 12,
-    minStock: 10,
-    supplier: "Studio Pro",
-    lastMovement: "-4 hoy",
-  },
-  {
-    sku: "LAV-003",
-    product: "Shampoo detox",
-    category: "Lavado",
-    stock: 4,
-    minStock: 8,
-    supplier: "Hair Lab",
-    lastMovement: "-2 ayer",
-  },
-  {
-    sku: "HER-011",
-    product: "Navajas",
-    category: "Herramientas",
-    stock: 22,
-    minStock: 15,
-    supplier: "Blade House",
-    lastMovement: "+10 esta semana",
-  },
-];
+type ProductDraft = Omit<Product, "id">;
 
-const emptyDraft: InventoryItem = {
+const emptyDraft: ProductDraft = {
+  nombre: "",
+  descripcion: "",
   sku: "",
-  product: "",
-  category: "",
-  stock: 0,
-  minStock: 0,
-  supplier: "",
-  lastMovement: "",
+  precio_costo: 0,
+  precio_venta: 0,
+  stock_actual: 0,
+  stock_minimo: 0,
+  puntos_otorgados: 0,
+  esta_activo: true,
+  categoria_producto_id: 1,
 };
 
 const inputClassName =
   "w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm outline-none transition placeholder:text-zinc-400 focus:border-zinc-900";
 
 export function InventoryManagement() {
-  const [inventory, setInventory] = useState(initialInventory);
+  const supabase = createClient();
+
+  const [inventory, setInventory] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState("");
-  const [selectedSku, setSelectedSku] = useState(initialInventory[0]?.sku ?? "");
-  const [draft, setDraft] = useState(initialInventory[0] ?? emptyDraft);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<ProductDraft>(emptyDraft);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+  useEffect(() => { fetchInventory(); }, []);
+
+  async function fetchInventory() {
+    setLoading(true);
+    const { data } = await supabase
+      .from("productos")
+      .select("*")
+      .order("nombre", { ascending: true });
+    setInventory(data ?? []);
+    if (data && data.length > 0) {
+      setSelectedId(data[0].id);
+      setDraft(toDraft(data[0]));
+    }
+    setLoading(false);
+  }
 
   const filteredInventory = useMemo(() => {
-    return inventory.filter((item) => {
-      return (
-        item.product.toLowerCase().includes(query.toLowerCase()) ||
-        item.category.toLowerCase().includes(query.toLowerCase()) ||
-        item.sku.toLowerCase().includes(query.toLowerCase())
-      );
-    });
+    return inventory.filter((item) =>
+      item.nombre.toLowerCase().includes(query.toLowerCase()) ||
+      item.sku?.toLowerCase().includes(query.toLowerCase())
+    );
   }, [inventory, query]);
 
-  const selectedItem = inventory.find((item) => item.sku === selectedSku);
+  const selectedItem = inventory.find((item) => item.id === selectedId);
 
-  const saveItem = () => {
-    if (!draft.sku || !draft.product) {
-      return;
+  async function saveItem() {
+    if (!draft.nombre) return;
+    setSaving(true);
+    if (selectedId) {
+      await supabase.from("productos").update({
+        ...draft,
+        actualizado_en: new Date().toISOString(),
+      }).eq("id", selectedId);
+    } else {
+      await supabase.from("productos").insert({
+        ...draft,
+        creado_en: new Date().toISOString(),
+        actualizado_en: new Date().toISOString(),
+      });
     }
+    await fetchInventory();
+    setSaving(false);
+  }
 
-    if (selectedSku) {
-      setInventory((current) => current.map((item) => (item.sku === selectedSku ? draft : item)));
-      return;
-    }
+  async function deleteItem() {
+    if (!selectedId) return;
+    await supabase.from("productos").delete().eq("id", selectedId);
+    setSelectedId(null);
+    setDraft(emptyDraft);
+    await fetchInventory();
+  }
 
-    setInventory((current) => [draft, ...current]);
-    setSelectedSku(draft.sku);
-  };
+  if (loading) return (
+    <div className="flex items-center justify-center py-20">
+      <Loader2 size={24} className="animate-spin text-zinc-400" />
+    </div>
+  );
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.2fr_0.92fr]">
@@ -103,10 +120,7 @@ export function InventoryManagement() {
             </div>
             <button
               type="button"
-              onClick={() => {
-                setSelectedSku("");
-                setDraft(emptyDraft);
-              }}
+              onClick={() => { setSelectedId(null); setDraft(emptyDraft); }}
               className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
             >
               <PackagePlus size={16} />
@@ -118,65 +132,63 @@ export function InventoryManagement() {
             <Search size={16} className="text-zinc-400" />
             <input
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(e) => setQuery(e.target.value)}
               className="w-full bg-transparent text-sm outline-none placeholder:text-zinc-400"
-              placeholder="Buscar por producto o categoria"
+              placeholder="Buscar por nombre o SKU"
             />
           </label>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
           {filteredInventory.map((item) => {
-            const lowStock = item.stock <= item.minStock;
-
+            const lowStock = item.stock_actual <= item.stock_minimo;
             return (
               <article
-                key={item.sku}
+                key={item.id}
                 className={`rounded-3xl border bg-white p-5 shadow-sm transition ${
-                  selectedSku === item.sku
+                  selectedId === item.id
                     ? "border-zinc-900 shadow-md"
                     : "border-zinc-200 hover:-translate-y-1 hover:shadow-md"
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-base font-semibold text-zinc-900">{item.product}</p>
-                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-zinc-500">
-                      {item.category}
-                    </p>
+                    <p className="text-base font-semibold text-zinc-900">{item.nombre}</p>
+                    {item.sku && (
+                      <p className="mt-1 text-xs uppercase tracking-[0.18em] text-zinc-500">{item.sku}</p>
+                    )}
                   </div>
-                  <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">
-                    {item.sku}
+                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    item.esta_activo ? "bg-green-100 text-green-700" : "bg-zinc-100 text-zinc-500"
+                  }`}>
+                    {item.esta_activo ? "Activo" : "Inactivo"}
                   </span>
                 </div>
 
                 <div className="mt-4 space-y-2 text-sm text-zinc-600">
                   <p className="flex items-center gap-2">
                     <Boxes size={15} />
-                    Stock actual: {item.stock}
+                    Stock: {item.stock_actual} / mín {item.stock_minimo}
                   </p>
                   <p className="flex items-center gap-2">
-                    {lowStock ? <TrendingDown size={15} /> : <TrendingUp size={15} />}
-                    Minimo: {item.minStock}
+                    {lowStock ? <TrendingDown size={15} className="text-amber-500" /> : <TrendingUp size={15} className="text-green-500" />}
+                    Venta: S/{item.precio_venta}
                   </p>
                 </div>
 
-                {lowStock ? (
-                  <div className="mt-4 flex items-center gap-2 rounded-2xl bg-amber-50 px-3 py-3 text-sm text-amber-900">
-                    <AlertTriangle size={16} />
+                {lowStock && (
+                  <div className="mt-4 flex items-center gap-2 rounded-2xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                    <AlertTriangle size={15} />
                     Hace falta reponer
                   </div>
-                ) : null}
+                )}
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedSku(item.sku);
-                    setDraft(item);
-                  }}
-                  className="mt-5 rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100"
+                  onClick={() => { setSelectedId(item.id); setDraft(toDraft(item)); }}
+                  className="mt-4 rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100"
                 >
-                  Editar producto
+                  Editar
                 </button>
               </article>
             );
@@ -187,109 +199,92 @@ export function InventoryManagement() {
       <aside className="space-y-4">
         <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
           <p className="text-sm font-semibold text-zinc-900">
-            {selectedSku ? "Editar producto" : "Registrar producto"}
+            {selectedId ? "Editar producto" : "Nuevo producto"}
           </p>
           <div className="mt-4 grid gap-3">
-            <Field label="SKU">
-              <input
-                className={inputClassName}
-                value={draft.sku}
-                onChange={(event) => setDraft((current) => ({ ...current, sku: event.target.value }))}
-              />
+            <Field label="Nombre">
+              <input className={inputClassName} value={draft.nombre}
+                onChange={(e) => setDraft((d) => ({ ...d, nombre: e.target.value }))} />
             </Field>
-            <Field label="Producto">
-              <input
-                className={inputClassName}
-                value={draft.product}
-                onChange={(event) => setDraft((current) => ({ ...current, product: event.target.value }))}
-              />
+            <Field label="Descripcion">
+              <textarea className={`${inputClassName} min-h-20 resize-none`} value={draft.descripcion ?? ""}
+                onChange={(e) => setDraft((d) => ({ ...d, descripcion: e.target.value }))} />
+            </Field>
+            <Field label="SKU">
+              <input className={inputClassName} value={draft.sku ?? ""}
+                onChange={(e) => setDraft((d) => ({ ...d, sku: e.target.value }))} />
             </Field>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Categoria">
-                <input
-                  className={inputClassName}
-                  value={draft.category}
-                  onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value }))}
-                />
+              <Field label="Precio costo">
+                <input type="number" className={inputClassName} value={draft.precio_costo ?? 0}
+                  onChange={(e) => setDraft((d) => ({ ...d, precio_costo: Number(e.target.value) }))} />
               </Field>
-              <Field label="Proveedor">
-                <input
-                  className={inputClassName}
-                  value={draft.supplier}
-                  onChange={(event) => setDraft((current) => ({ ...current, supplier: event.target.value }))}
-                />
+              <Field label="Precio venta">
+                <input type="number" className={inputClassName} value={draft.precio_venta}
+                  onChange={(e) => setDraft((d) => ({ ...d, precio_venta: Number(e.target.value) }))} />
               </Field>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Stock actual">
-                <input
-                  type="number"
-                  className={inputClassName}
-                  value={draft.stock}
-                  onChange={(event) => setDraft((current) => ({ ...current, stock: Number(event.target.value) }))}
-                />
+                <input type="number" className={inputClassName} value={draft.stock_actual}
+                  onChange={(e) => setDraft((d) => ({ ...d, stock_actual: Number(e.target.value) }))} />
               </Field>
               <Field label="Stock minimo">
-                <input
-                  type="number"
-                  className={inputClassName}
-                  value={draft.minStock}
-                  onChange={(event) => setDraft((current) => ({ ...current, minStock: Number(event.target.value) }))}
-                />
+                <input type="number" className={inputClassName} value={draft.stock_minimo}
+                  onChange={(e) => setDraft((d) => ({ ...d, stock_minimo: Number(e.target.value) }))} />
               </Field>
             </div>
-            <Field label="Ultimo movimiento">
-              <input
-                className={inputClassName}
-                value={draft.lastMovement}
-                onChange={(event) => setDraft((current) => ({ ...current, lastMovement: event.target.value }))}
-                placeholder="+10 esta semana / -2 hoy"
-              />
-            </Field>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Puntos otorgados">
+                <input type="number" className={inputClassName} value={draft.puntos_otorgados}
+                  onChange={(e) => setDraft((d) => ({ ...d, puntos_otorgados: Number(e.target.value) }))} />
+              </Field>
+              <Field label="Estado">
+                <select className={inputClassName} value={draft.esta_activo ? "activo" : "inactivo"}
+                  onChange={(e) => setDraft((d) => ({ ...d, esta_activo: e.target.value === "activo" }))}>
+                  <option value="activo">Activo</option>
+                  <option value="inactivo">Inactivo</option>
+                </select>
+              </Field>
+            </div>
           </div>
 
           <div className="mt-5 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => setIsConfirmOpen(true)}
-              className="rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800"
-            >
-              {selectedSku ? "Guardar producto" : "Crear producto"}
+            <button type="button" onClick={() => setIsConfirmOpen(true)}
+              disabled={!draft.nombre}
+              className="rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:opacity-40">
+              {saving ? "Guardando..." : selectedId ? "Guardar cambios" : "Crear producto"}
             </button>
-            <button
-              type="button"
-              onClick={() => setDraft(selectedItem ?? emptyDraft)}
-              className="rounded-full border border-zinc-200 px-5 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100"
-            >
+            <button type="button" onClick={() => setDraft(selectedItem ? toDraft(selectedItem) : emptyDraft)}
+              className="rounded-full border border-zinc-200 px-5 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100">
               Restablecer
             </button>
+            {selectedId && (
+              <button type="button" onClick={() => setIsDeleteOpen(true)}
+                className="rounded-full border border-red-200 px-5 py-2.5 text-sm font-semibold text-red-500 transition hover:bg-red-50">
+                Eliminar
+              </button>
+            )}
           </div>
-        </div>
-
-        <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-zinc-900">Proximo paso</p>
-          <ul className="mt-4 space-y-3 text-sm text-zinc-600">
-            <li>Traer la lista real de productos</li>
-            <li>Guardar entradas, salidas y cambios de cantidad</li>
-            <li>Mostrar avisos cuando un producto este por acabarse</li>
-          </ul>
         </div>
       </aside>
 
       <ConfirmationModal
         open={isConfirmOpen}
-        title={selectedSku ? "Confirmar cambios" : "Confirmar nuevo producto"}
-        description={
-          selectedSku
-            ? "Se guardaran los cambios hechos en este producto."
-            : "Se creara un nuevo producto con los datos que llenaste."
-        }
-        confirmLabel={selectedSku ? "Si, guardar" : "Si, crear"}
+        title={selectedId ? "Confirmar cambios" : "Confirmar nuevo producto"}
+        description={selectedId ? "Se guardaran los cambios." : "Se creara un nuevo producto."}
+        confirmLabel={saving ? "Guardando..." : selectedId ? "Si, guardar" : "Si, crear"}
         onClose={() => setIsConfirmOpen(false)}
-        onConfirm={() => {
-          saveItem();
-          setIsConfirmOpen(false);
-        }}
+        onConfirm={async () => { await saveItem(); setIsConfirmOpen(false); }}
+      />
+
+      <ConfirmationModal
+        open={isDeleteOpen}
+        title="Eliminar producto"
+        description="Esta accion no se puede deshacer."
+        confirmLabel="Si, eliminar"
+        onClose={() => setIsDeleteOpen(false)}
+        onConfirm={async () => { await deleteItem(); setIsDeleteOpen(false); }}
       />
     </div>
   );
@@ -302,4 +297,19 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </label>
   );
+}
+
+function toDraft(item: Product): ProductDraft {
+  return {
+    nombre: item.nombre,
+    descripcion: item.descripcion,
+    sku: item.sku,
+    precio_costo: item.precio_costo,
+    precio_venta: item.precio_venta,
+    stock_actual: item.stock_actual,
+    stock_minimo: item.stock_minimo,
+    puntos_otorgados: item.puntos_otorgados,
+    esta_activo: item.esta_activo,
+    categoria_producto_id: item.categoria_producto_id,
+  };
 }

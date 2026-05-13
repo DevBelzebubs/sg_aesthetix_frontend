@@ -8,74 +8,148 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 import type { AuthSession, UserRole } from "@/types/auth";
 
 type AuthContextValue = AuthSession & {
   isReady: boolean;
   isAuthenticated: boolean;
-  login: (session: { token: string; role: UserRole }) => void;
-  logout: () => void;
+  login: (credentials: {
+    email: string;
+    password: string;
+    slug: string;
+  }) => Promise<void>;
+  logout: () => Promise<void>;
   setSession: (session: AuthSession) => void;
   hasRole: (role: UserRole) => boolean;
+  error: string | null;
 };
 
-const AUTH_STORAGE_KEY = "sg-aesthetix-auth";
-
-export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+export const AuthContext = createContext<AuthContextValue | undefined>(
+  undefined,
+);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const supabase = createClient();
+
   const [token, setToken] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Restaurar sesión al montar
   useEffect(() => {
-    try {
-      const persisted = window.localStorage.getItem(AUTH_STORAGE_KEY);
-
-      if (!persisted) {
+    async function restoreSession() {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        applySession(session);
+      } catch {
+        // sesión inválida, ignorar
+      } finally {
         setIsReady(true);
-        return;
       }
-
-      const parsed = JSON.parse(persisted) as Partial<AuthSession>;
-
-      setToken(parsed.token ?? null);
-      setRole(parsed.role === "admin" || parsed.role === "empleado" ? parsed.role : null);
-    } catch {
-      window.localStorage.removeItem(AUTH_STORAGE_KEY);
-    } finally {
-      setIsReady(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isReady) {
-      return;
     }
 
-    if (!token || !role) {
-      window.localStorage.removeItem(AUTH_STORAGE_KEY);
-      return;
-    }
+    restoreSession();
 
-    window.localStorage.setItem(
-      AUTH_STORAGE_KEY,
-      JSON.stringify({
-        token,
-        role,
-      } satisfies AuthSession),
+    // Escuchar cambios de sesión (refresh de token, logout en otra pestaña)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      (_event: string, session: Session | null) => {
+        applySession(session);
+      },
     );
-  }, [isReady, role, token]);
 
-  const login = useCallback((session: { token: string; role: UserRole }) => {
-    setToken(session.token);
-    setRole(session.role);
+    return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const logout = useCallback(() => {
+function applySession(session: Session | null) {
+  if (session) {
+    setToken(session.access_token);
+    const metaRole = session.user.user_metadata?.role as UserRole | undefined;
+    if (metaRole === "admin" || metaRole === "empleado") {
+      setRole(metaRole);
+    } else {
+      supabase
+        .from("usuarios")
+        .select("rol")
+        .eq("auth_user_id", session.user.id)
+        .single()
+        .then(({ data }) => {
+          if (data?.rol === "admin" || data?.rol === "empleado") {
+            setRole(data.rol as UserRole);
+          }
+        });
+    }
+  } else {
     setToken(null);
     setRole(null);
-  }, []);
+  }
+}
+
+  const login = useCallback(
+    async ({
+      email,
+      password,
+      slug,
+    }: {
+      email: string;
+      password: string;
+      slug: string;
+    }) => {
+      setError(null);
+
+      // 1. Autenticar con Supabase Auth
+      const { data: authData, error: authError } =
+        await supabase.auth.signInWithPassword({ email, password });
+
+      if (authError || !authData.session) {
+        const msg = "Credenciales incorrectas. Intenta de nuevo.";
+        setError(msg);
+        throw new Error("auth_failed");
+      }
+
+      // 2. Obtener rol desde la tabla `usuarios` filtrando por tenant
+      const { data: usuario, error: userError } = await supabase
+        .from("usuarios")
+        .select("rol, esta_activo")
+        .eq("auth_user_id", authData.user.id)
+        .single();
+
+      console.log("usuario:", usuario);
+      console.log("userError:", userError);
+      console.log("auth_user_id buscado:", authData.user.id);
+
+      if (userError || !usuario) {
+        await supabase.auth.signOut();
+        setError("No tienes acceso a este negocio.");
+        throw new Error("no_tenant_access");
+      }
+
+      if (!usuario.esta_activo) {
+        await supabase.auth.signOut();
+        setError("Tu cuenta está desactivada.");
+        throw new Error("account_disabled");
+      }
+
+      const userRole = usuario.rol as UserRole;
+
+      setToken(authData.session.access_token);
+      setRole(userRole);
+    },
+    [supabase],
+  );
+
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
+    setToken(null);
+    setRole(null);
+  }, [supabase]);
 
   const setSession = useCallback((session: AuthSession) => {
     setToken(session.token);
@@ -83,9 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const hasRole = useCallback(
-    (expectedRole: UserRole) => {
-      return role === expectedRole;
-    },
+    (expectedRole: UserRole) => role === expectedRole,
     [role],
   );
 
@@ -99,8 +171,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       setSession,
       hasRole,
+      error,
     }),
-    [token, role, isReady, login, logout, setSession, hasRole],
+    [token, role, isReady, login, logout, setSession, hasRole, error],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
