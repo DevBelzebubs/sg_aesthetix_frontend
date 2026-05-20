@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
@@ -17,6 +17,17 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const [redirecting, setRedirecting] = useState(false);
+
+  // Redirigir si ya tiene sesión
+  useEffect(() => {
+    if (isReady && isAuthenticated && role && !redirecting) {
+      setRedirecting(true);
+      const target = role === "admin" ? "/admin" : "/empleado";
+      router.replace(target);
+    }
+  }, [isReady, isAuthenticated, role, router, redirecting]);
+
   // Esperar a que el contexto esté listo
   if (!isReady) {
     return (
@@ -26,10 +37,7 @@ export default function LoginPage() {
     );
   }
 
-  // Si ya tiene sesión, redirigir a su panel
-  if (isAuthenticated && role) {
-    console.log("redirigiendo a:", role === "admin" ? "/admin" : "/empleado");
-    router.replace(role === "admin" ? "/admin" : "/empleado");
+  if (redirecting) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a]">
         <p className="text-[10px] tracking-[0.2em] uppercase text-white/30">
@@ -54,7 +62,9 @@ export default function LoginPage() {
           ? "No tienes acceso a este negocio."
           : code === "account_disabled"
             ? "Tu cuenta está desactivada. Contacta al administrador."
-            : "Credenciales incorrectas. Intenta de nuevo.",
+            : code === "password_mismatch"
+              ? "Error de autenticación. Ve a Supabase Dashboard > SQL Editor y pega el SQL de la consola."
+              : "Credenciales incorrectas. Intenta de nuevo.",
       );
       setLoading(false);
     }

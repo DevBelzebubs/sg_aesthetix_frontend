@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import { BookingForm } from "@/components/public/booking-form";
-import { createClient } from "@/lib/supabase/client";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 type ReservarPageProps = {
   params: Promise<{ slug: string }>;
@@ -41,7 +41,7 @@ function capitalize(value: string) {
 export default async function ReservarPage({ params }: ReservarPageProps) {
   noStore();
   const { slug } = await params;
-  const supabase = createClient();
+  const supabase = await createServerSupabase();
 
   const [{ data: serviciosData }, { data: usuariosData }] = await Promise.all([
     supabase

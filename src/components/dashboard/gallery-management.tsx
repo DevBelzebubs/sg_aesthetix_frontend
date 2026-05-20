@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Eye, EyeOff, Images, Plus, Search, Tags, Loader2 } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
+import { CloudinaryUpload } from "@/components/dashboard/cloudinary-upload";
 import { createClient } from "@/lib/supabase/client";
 
 type GalleryItem = {
@@ -12,6 +13,7 @@ type GalleryItem = {
   imagen_url: string;
   orden: number;
   esta_activo: boolean;
+  destacado: boolean;
   servicio_id: string | null;
 };
 
@@ -21,6 +23,7 @@ type GalleryDraft = {
   imagen_url: string;
   orden: number;
   esta_activo: boolean;
+  destacado: boolean;
 };
 
 const emptyDraft: GalleryDraft = {
@@ -29,6 +32,7 @@ const emptyDraft: GalleryDraft = {
   imagen_url: "",
   orden: 1,
   esta_activo: false,
+  destacado: false,
 };
 
 const inputClassName =
@@ -82,6 +86,7 @@ export function GalleryManagement() {
         imagen_url: draft.imagen_url,
         orden: draft.orden,
         esta_activo: draft.esta_activo,
+        destacado: draft.destacado,
         actualizado_en: new Date().toISOString(),
       }).eq("id", selectedId);
     } else {
@@ -91,6 +96,7 @@ export function GalleryManagement() {
         imagen_url: draft.imagen_url,
         orden: draft.orden,
         esta_activo: draft.esta_activo,
+        destacado: draft.destacado,
         creado_en: new Date().toISOString(),
         actualizado_en: new Date().toISOString(),
       });
@@ -177,13 +183,20 @@ export function GalleryManagement() {
                 <p className="mt-1 text-sm text-zinc-600 line-clamp-2">{item.descripcion}</p>
 
                 <div className="mt-3 flex items-center justify-between">
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                    item.esta_activo
-                      ? "bg-green-100 text-green-700"
-                      : "bg-zinc-100 text-zinc-500"
-                  }`}>
-                    {item.esta_activo ? "Publicado" : "Borrador"}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {item.destacado && (
+                      <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                        Destacado
+                      </span>
+                    )}
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      item.esta_activo
+                        ? "bg-green-100 text-green-700"
+                        : "bg-zinc-100 text-zinc-500"
+                    }`}>
+                      {item.esta_activo ? "Publicado" : "Borrador"}
+                    </span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => { setSelectedId(item.id); setDraft(toDraft(item)); }}
@@ -218,13 +231,18 @@ export function GalleryManagement() {
                 onChange={(e) => setDraft((d) => ({ ...d, descripcion: e.target.value }))}
               />
             </Field>
-            <Field label="URL de imagen">
-              <input
-                className={inputClassName}
-                value={draft.imagen_url}
-                onChange={(e) => setDraft((d) => ({ ...d, imagen_url: e.target.value }))}
-                placeholder="https://..."
-              />
+            <Field label="Imagen">
+              <div className="flex gap-2">
+                <input className={inputClassName}
+                  value={draft.imagen_url}
+                  onChange={(e) => setDraft((d) => ({ ...d, imagen_url: e.target.value }))}
+                  placeholder="https://..." />
+                <CloudinaryUpload
+                  cloudName={process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!}
+                  uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!}
+                  onUpload={(url) => setDraft((d) => ({ ...d, imagen_url: url }))}
+                />
+              </div>
             </Field>
             {draft.imagen_url && (
               <img
@@ -250,6 +268,16 @@ export function GalleryManagement() {
                 >
                   <option value="publicado">Publicado</option>
                   <option value="borrador">Borrador</option>
+                </select>
+              </Field>
+              <Field label="Destacar en home">
+                <select
+                  className={inputClassName}
+                  value={draft.destacado ? "si" : "no"}
+                  onChange={(e) => setDraft((d) => ({ ...d, destacado: e.target.value === "si" }))}
+                >
+                  <option value="si">Sí</option>
+                  <option value="no">No</option>
                 </select>
               </Field>
             </div>
@@ -333,5 +361,6 @@ function toDraft(item: GalleryItem): GalleryDraft {
     imagen_url: item.imagen_url ?? "",
     orden: item.orden,
     esta_activo: item.esta_activo,
+    destacado: item.destacado,
   };
 }

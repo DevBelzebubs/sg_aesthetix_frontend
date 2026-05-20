@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { AppointmentsService } from "@/services/appointments.service";
+import { CustomersService } from "@/services/customers.service";
+import { useCustomerAuth } from "@/contexts/customer-auth-context";
 
 type BookingOption = {
   id: string;
@@ -42,6 +44,7 @@ type BookingDraft = {
   customerName: string;
   phone: string;
   email: string;
+  dni: string;
 };
 
 const initialDraft: BookingDraft = {
@@ -52,6 +55,7 @@ const initialDraft: BookingDraft = {
   customerName: "",
   phone: "",
   email: "",
+  dni: "",
 };
 
 const inputClassName =
@@ -66,6 +70,9 @@ export function BookingForm({
   availableDates,
   availableSlots,
 }: BookingFormProps) {
+  const [stage, setStage] = useState<"dni" | "register" | "booking">("dni");
+  const [dni, setDni] = useState("");
+  const [customerId, setCustomerId] = useState<string | null>(null);
   const [formData, setFormData] = useState<BookingDraft>({
     ...initialDraft,
     serviceId: services[0]?.id ?? "",
@@ -73,6 +80,32 @@ export function BookingForm({
     date: availableDates[0]?.value ?? "",
     time: availableSlots[0] ?? "",
   });
+
+  const { session: customerSession } = useCustomerAuth();
+
+  useEffect(() => {
+    if (!customerSession) return;
+    setCustomerId(customerSession.id);
+    (async () => {
+      try {
+        const all = await CustomersService.getAll();
+        const found = all.find((c) => c.id === customerSession.id);
+        if (found) {
+          const parts = found.nombres.trim().split(/\s+/);
+          const nombres = parts.slice(0, -1).join(" ") || parts[0] || "";
+          const apellidos = parts.slice(-1).join("") || parts[0] || "";
+          setFormData((c) => ({
+            ...c,
+            customerName: `${nombres} ${apellidos}`.trim(),
+            phone: found.telefono ?? c.phone,
+            email: found.correoElectronico ?? c.email,
+            dni: found.dni ?? c.dni,
+          }));
+        }
+      } catch {}
+    })();
+    setStage("booking");
+  }, [customerSession]);
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -162,34 +195,88 @@ export function BookingForm({
     setError("");
   };
 
+  const handleDniLookup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+    try {
+      const customer = await CustomersService.findByDni(dni);
+      if (customer) {
+        setCustomerId(customer.id);
+        const nameParts = customer.nombres.trim().split(/\s+/);
+        const nombres = nameParts.slice(0, -1).join(" ") || nameParts[0] || "";
+        const apellidos = nameParts.slice(-1).join("") || nameParts[0] || "";
+        setFormData((c) => ({
+          ...c,
+          customerName: `${nombres} ${apellidos}`.trim(),
+          phone: customer.telefono ?? c.phone,
+          email: customer.correoElectronico ?? c.email,
+          dni: customer.dni ?? dni,
+        }));
+        setStage("booking");
+      } else {
+        setFormData((c) => ({ ...c, dni }));
+        setStage("register");
+      }
+    } catch {
+      setError("Error al buscar DNI");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.customerName || !formData.phone) return;
+    setIsLoading(true);
+    setError("");
+    try {
+      const nameParts = formData.customerName.trim().split(/\s+/);
+      const nombres = nameParts.slice(0, -1).join(" ") || nameParts[0] || "";
+      const apellidos = nameParts.slice(-1).join("") || nameParts[0] || "";
+      const newCustomer = await CustomersService.create({
+        nombres,
+        apellidos,
+        dni: formData.dni || undefined,
+        telefono: formData.phone,
+        correoElectronico: formData.email,
+      });
+      setCustomerId(newCustomer.id);
+      setStage("booking");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al registrar");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
     setError("");
 
     try {
+      if (!customerId) throw new Error("Cliente no identificado");
       const exactService = services.find((s) => s.id === formData.serviceId);
       const exactBarber = barbers.find((b) => b.id === formData.barberId);
 
-      const serviceId = exactService?.id ?? "";
-      const employeeId = exactBarber?.id ?? "";
+      const servicioId = exactService?.id ?? "";
+      const empleadoId = exactBarber?.id ?? "";
       const duration = exactService?.duration ?? "30 min";
       const endTimeHHMM = calculateEndTime(formData.time, duration);
 
       const payload = {
-        id: crypto.randomUUID(),
-        customerId: crypto.randomUUID(),
-        serviceId,
-        employeeId,
-        reservationDate: formData.date,
-        startTime: `${formData.time}:00`,
-        endTime: `${endTimeHHMM}:00`,
-        channel: "landing",
-        status: "pendiente",
-        notes: `Nombre: ${formData.customerName} | Tel: ${formData.phone} | Email: ${formData.email}`,
+        clienteId: customerId,
+        servicioId,
+        empleadoId,
+        fechaReserva: formData.date,
+        horaInicio: `${formData.time}:00`,
+        horaFin: `${endTimeHHMM}:00`,
+        canalReserva: "landing",
+        estado: "pendiente",
       };
 
-      await AppointmentsService.createPublic(businessName, payload);
+      await AppointmentsService.createPublic(payload);
       setIsSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al conectar con el servidor.");
@@ -198,12 +285,108 @@ export function BookingForm({
     }
   };
 
-  return (
+  return stage === "dni" || stage === "register" ? (
+    <div className="mx-auto max-w-md px-4 py-12">
+      <div className="mb-8 text-center">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-neutral-400">
+          {businessName}
+        </p>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight">
+          {stage === "dni" ? "Reserva online" : "Completa tus datos"}
+        </h1>
+        <p className="mt-2 text-sm leading-relaxed text-neutral-500">
+          {stage === "dni"
+            ? "Ingresa tu DNI para agilizar la reserva."
+            : "Llena los campos para registrarte."}
+        </p>
+      </div>
+
+      {error && (
+        <div className="mb-6 border border-red-500/20 bg-red-50 px-4 py-3">
+          <p className="text-xs font-semibold text-red-600">{error}</p>
+        </div>
+      )}
+
+      {stage === "dni" && (
+        <form onSubmit={handleDniLookup} className="space-y-4">
+          <label className="space-y-2">
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-neutral-400">
+              Número de DNI
+            </span>
+            <input
+              required
+              type="text"
+              value={dni}
+              onChange={(e) => setDni(e.target.value)}
+              placeholder="12345678"
+              className={inputClassName}
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-black px-8 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-75 disabled:opacity-40"
+          >
+            {isLoading ? "Buscando..." : "Buscar"}
+          </button>
+        </form>
+      )}
+
+      {stage === "register" && (
+        <form onSubmit={handleRegister} className="space-y-4">
+          <label className="space-y-2">
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-neutral-400">
+              Nombre completo
+            </span>
+            <input
+              required
+              type="text"
+              value={formData.customerName}
+              onChange={(e) => setFormData((c) => ({ ...c, customerName: e.target.value }))}
+              placeholder="Juan Pérez"
+              className={inputClassName}
+            />
+          </label>
+          <label className="space-y-2">
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-neutral-400">
+              Teléfono
+            </span>
+            <input
+              required
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => setFormData((c) => ({ ...c, phone: e.target.value }))}
+              placeholder="999 999 999"
+              className={inputClassName}
+            />
+          </label>
+          <label className="space-y-2">
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-neutral-400">
+              Email
+            </span>
+            <input
+              required
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData((c) => ({ ...c, email: e.target.value }))}
+              placeholder="nombre@correo.com"
+              className={inputClassName}
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-black px-8 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-75 disabled:opacity-40"
+          >
+            {isLoading ? "Registrando..." : "Continuar"}
+          </button>
+        </form>
+      )}
+    </div>
+  ) : (
     <div className="grid gap-px bg-neutral-200 xl:grid-cols-[1.2fr_0.72fr]">
-      {/* ── FORMULARIO ─────────────────────────────────────────────── */}
       <form onSubmit={handleSubmit} className="space-y-0 bg-white">
 
-        {/* Encabezado */}
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-black/10 px-8 py-8">
           <div>
             <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-neutral-400">
@@ -222,7 +405,6 @@ export function BookingForm({
           </div>
         </div>
 
-        {/* Banner éxito */}
         {isSubmitted && (
           <div className="flex items-start gap-3 border-b border-black/10 bg-neutral-900 px-8 py-5 text-white">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
@@ -236,7 +418,6 @@ export function BookingForm({
           </div>
         )}
 
-        {/* ── PASO 1 · Servicio ─────────────────────────────────────── */}
         <div className="border-b border-black/10 px-8 py-8">
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-black text-[10px] font-bold text-white">
@@ -290,7 +471,6 @@ export function BookingForm({
           </div>
         </div>
 
-        {/* ── PASO 2 · Calendario ───────────────────────────────────── */}
         <div className="border-b border-black/10 px-8 py-8">
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-black text-[10px] font-bold text-white">
@@ -299,7 +479,6 @@ export function BookingForm({
             <p className="text-sm font-bold uppercase tracking-tight">Fecha</p>
           </div>
 
-          {/* Selector de mes */}
           <div className="mb-4 flex items-center justify-between border-b border-black/10 pb-4">
             <p className="text-sm font-bold uppercase tracking-tight">
               {activeMonth?.label ?? ""}
@@ -325,7 +504,6 @@ export function BookingForm({
             </div>
           </div>
 
-          {/* Grilla de días */}
           <div className="grid grid-cols-7 gap-px bg-neutral-200">
             {calendarWeekdays.map((wd) => (
               <div
@@ -371,14 +549,12 @@ export function BookingForm({
             })}
           </div>
 
-          {/* Dot disponible */}
           <p className="mt-3 text-[9px] uppercase tracking-widest text-neutral-400">
             {availableSlots.length} horarios disponibles ·{" "}
             {selectedDate?.label ?? "Selecciona un día"}
           </p>
         </div>
 
-        {/* ── PASO 3 · Horario ──────────────────────────────────────── */}
         <div className="border-b border-black/10 px-8 py-8">
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-black text-[10px] font-bold text-white">
@@ -411,7 +587,6 @@ export function BookingForm({
           </div>
         </div>
 
-        {/* ── PASO 4 · Datos ────────────────────────────────────────── */}
         <div className="px-8 py-8">
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-black text-[10px] font-bold text-white">
@@ -465,9 +640,22 @@ export function BookingForm({
                 className={inputClassName}
               />
             </label>
+
+            <label className="space-y-2 sm:col-span-2">
+              <span className="text-[9px] font-semibold uppercase tracking-widest text-neutral-400">
+                DNI <span className="text-neutral-300">(opcional)</span>
+              </span>
+              <input
+                type="text"
+                name="dni"
+                value={formData.dni}
+                onChange={handleChange}
+                placeholder="12345678"
+                className={inputClassName}
+              />
+            </label>
           </div>
 
-          {/* Submit */}
           <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-black/10 pt-6">
             <p className="text-[10px] uppercase tracking-widest text-neutral-400">
               Al confirmar, tu turno se agendará en nuestro sistema.
@@ -490,7 +678,6 @@ export function BookingForm({
         </div>
       </form>
 
-      {/* ── SIDEBAR · Resumen ──────────────────────────────────────── */}
       <aside className="bg-neutral-50">
         <div className="xl:sticky xl:top-6">
 
@@ -501,7 +688,6 @@ export function BookingForm({
             <h2 className="mt-2 text-xl font-bold uppercase tracking-tight">Tu cita</h2>
           </div>
 
-          {/* Filas de resumen */}
           <div className="divide-y divide-black/10">
             <SummaryRow label="Servicio" value={selectedService?.name ?? "Pendiente"} />
             <SummaryRow
@@ -512,7 +698,6 @@ export function BookingForm({
             <SummaryRow label="Hora" value={formData.time || "Pendiente"} />
           </div>
 
-          {/* Precio */}
           <div className="bg-neutral-900 px-6 py-6 text-white">
             <p className="text-[9px] font-semibold uppercase tracking-widest text-white/40">
               Inversión
@@ -525,7 +710,6 @@ export function BookingForm({
             </p>
           </div>
 
-          {/* Selección de profesional */}
           <div className="px-6 py-6">
             <p className="mb-3 text-[9px] font-semibold uppercase tracking-widest text-neutral-400">
               Profesional

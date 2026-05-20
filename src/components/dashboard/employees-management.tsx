@@ -1,68 +1,18 @@
 "use client";
-
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { CalendarClock, Filter, Mail, Phone, Plus, Search, Star, UserRound } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { CalendarClock, Filter, Mail, Phone, Plus, Search, Star, UserRound, Loader2, AlertCircle } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
-
-type EmployeeRecord = {
-  id: string;
-  name: string;
-  role: string;
-  phone: string;
-  email: string;
-  status: "Activo" | "Vacaciones" | "Invitado";
-  specialties: string[];
-  weeklyLoad: string;
-  commission: string;
-};
-
-const initialEmployees: EmployeeRecord[] = [
-  {
-    id: "alejandro-ruiz",
-    name: "Alejandro Ruiz",
-    role: "Barber Senior",
-    phone: "999 111 222",
-    email: "alejandro@sg.local",
-    status: "Activo",
-    specialties: ["Fade", "Barba", "Asesoria"],
-    weeklyLoad: "32 citas",
-    commission: "18%",
-  },
-  {
-    id: "matias-soto",
-    name: "Matias Soto",
-    role: "Barber",
-    phone: "999 222 333",
-    email: "matias@sg.local",
-    status: "Activo",
-    specialties: ["Corte clasico", "Kids"],
-    weeklyLoad: "24 citas",
-    commission: "15%",
-  },
-  {
-    id: "sergio-lara",
-    name: "Sergio Lara",
-    role: "Recepcion",
-    phone: "999 333 444",
-    email: "sergio@sg.local",
-    status: "Invitado",
-    specialties: ["Caja", "Atencion"],
-    weeklyLoad: "Cobertura completa",
-    commission: "N/A",
-  },
-];
-
-type EmployeeDraft = Omit<EmployeeRecord, "id" | "specialties"> & {
-  specialties: string;
-};
+import { EmployeesService } from "@/services/employees.service";
+import type { Employee, EmployeeDraft, EmployeeFilter } from "@/types/employee";
 
 const emptyDraft: EmployeeDraft = {
-  name: "",
-  role: "",
-  phone: "",
-  email: "",
-  status: "Activo",
+  nombres: "",
+  apellidos: "",
+  rol: "empleado",
+  telefono: "",
+  correo_electronico: "",
+  esta_activo: true,
   specialties: "",
   weeklyLoad: "",
   commission: "",
@@ -72,15 +22,30 @@ const inputClassName =
   "w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm outline-none transition placeholder:text-zinc-400 focus:border-zinc-900";
 
 export function EmployeesManagement() {
-  const [employees, setEmployees] = useState(initialEmployees);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("Todos");
-  const [selectedId, setSelectedId] = useState(initialEmployees[0]?.id ?? "");
-  const [draft, setDraft] = useState<EmployeeDraft>({
-    ...emptyDraft,
-    ...toDraft(initialEmployees[0]),
-  });
+  const [statusFilter, setStatusFilter] = useState<EmployeeFilter>("Todos");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<EmployeeDraft>(emptyDraft);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        setLoading(true);
+        const data = await EmployeesService.getAll();
+        setEmployees(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error al cargar empleados");
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
 
   const filteredEmployees = useMemo(() => {
     return employees.filter((employee) => {
@@ -88,54 +53,79 @@ export function EmployeesManagement() {
         employee.name.toLowerCase().includes(query.toLowerCase()) ||
         employee.role.toLowerCase().includes(query.toLowerCase()) ||
         employee.specialties.some((specialty) => specialty.toLowerCase().includes(query.toLowerCase()));
-      const matchesStatus = statusFilter === "Todos" || employee.status === statusFilter;
-
+      const matchesStatus =
+        statusFilter === "Todos" || employee.status === statusFilter;
       return matchesQuery && matchesStatus;
     });
   }, [employees, query, statusFilter]);
 
-  const handleSelect = (employee: EmployeeRecord) => {
+  const handleSelect = (employee: Employee) => {
     setSelectedId(employee.id);
     setDraft(toDraft(employee));
   };
 
-  const handleSave = () => {
-    const specialties = draft.specialties
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
+  const handleSave = async () => {
+    if (!draft.nombres || !draft.apellidos) return;
 
-    if (!draft.name || !draft.role) {
-      return;
+    setSaving(true);
+    try {
+      if (!selectedId) {
+        const created = await EmployeesService.create({
+          nombres: draft.nombres,
+          apellidos: draft.apellidos,
+          correo_electronico: draft.correo_electronico,
+          telefono: draft.telefono,
+          esta_activo: draft.esta_activo,
+        });
+        setEmployees((current) => [created, ...current]);
+        setSelectedId(created.id);
+        setDraft(toDraft(created));
+      } else {
+        const updated = await EmployeesService.update(selectedId, {
+          nombres: draft.nombres,
+          apellidos: draft.apellidos,
+          correo_electronico: draft.correo_electronico,
+          telefono: draft.telefono,
+          esta_activo: draft.esta_activo,
+        });
+        setEmployees((current) =>
+          current.map((emp) => (emp.id === selectedId ? updated : emp)),
+        );
+        setDraft(toDraft(updated));
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Error al guardar");
+    } finally {
+      setSaving(false);
+      setIsConfirmOpen(false);
     }
-
-    if (!selectedId) {
-      const nextEmployee: EmployeeRecord = {
-        id: slugify(draft.name),
-        ...draft,
-        specialties,
-      };
-
-      setEmployees((current) => [nextEmployee, ...current]);
-      setSelectedId(nextEmployee.id);
-      setDraft(toDraft(nextEmployee));
-      return;
-    }
-
-    setEmployees((current) =>
-      current.map((employee) =>
-        employee.id === selectedId
-          ? {
-              ...employee,
-              ...draft,
-              specialties,
-            }
-          : employee,
-      ),
-    );
   };
 
   const selectedEmployee = employees.find((employee) => employee.id === selectedId);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="animate-spin text-zinc-400" size={32} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-20 text-center">
+        <AlertCircle className="text-red-400" size={32} />
+        <p className="text-sm text-zinc-600">{error}</p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white"
+        >
+          Reintentar
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.2fr_0.95fr]">
@@ -145,14 +135,13 @@ export function EmployeesManagement() {
             <div>
               <p className="text-sm font-semibold text-zinc-900">Tu equipo</p>
               <p className="mt-1 text-sm text-zinc-600">
-                Busca personas del equipo y actualiza sus datos.
+                {employees.length} empleado{employees.length !== 1 ? "s" : ""} registrado{employees.length !== 1 ? "s" : ""}.
               </p>
             </div>
-
             <button
               type="button"
               onClick={() => {
-                setSelectedId("");
+                setSelectedId(null);
                 setDraft(emptyDraft);
               }}
               className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
@@ -161,7 +150,6 @@ export function EmployeesManagement() {
               Nuevo empleado
             </button>
           </div>
-
           <div className="mt-4 grid gap-3 md:grid-cols-[1fr_220px]">
             <label className="flex items-center gap-3 rounded-2xl border border-zinc-200 px-4 py-3">
               <Search size={16} className="text-zinc-400" />
@@ -172,91 +160,90 @@ export function EmployeesManagement() {
                 className="w-full bg-transparent text-sm outline-none placeholder:text-zinc-400"
               />
             </label>
-
             <label className="flex items-center gap-3 rounded-2xl border border-zinc-200 px-4 py-3">
               <Filter size={16} className="text-zinc-400" />
               <select
                 value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
+                onChange={(event) => setStatusFilter(event.target.value as EmployeeFilter)}
                 className="w-full bg-transparent text-sm outline-none"
               >
                 <option>Todos</option>
                 <option>Activo</option>
-                <option>Vacaciones</option>
-                <option>Invitado</option>
+                <option>Inactivo</option>
               </select>
             </label>
           </div>
         </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          {filteredEmployees.map((employee) => (
-            <article
-              key={employee.id}
-              className={`rounded-3xl border bg-white p-5 shadow-sm transition ${
-                selectedId === employee.id
-                  ? "border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 shadow-md"
-                  : "border-zinc-200 hover:-translate-y-1 hover:shadow-md"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-lg font-semibold text-zinc-900">{employee.name}</p>
-                  <p className="mt-1 text-sm text-zinc-600">{employee.role}</p>
-                </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  employee.status === "Activo"
-                    ? "bg-emerald-100 text-emerald-900"
-                    : employee.status === "Vacaciones"
-                      ? "bg-sky-100 text-sky-900"
-                      : "bg-amber-100 text-amber-900"
-                }`}>
-                  {employee.status}
-                </span>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                {employee.specialties.map((specialty) => (
+        {filteredEmployees.length === 0 ? (
+          <p className="py-10 text-center text-sm text-zinc-500">
+            No se encontraron empleados.
+          </p>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {filteredEmployees.map((employee) => (
+              <article
+                key={employee.id}
+                className={`rounded-3xl border bg-white p-5 shadow-sm transition ${
+                  selectedId === employee.id
+                    ? "border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 shadow-md"
+                    : "border-zinc-200 hover:-translate-y-1 hover:shadow-md"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-lg font-semibold text-zinc-900">{employee.name}</p>
+                    <p className="mt-1 text-sm text-zinc-600">{employee.role}</p>
+                  </div>
                   <span
-                    key={specialty}
-                    className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-zinc-700"
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      employee.status === "Activo"
+                        ? "bg-emerald-100 text-emerald-900"
+                        : "bg-rose-100 text-rose-900"
+                    }`}
                   >
-                    {specialty}
+                    {employee.status}
                   </span>
-                ))}
-              </div>
-
-              <div className="mt-4 space-y-2 text-sm text-zinc-600">
-                <p className="flex items-center gap-2">
-                  <CalendarClock size={15} />
-                  {employee.weeklyLoad}
-                </p>
-                <p className="flex items-center gap-2">
-                  <Star size={15} />
-                  Comision {employee.commission}
-                </p>
-              </div>
-
-              <div className="mt-5 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleSelect(employee)}
-                  className="rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100"
-                >
-                  Editar vista
-                </button>
-                <Link
-                  href={`/admin/empleados/${employee.id}`}
-                  className="rounded-full px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100"
-                >
-                  Ver perfil
-                </Link>
-              </div>
-            </article>
-          ))}
-        </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {employee.specialties.map((specialty) => (
+                    <span
+                      key={specialty}
+                      className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-zinc-700"
+                    >
+                      {specialty}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-4 space-y-2 text-sm text-zinc-600">
+                  <p className="flex items-center gap-2">
+                    <CalendarClock size={15} />
+                    {employee.weeklyLoad || "Por calcular"}
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <Star size={15} />
+                    Comision {employee.commission || "Por definir"}
+                  </p>
+                </div>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleSelect(employee)}
+                    className="rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100"
+                  >
+                    Editar vista
+                  </button>
+                  <Link
+                    href={`/admin/empleados/${employee.id}`}
+                    className="rounded-full px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100"
+                  >
+                    Ver perfil
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </div>
-
       <aside className="space-y-4">
         <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white to-sky-50 p-5 shadow-sm">
           <p className="text-sm font-semibold text-zinc-900">
@@ -265,54 +252,60 @@ export function EmployeesManagement() {
           <p className="mt-1 text-sm text-zinc-600">
             Completa los datos basicos del equipo.
           </p>
-
           <div className="mt-4 grid gap-3">
-            <Field label="Nombre completo">
+            <Field label="Nombres">
               <input
-                value={draft.name}
-                onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
+                value={draft.nombres}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, nombres: event.target.value }))
+                }
                 className={inputClassName}
-                placeholder="Nombre del empleado"
+                placeholder="Nombres"
               />
             </Field>
-            <Field label="Rol">
+            <Field label="Apellidos">
               <input
-                value={draft.role}
-                onChange={(event) => setDraft((current) => ({ ...current, role: event.target.value }))}
+                value={draft.apellidos}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, apellidos: event.target.value }))
+                }
                 className={inputClassName}
-                placeholder="Barber, recepcion, manager..."
+                placeholder="Apellidos"
               />
             </Field>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Telefono">
                 <input
-                  value={draft.phone}
-                  onChange={(event) => setDraft((current) => ({ ...current, phone: event.target.value }))}
+                  value={draft.telefono}
+                  onChange={(event) =>
+                    setDraft((current) => ({ ...current, telefono: event.target.value }))
+                  }
                   className={inputClassName}
                   placeholder="999 999 999"
                 />
               </Field>
               <Field label="Estado">
                 <select
-                  value={draft.status}
+                  value={draft.esta_activo ? "Activo" : "Inactivo"}
                   onChange={(event) =>
                     setDraft((current) => ({
                       ...current,
-                      status: event.target.value as EmployeeDraft["status"],
+                      esta_activo: event.target.value === "Activo",
                     }))
                   }
                   className={inputClassName}
                 >
                   <option>Activo</option>
-                  <option>Vacaciones</option>
-                  <option>Invitado</option>
+                  <option>Inactivo</option>
                 </select>
               </Field>
             </div>
             <Field label="Email">
               <input
-                value={draft.email}
-                onChange={(event) => setDraft((current) => ({ ...current, email: event.target.value }))}
+                value={draft.correo_electronico}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, correo_electronico: event.target.value }))
+                }
                 className={inputClassName}
                 placeholder="correo@negocio.com"
               />
@@ -327,36 +320,15 @@ export function EmployeesManagement() {
                 placeholder="Fade, Barba, Kids"
               />
             </Field>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Carga semanal">
-                <input
-                  value={draft.weeklyLoad}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, weeklyLoad: event.target.value }))
-                  }
-                  className={inputClassName}
-                  placeholder="28 citas"
-                />
-              </Field>
-              <Field label="Comision">
-                <input
-                  value={draft.commission}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, commission: event.target.value }))
-                  }
-                  className={inputClassName}
-                  placeholder="15%"
-                />
-              </Field>
-            </div>
           </div>
-
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
               onClick={() => setIsConfirmOpen(true)}
-              className="rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800"
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:opacity-50"
             >
+              {saving && <Loader2 size={16} className="animate-spin" />}
               {selectedId ? "Guardar cambios" : "Crear empleado"}
             </button>
             <button
@@ -374,7 +346,6 @@ export function EmployeesManagement() {
             </button>
           </div>
         </div>
-
         <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm">
           <p className="text-sm font-semibold text-zinc-900">Datos que se guardaran</p>
           <div className="mt-4 space-y-3 text-sm text-zinc-600">
@@ -393,7 +364,6 @@ export function EmployeesManagement() {
           </div>
         </div>
       </aside>
-
       <ConfirmationModal
         open={isConfirmOpen}
         title={selectedId ? "Confirmar cambios" : "Confirmar nuevo empleado"}
@@ -404,10 +374,7 @@ export function EmployeesManagement() {
         }
         confirmLabel={selectedId ? "Si, guardar" : "Si, crear"}
         onClose={() => setIsConfirmOpen(false)}
-        onConfirm={() => {
-          handleSave();
-          setIsConfirmOpen(false);
-        }}
+        onConfirm={handleSave}
       />
     </div>
   );
@@ -422,23 +389,17 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function toDraft(employee?: EmployeeRecord): EmployeeDraft {
-  if (!employee) {
-    return emptyDraft;
-  }
-
+function toDraft(employee?: Employee): EmployeeDraft {
+  if (!employee) return emptyDraft;
   return {
-    name: employee.name,
-    role: employee.role,
-    phone: employee.phone,
-    email: employee.email,
-    status: employee.status,
+    nombres: employee.nombres,
+    apellidos: employee.apellidos,
+    rol: employee.role,
+    telefono: employee.phone,
+    correo_electronico: employee.email,
+    esta_activo: employee.status === "Activo",
     specialties: employee.specialties.join(", "),
     weeklyLoad: employee.weeklyLoad,
     commission: employee.commission,
   };
-}
-
-function slugify(value: string) {
-  return value.toLowerCase().trim().replace(/\s+/g, "-");
 }

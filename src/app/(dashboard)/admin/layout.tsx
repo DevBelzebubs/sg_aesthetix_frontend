@@ -32,7 +32,6 @@ const navigation = [
   { href: "/admin/inventario", label: "Inventario", icon: Boxes },
   { href: "/admin/fidelizacion", label: "Fidelizacion", icon: Star },
   { href: "/admin/galeria", label: "Galeria", icon: Image },
-  { href: "/admin/configuracion/empresa", label: "Negocio", icon: Building2 },
 ];
 
 function Sidebar({ onClose }: { onClose?: () => void }) {
@@ -43,7 +42,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
     <div className="flex h-full flex-col">
       <div className="px-2">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Menu</p>
-        <p className="pt-1 text-lg font-bold text-zinc-900">SG Aesthetix</p>
+        <p className="pt-1 text-lg font-bold text-zinc-900">ZONA FADE</p>
       </div>
 
       <div className="mt-4 rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 to-cyan-50 px-4 py-3">
@@ -114,7 +113,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
       {/* Header mobile */}
       <header className="flex items-center justify-between border-b border-zinc-200 bg-white px-4 py-3 lg:hidden">
-        <p className="text-base font-bold text-zinc-900">SG Aesthetix</p>
+        <p className="text-base font-bold text-zinc-900">ZONA FADE</p>
         <button
           onClick={() => setMobileOpen(true)}
           className="rounded-xl border border-zinc-200 p-2 text-zinc-600 hover:bg-zinc-100"

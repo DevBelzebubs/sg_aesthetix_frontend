@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Boxes, PackagePlus, Search, TrendingDown, TrendingUp, Loader2 } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
+import { CloudinaryUpload } from "@/components/dashboard/cloudinary-upload";
 import { createClient } from "@/lib/supabase/client";
 
 type Product = {
   id: string;
   nombre: string;
   descripcion: string | null;
+  imagen_url: string | null;
   sku: string | null;
   precio_costo: number | null;
   precio_venta: number;
@@ -16,23 +18,26 @@ type Product = {
   stock_minimo: number;
   puntos_otorgados: number;
   esta_activo: boolean;
+  destacado: boolean;
   categoria_producto_id: number;
 };
 
 type ProductDraft = Omit<Product, "id">;
 
-const emptyDraft: ProductDraft = {
-  nombre: "",
-  descripcion: "",
-  sku: "",
-  precio_costo: 0,
-  precio_venta: 0,
-  stock_actual: 0,
-  stock_minimo: 0,
-  puntos_otorgados: 0,
-  esta_activo: true,
-  categoria_producto_id: 1,
-};
+  const emptyDraft: ProductDraft = {
+    nombre: "",
+    descripcion: null,
+    imagen_url: null,
+    sku: null,
+    precio_costo: null,
+    precio_venta: 0,
+    stock_actual: 0,
+    stock_minimo: 0,
+    puntos_otorgados: 0,
+    esta_activo: true,
+    destacado: false,
+    categoria_producto_id: 1,
+  };
 
 const inputClassName =
   "w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm outline-none transition placeholder:text-zinc-400 focus:border-zinc-900";
@@ -158,12 +163,22 @@ export function InventoryManagement() {
                       <p className="mt-1 text-xs uppercase tracking-[0.18em] text-zinc-500">{item.sku}</p>
                     )}
                   </div>
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                    item.esta_activo ? "bg-green-100 text-green-700" : "bg-zinc-100 text-zinc-500"
-                  }`}>
-                    {item.esta_activo ? "Activo" : "Inactivo"}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {item.destacado && (
+                      <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                        Destacado
+                      </span>
+                    )}
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      item.esta_activo ? "bg-green-100 text-green-700" : "bg-zinc-100 text-zinc-500"
+                    }`}>
+                      {item.esta_activo ? "Activo" : "Inactivo"}
+                    </span>
+                  </div>
                 </div>
+                {item.imagen_url && (
+                  <img src={item.imagen_url} alt={item.nombre} className="mt-3 h-36 w-full rounded-2xl object-cover" />
+                )}
 
                 <div className="mt-4 space-y-2 text-sm text-zinc-600">
                   <p className="flex items-center gap-2">
@@ -210,6 +225,21 @@ export function InventoryManagement() {
               <textarea className={`${inputClassName} min-h-20 resize-none`} value={draft.descripcion ?? ""}
                 onChange={(e) => setDraft((d) => ({ ...d, descripcion: e.target.value }))} />
             </Field>
+            <Field label="Imagen">
+              <div className="flex gap-2">
+                <input className={inputClassName} value={draft.imagen_url ?? ""}
+                  onChange={(e) => setDraft((d) => ({ ...d, imagen_url: e.target.value }))}
+                  placeholder="https://res.cloudinary.com/..." />
+                <CloudinaryUpload
+                  cloudName={process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!}
+                  uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!}
+                  onUpload={(url) => setDraft((d) => ({ ...d, imagen_url: url }))}
+                />
+              </div>
+            </Field>
+            {draft.imagen_url && (
+              <img src={draft.imagen_url} alt="preview" className="h-40 w-full rounded-2xl object-cover" />
+            )}
             <Field label="SKU">
               <input className={inputClassName} value={draft.sku ?? ""}
                 onChange={(e) => setDraft((d) => ({ ...d, sku: e.target.value }))} />
@@ -244,6 +274,13 @@ export function InventoryManagement() {
                   onChange={(e) => setDraft((d) => ({ ...d, esta_activo: e.target.value === "activo" }))}>
                   <option value="activo">Activo</option>
                   <option value="inactivo">Inactivo</option>
+                </select>
+              </Field>
+              <Field label="Destacar en home">
+                <select className={inputClassName} value={draft.destacado ? "si" : "no"}
+                  onChange={(e) => setDraft((d) => ({ ...d, destacado: e.target.value === "si" }))}>
+                  <option value="si">Sí</option>
+                  <option value="no">No</option>
                 </select>
               </Field>
             </div>
@@ -303,6 +340,7 @@ function toDraft(item: Product): ProductDraft {
   return {
     nombre: item.nombre,
     descripcion: item.descripcion,
+    imagen_url: item.imagen_url ?? "",
     sku: item.sku,
     precio_costo: item.precio_costo,
     precio_venta: item.precio_venta,
@@ -310,6 +348,7 @@ function toDraft(item: Product): ProductDraft {
     stock_minimo: item.stock_minimo,
     puntos_otorgados: item.puntos_otorgados,
     esta_activo: item.esta_activo,
+    destacado: item.destacado,
     categoria_producto_id: item.categoria_producto_id,
   };
 }

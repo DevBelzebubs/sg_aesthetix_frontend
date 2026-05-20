@@ -1,93 +1,89 @@
 import Link from "next/link";
 import {
-  ArrowRight,
-  Boxes,
-  Briefcase,
-  Building2,
-  Calendar,
   CalendarCheck,
-  Heart,
-  Image,
-  KeyRound,
-  Scissors,
-  User,
   UserPlus,
-  Users,
   AlertTriangle,
+  TrendingUp,
+  Clock,
+  DollarSign,
+  ArrowRight,
 } from "lucide-react";
+import { createServerSupabase } from "@/lib/supabase/server";
 
-const kpis = [
-  { label: "Negocios activos", value: "12", icon: Users },
-  { label: "Citas hoy", value: "48", icon: CalendarCheck },
-  { label: "Clientes registrados", value: "1,284", icon: UserPlus },
-  { label: "Productos por terminarse", value: "7", icon: AlertTriangle },
-];
+export default async function AdminHomePage() {
+  const supabase = await createServerSupabase();
 
-const modules = [
-  {
-    title: "Acceso y seguridad",
-    desc: "Revisa quien puede entrar y que puede hacer cada persona.",
-    href: "/admin/acceso-seguridad",
-    icon: KeyRound,
-  },
-  {
-    title: "Servicios",
-    desc: "Crea y organiza los servicios que ofreces.",
-    href: "/admin/servicios",
-    icon: Scissors,
-  },
-  {
-    title: "Equipo de trabajo",
-    desc: "Mira tu equipo, edita sus datos y organiza sus turnos.",
-    href: "/admin/empleados",
-    icon: Briefcase,
-  },
-  {
-    title: "Agenda",
-    desc: "Mira las citas del dia, cambia horarios o elimina una reserva.",
-    href: "/admin/agenda",
-    icon: Calendar,
-  },
-  {
-    title: "Clientes",
-    desc: "Encuentra clientes, corrige sus datos o elimina registros.",
-    href: "/admin/clientes",
-    icon: User,
-  },
-  {
-    title: "Fidelizacion",
-    desc: "Crea beneficios simples para que tus clientes vuelvan.",
-    href: "/admin/fidelizacion",
-    icon: Heart,
-  },
-  {
-    title: "Inventario",
-    desc: "Controla productos, cantidades y avisos de reposicion.",
-    href: "/admin/inventario",
-    icon: Boxes,
-  },
-  {
-    title: "Galeria",
-    desc: "Ordena las fotos y estilos que veran tus clientes.",
-    href: "/admin/galeria",
-    icon: Image,
-  },
-  {
-    title: "Negocio",
-    desc: "Edita los datos principales de tu negocio.",
-    href: "/admin/configuracion/empresa",
-    icon: Building2,
-  },
-];
+  const today = new Date().toISOString().split("T")[0];
 
-export default function AdminHomePage() {
+  const { count: citasHoy } = await supabase
+    .from("reservas")
+    .select("*", { count: "exact", head: true })
+    .eq("fecha_reserva", today);
+
+  const { count: clientesRegistrados } = await supabase
+    .from("clientes")
+    .select("*", { count: "exact", head: true });
+
+  const { data: productos } = await supabase
+    .from("productos")
+    .select("stock_actual, stock_minimo");
+
+  const productosPorTerminarse =
+    productos?.filter((p) => p.stock_actual <= p.stock_minimo).length ?? 0;
+
+  const { data: reservasCompletadas } = await supabase
+    .from("reservas")
+    .select("servicio_id")
+    .eq("fecha_reserva", today)
+    .eq("estado", "Completada");
+
+  const servicioIds = [...new Set(reservasCompletadas?.map((r) => r.servicio_id) ?? [])];
+
+  let gananciaDelDia = 0;
+  if (servicioIds.length > 0) {
+    const { data: servicios } = await supabase
+      .from("servicios")
+      .select("precio")
+      .in("id", servicioIds);
+
+    const precioMap = new Map(
+      servicios?.map((s, i) => [servicioIds[i], Number(s.precio)]) ?? []
+    );
+
+    gananciaDelDia = reservasCompletadas?.reduce(
+      (sum, r) => sum + (precioMap.get(r.servicio_id) ?? 0),
+      0
+    ) ?? 0;
+  }
+
+  const { data: proximasCitas } = await supabase
+    .from("reservas")
+    .select("hora_inicio, cliente_id")
+    .eq("fecha_reserva", today)
+    .neq("estado", "Completada")
+    .order("hora_inicio", { ascending: true })
+    .limit(5);
+
+  const { count: pendientes } = await supabase
+    .from("reservas")
+    .select("*", { count: "exact", head: true })
+    .eq("fecha_reserva", today)
+    .eq("estado", "Pendiente");
+
+  const kpis = [
+    { label: "Ganancia del d\u00eda", value: `S/${gananciaDelDia.toFixed(2)}`, icon: DollarSign },
+    { label: "Citas hoy", value: String(citasHoy ?? 0), icon: CalendarCheck },
+    { label: "Pendientes por atender", value: String(pendientes ?? 0), icon: Clock },
+    { label: "Productos por terminarse", value: String(productosPorTerminarse), icon: AlertTriangle },
+  ];
+
   return (
     <section className="space-y-6">
       <header className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <p className="text-sm text-zinc-500">Bienvenido de nuevo</p>
         <h1 className="mt-1 text-3xl font-bold text-zinc-900">Resumen del negocio</h1>
         <p className="mt-2 text-sm text-zinc-600">
-          Aqui tienes lo mas importante del dia, sin tanta vuelta.
+          Esto es lo que importa hoy.
         </p>
       </header>
 
@@ -113,48 +109,93 @@ export default function AdminHomePage() {
         })}
       </div>
 
-      <div>
-        <div className="mb-4 flex items-end justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-              Secciones
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                Pr&oacute;ximas citas
+              </p>
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-zinc-900">Hoy</h2>
+            </div>
+            <Link
+              href="/admin/agenda"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-zinc-900 transition hover:gap-2"
+            >
+              Ver todas
+              <ArrowRight size={16} />
+            </Link>
+          </div>
+
+          {proximasCitas && proximasCitas.length > 0 ? (
+            <ul className="mt-5 divide-y divide-zinc-100">
+              {proximasCitas.map((cita, i) => (
+                <li key={i} className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-xs font-bold text-zinc-600">
+                      {cita.hora_inicio?.slice(0, 2)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-zinc-900">
+                        {cita.hora_inicio?.slice(0, 5)}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-zinc-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-600">
+                    Pendiente
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-5 text-sm text-zinc-400">
+              No hay citas pendientes para hoy.
             </p>
-            <h2 className="mt-1 text-2xl font-bold tracking-tight text-zinc-900">
-              Accesos rapidos
-            </h2>
-          </div>
-          <div className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">
-            {modules.length} secciones
-          </div>
+          )}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {modules.map((module) => {
-            const Icon = module.icon;
+        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                Clientes
+              </p>
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-zinc-900">
+                {clientesRegistrados ?? 0} registrados
+              </h2>
+            </div>
+            <Link
+              href="/admin/clientes"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-zinc-900 transition hover:gap-2"
+            >
+              Ver todos
+              <ArrowRight size={16} />
+            </Link>
+          </div>
+          <p className="mt-3 text-sm text-zinc-500">
+            {productosPorTerminarse > 0
+              ? `${productosPorTerminarse} producto${
+                  productosPorTerminarse === 1 ? "" : "s"
+                } por reponer.`
+              : "Inventario al d\u00eda."}
+          </p>
 
-            return (
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            {[
+              { label: "Agenda", href: "/admin/agenda" },
+              { label: "Inventario", href: "/admin/inventario" },
+              { label: "Fidelizaci\u00f3n", href: "/admin/fidelizacion" },
+              { label: "Galer\u00eda", href: "/admin/galeria" },
+            ].map((link) => (
               <Link
-                key={module.title}
-                href={module.href}
-                className="group rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+                key={link.href}
+                href={link.href}
+                className="rounded-xl border border-zinc-200 px-4 py-3 text-center text-sm font-semibold text-zinc-700 transition hover:border-zinc-900 hover:text-zinc-900"
               >
-                <div className="flex items-center gap-3">
-                  <div className="rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 p-2">
-                    <Icon size={18} className="text-zinc-700" />
-                  </div>
-
-                  <h2 className="text-lg font-semibold text-zinc-900">{module.title}</h2>
-                </div>
-
-                <p className="mt-3 text-sm text-zinc-600">{module.desc}</p>
-
-                <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-zinc-900">
-                  Abrir
-                  <ArrowRight size={16} className="transition group-hover:translate-x-1" />
-                </span>
+                {link.label}
               </Link>
-            );
-          })}
+            ))}
+          </div>
         </div>
       </div>
     </section>

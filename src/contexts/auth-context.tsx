@@ -104,26 +104,58 @@ function applySession(session: Session | null) {
     }) => {
       setError(null);
 
-      // 1. Autenticar con Supabase Auth
-      const { data: authData, error: authError } =
+      // 1. Try Supabase Auth sign in
+      let { data: authData, error: authError } =
         await supabase.auth.signInWithPassword({ email, password });
 
+      // 2. If sign in fails, try to sync the auth user from `usuarios` table
       if (authError || !authData.session) {
-        const msg = "Credenciales incorrectas. Intenta de nuevo.";
-        setError(msg);
-        throw new Error("auth_failed");
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) {
+          let msg = "Credenciales incorrectas. Intenta de nuevo.";
+          let errCode = "auth_failed";
+          if (result.error === "Cuenta desactivada") {
+            msg = "Tu cuenta está desactivada. Contacta al administrador.";
+            errCode = "account_disabled";
+          } else if (result.needsReset) {
+            msg = "Error de autenticación. Ve a Supabase Dashboard > SQL Editor y pega el SQL que ves en la consola (F12).";
+            errCode = "password_mismatch";
+          }
+          setError(msg);
+          throw new Error(errCode);
+        }
+
+        if (result.created) {
+          const second = await supabase.auth.signInWithPassword({ email, password });
+          authData = second.data;
+          authError = second.error;
+        } else {
+          const second = await supabase.auth.signInWithPassword({ email, password });
+          authData = second.data;
+          authError = second.error;
+        }
+
+        if (authError || !authData?.session) {
+          setError("Credenciales incorrectas. Intenta de nuevo.");
+          throw new Error("auth_failed");
+        }
       }
 
-      // 2. Obtener rol desde la tabla `usuarios` filtrando por tenant
+      const session = authData.session!;
+
+      // 3. Obtener rol desde la tabla `usuarios`
       const { data: usuario, error: userError } = await supabase
         .from("usuarios")
         .select("rol, esta_activo")
-        .eq("auth_user_id", authData.user.id)
+        .eq("auth_user_id", session.user.id)
         .single();
-
-      console.log("usuario:", usuario);
-      console.log("userError:", userError);
-      console.log("auth_user_id buscado:", authData.user.id);
 
       if (userError || !usuario) {
         await supabase.auth.signOut();
@@ -139,7 +171,7 @@ function applySession(session: Session | null) {
 
       const userRole = usuario.rol as UserRole;
 
-      setToken(authData.session.access_token);
+      setToken(session.access_token);
       setRole(userRole);
     },
     [supabase],
