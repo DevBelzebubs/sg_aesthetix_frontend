@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Filter, Loader2, PencilLine, Plus, Search, ShieldCheck, UserCog, UserRound, Users, X, AlertCircle } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
+import { Pagination } from "@/components/dashboard/pagination";
 import { EmployeesService } from "@/services/employees.service";
 import type { Employee, EmployeeDraft, EmployeeFilter } from "@/types/employee";
 
@@ -19,7 +20,7 @@ const emptyDraft: EmployeeDraft = {
 };
 
 const inputClassName =
-  "w-full rounded-2xl border border-[var(--border)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+  "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
 
 type Props = {
   kpiActivos: number;
@@ -42,6 +43,8 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
   const [passwordError, setPasswordError] = useState("");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     async function load() {
@@ -71,6 +74,11 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
       return matchesQuery && matchesStatus && matchesRole;
     });
   }, [employees, query, statusFilter, roleFilter]);
+
+  useEffect(() => { setPage(1); }, [query, statusFilter, roleFilter]);
+
+  const totalPages = Math.ceil(filteredEmployees.length / pageSize);
+  const paginatedEmployees = filteredEmployees.slice((page - 1) * pageSize, page * pageSize);
 
   const selectedEmployee = employees.find((employee) => employee.id === selectedId);
 
@@ -233,7 +241,8 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
         </div>
 
         {mode === "list" && (
-          <div className="mt-4 grid gap-3 md:grid-cols-[1fr_180px_180px]">
+          <>
+            <div className="mt-4 grid gap-3 md:grid-cols-[1fr_180px_180px]">
             <label className="flex items-center gap-3 rounded-2xl border border-[var(--border)] px-4 py-3">
               <Search size={16} className="text-[var(--text-muted)]" />
               <input
@@ -267,14 +276,16 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
                 <option>Inactivo</option>
               </select>
             </label>
-          </div>
-        )}
+        </div>
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+        </>
+      )}
       </div>
 
       {/* Listado */}
       {mode === "list" && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredEmployees.length === 0 ? (
+          {paginatedEmployees.length === 0 ? (
             <div className="col-span-full flex flex-col items-center gap-3 py-16">
               <UserRound size={32} className="text-[var(--text-muted)]" />
               <p className="text-sm text-[var(--text-muted)]">
@@ -284,7 +295,7 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
               </p>
             </div>
           ) : (
-            filteredEmployees.map((employee) => (
+            paginatedEmployees.map((employee) => (
               <article
                 key={employee.id}
                 className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, PencilLine, Phone, Search, Trash2, UserRound, Users, X } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
+import { Pagination } from "@/components/dashboard/pagination";
 import { CustomersService } from "@/services/customers.service";
 import type { Customer } from "@/types/customer";
 
@@ -23,7 +24,7 @@ const emptyDraft: CustomerRecord = {
 };
 
 const inputClassName =
-  "w-full rounded-2xl border border-[var(--border)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+  "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
 
 type Props = {
   totalClientes: number;
@@ -41,6 +42,9 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     CustomersService.getAll()
@@ -70,6 +74,10 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
       );
     });
   }, [customers, query]);
+
+  useEffect(() => { setPage(1); }, [query]);
+  const totalPages = Math.ceil(filteredCustomers.length / pageSize);
+  const paginatedCustomers = filteredCustomers.slice((page - 1) * pageSize, page * pageSize);
 
   const selectedCustomer = customers.find((customer) => customer.id === selectedId);
 
@@ -200,8 +208,9 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
 
       {/* Listado */}
       {mode === "list" && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredCustomers.length === 0 ? (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {paginatedCustomers.length === 0 ? (
             <div className="col-span-full flex flex-col items-center gap-3 py-16">
               <UserRound size={32} className="text-[var(--text-muted)]" />
               <p className="text-sm text-[var(--text-muted)]">
@@ -209,7 +218,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
               </p>
             </div>
           ) : (
-            filteredCustomers.map((customer) => (
+            paginatedCustomers.map((customer) => (
               <article
                 key={customer.id}
                 className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
@@ -244,6 +253,8 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
             ))
           )}
         </div>
+        {/* <Pagination page={page} totalPages={totalPages} onPageChange={setPage} /> */}
+        </>
       )}
 
       {/* Formulario editar */}

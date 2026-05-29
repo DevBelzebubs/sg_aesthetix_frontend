@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Building2, PencilLine, Plus, Trash2, X } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
+import { Pagination } from "@/components/dashboard/pagination";
 
 type BusinessRecord = {
   id: string; name: string; link: string; category: string; status: "Activo" | "Inactivo";
@@ -14,7 +15,7 @@ const initialBusinesses: BusinessRecord[] = [
 ];
 
 const emptyDraft: BusinessRecord = { id: "", name: "", link: "", category: "Barberia", status: "Activo" };
-const inputClassName = "w-full rounded-2xl border border-[var(--border)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+const inputClassName = "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
 
 export function BusinessManagement() {
   const [businesses, setBusinesses] = useState(initialBusinesses);
@@ -24,7 +25,13 @@ export function BusinessManagement() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
+
   const selectedBusiness = businesses.find((b) => b.id === selectedId);
+
+  const totalPages = Math.ceil(businesses.length / pageSize);
+  const paginatedBusinesses = businesses.slice((page - 1) * pageSize, page * pageSize);
 
   const handleCreate = () => { setSelectedId(null); setDraft(emptyDraft); setMode("create"); };
   const handleEdit = (business: BusinessRecord) => { setSelectedId(business.id); setDraft(business); setMode("edit"); };
@@ -63,11 +70,12 @@ export function BusinessManagement() {
       </div>
 
       {mode === "list" && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {businesses.length === 0 ? (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {paginatedBusinesses.length === 0 ? (
             <div className="col-span-full flex flex-col items-center gap-3 py-16"><Building2 size={32} className="text-[var(--text-muted)]" /><p className="text-sm text-[var(--text-muted)]">No hay negocios registrados.</p></div>
           ) : (
-            businesses.map((b) => (
+            paginatedBusinesses.map((b) => (
               <article key={b.id} className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--background)] text-[var(--foreground)]"><Building2 size={20} /></div>
@@ -82,6 +90,8 @@ export function BusinessManagement() {
             ))
           )}
         </div>
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+        </>
       )}
 
       {(mode === "create" || mode === "edit") && (

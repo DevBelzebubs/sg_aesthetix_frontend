@@ -5,7 +5,7 @@ import { KeyRound, Loader2, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 const inputClassName =
-  "w-full rounded-2xl border border-[var(--border)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+  "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
 
 type Props = {
   userId: string;

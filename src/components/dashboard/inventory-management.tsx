@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowLeft, Boxes, Loader2, PackagePlus, Plus, Search, TrendingDown, TrendingUp, Trash2, X } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
+import { Pagination } from "@/components/dashboard/pagination";
 import { CloudinaryUpload } from "@/components/dashboard/cloudinary-upload";
 import { createClient } from "@/lib/supabase/client";
 
@@ -40,7 +41,7 @@ const emptyDraft: ProductDraft = {
 };
 
 const inputClassName =
-  "w-full rounded-2xl border border-[var(--border)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+  "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
 
 type Props = {
   totalProductos: number;
@@ -61,6 +62,9 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
+
   useEffect(() => { fetchInventory(); }, []);
 
   async function fetchInventory() {
@@ -79,6 +83,10 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
       item.sku?.toLowerCase().includes(query.toLowerCase())
     );
   }, [inventory, query]);
+
+  useEffect(() => { setPage(1); }, [query]);
+  const totalPages = Math.ceil(filteredInventory.length / pageSize);
+  const paginatedInventory = filteredInventory.slice((page - 1) * pageSize, page * pageSize);
 
   const selectedItem = inventory.find((item) => item.id === selectedId);
 
@@ -171,14 +179,15 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
       </div>
 
       {mode === "list" && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredInventory.length === 0 ? (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {paginatedInventory.length === 0 ? (
             <div className="col-span-full flex flex-col items-center gap-3 py-16">
               <Boxes size={32} className="text-[var(--text-muted)]" />
               <p className="text-sm text-[var(--text-muted)]">{query ? "No se encontraron productos." : "No hay productos. Crea el primero."}</p>
             </div>
           ) : (
-            filteredInventory.map((item) => {
+            paginatedInventory.map((item) => {
               const lowStock = item.stock_actual <= item.stock_minimo;
               return (
                 <article key={item.id} className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
@@ -215,6 +224,8 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
             })
           )}
         </div>
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+        </>
       )}
 
       {(mode === "create" || mode === "edit") && (

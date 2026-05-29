@@ -3,11 +3,12 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { ArrowLeft, CalendarClock, Clock3, Loader2, PencilLine, RefreshCw, Search, Trash2, UserRound, X, AlertCircle } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
+import { Pagination } from "@/components/dashboard/pagination";
 import { AppointmentsService, type AppointmentWithDetails } from "@/services/appointments.service";
 import { RewardsService } from "@/services/rewards.service";
 
 const emptyDraft = { hora_inicio: "", estado: "Pendiente", observaciones: "" };
-const inputClassName = "w-full rounded-2xl border border-[var(--border)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+const inputClassName = "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
 
 type Props = { totalCitas: number; totalPendientes: number; totalCompletadas: number; };
 
@@ -21,6 +22,9 @@ export function AgendaManagement({ totalCitas, totalPendientes, totalCompletadas
   const [draft, setDraft] = useState(emptyDraft);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -38,6 +42,10 @@ export function AgendaManagement({ totalCitas, totalPendientes, totalCompletadas
     const text = query.toLowerCase();
     return appointments.filter((a) => a.cliente_nombre.toLowerCase().includes(text) || a.servicio_nombre.toLowerCase().includes(text) || a.empleado_nombre.toLowerCase().includes(text) || a.hora_inicio.includes(text));
   }, [appointments, query]);
+
+  useEffect(() => { setPage(1); }, [query, today]);
+  const totalPages = Math.ceil(filteredAppointments.length / pageSize);
+  const paginatedAppointments = filteredAppointments.slice((page - 1) * pageSize, page * pageSize);
 
   const selectedAppointment = appointments.find((a) => a.id === selectedId);
 
@@ -119,33 +127,36 @@ export function AgendaManagement({ totalCitas, totalPendientes, totalCompletadas
 
       {/* Listado */}
       {mode === "list" && (
-        <div className="space-y-3">
-          {appointments.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-16"><CalendarClock size={32} className="text-[var(--text-muted)]" /><p className="text-sm text-[var(--text-muted)]">No hay citas para hoy.</p></div>
-          ) : (
-            filteredAppointments.map((appointment) => (
-              <article key={appointment.id} className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--background)] text-[var(--foreground)]"><UserRound size={20} /></div>
-                    <div>
-                      <div className="flex items-center gap-2"><p className="text-base font-semibold text-[var(--foreground)]">{appointment.cliente_nombre}</p><span className="rounded-full bg-[var(--background)] px-2.5 py-0.5 text-xs font-semibold text-[var(--text-muted)]">{appointment.hora_inicio.slice(0, 5)}</span></div>
-                      <p className="mt-1 text-sm text-[var(--text-muted)]">{appointment.servicio_nombre}</p>
+        <>
+          <div className="space-y-3">
+            {appointments.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-16"><CalendarClock size={32} className="text-[var(--text-muted)]" /><p className="text-sm text-[var(--text-muted)]">No hay citas para hoy.</p></div>
+            ) : (
+              paginatedAppointments.map((appointment) => (
+                <article key={appointment.id} className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--background)] text-[var(--foreground)]"><UserRound size={20} /></div>
+                      <div>
+                        <div className="flex items-center gap-2"><p className="text-base font-semibold text-[var(--foreground)]">{appointment.cliente_nombre}</p><span className="rounded-full bg-[var(--background)] px-2.5 py-0.5 text-xs font-semibold text-[var(--text-muted)]">{appointment.hora_inicio.slice(0, 5)}</span></div>
+                        <p className="mt-1 text-sm text-[var(--text-muted)]">{appointment.servicio_nombre}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusClassName(appointment.estado)}`}>{appointment.estado}</span>
+                      <button type="button" onClick={() => handleEdit(appointment)} className="rounded-xl p-2 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]"><PencilLine size={16} /></button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusClassName(appointment.estado)}`}>{appointment.estado}</span>
-                    <button type="button" onClick={() => handleEdit(appointment)} className="rounded-xl p-2 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]"><PencilLine size={16} /></button>
+                  <div className="mt-4 grid gap-3 md:grid-cols-[180px_1fr]">
+                    <div className="rounded-2xl bg-[var(--background)] px-4 py-3"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Profesional</p><p className="mt-2 text-sm font-semibold text-[var(--foreground)]">{appointment.empleado_nombre}</p></div>
+                    <div className="rounded-2xl bg-[var(--background)] px-4 py-3"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Nota</p><p className="mt-2 text-sm text-[var(--foreground)]">{appointment.observaciones || "—"}</p></div>
                   </div>
-                </div>
-                <div className="mt-4 grid gap-3 md:grid-cols-[180px_1fr]">
-                  <div className="rounded-2xl bg-[var(--background)] px-4 py-3"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Profesional</p><p className="mt-2 text-sm font-semibold text-[var(--foreground)]">{appointment.empleado_nombre}</p></div>
-                  <div className="rounded-2xl bg-[var(--background)] px-4 py-3"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Nota</p><p className="mt-2 text-sm text-[var(--foreground)]">{appointment.observaciones || "—"}</p></div>
-                </div>
-              </article>
-            ))
-          )}
-        </div>
+                </article>
+              ))
+            )}
+          </div>
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+        </>
       )}
 
       {/* Formulario editar */}

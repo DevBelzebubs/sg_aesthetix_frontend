@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Image, Images, Loader2, Plus, Search, Star, Trash2, X } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
+import { Pagination } from "@/components/dashboard/pagination";
 import { CloudinaryUpload } from "@/components/dashboard/cloudinary-upload";
 import { createClient } from "@/lib/supabase/client";
 
@@ -17,7 +18,7 @@ type GalleryDraft = {
 };
 
 const emptyDraft: GalleryDraft = { titulo: "", descripcion: "", imagen_url: "", orden: 1, esta_activo: false, destacado: false };
-const inputClassName = "w-full rounded-2xl border border-[var(--border)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+const inputClassName = "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
 
 type Props = { totalEstilos: number; totalPublicados: number; totalDestacados: number; };
 
@@ -33,6 +34,9 @@ export function GalleryManagement({ totalEstilos, totalPublicados, totalDestacad
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
+
   useEffect(() => { fetchGallery(); }, []);
 
   async function fetchGallery() {
@@ -43,6 +47,11 @@ export function GalleryManagement({ totalEstilos, totalPublicados, totalDestacad
   }
 
   const filteredGallery = useMemo(() => gallery.filter((i) => i.titulo?.toLowerCase().includes(query.toLowerCase()) || i.descripcion?.toLowerCase().includes(query.toLowerCase())), [gallery, query]);
+
+  useEffect(() => { setPage(1); }, [query]);
+  const totalPages = Math.ceil(filteredGallery.length / pageSize);
+  const paginatedGallery = filteredGallery.slice((page - 1) * pageSize, page * pageSize);
+
   const selectedItem = gallery.find((i) => i.id === selectedId);
 
   const handleCreate = () => { setSelectedId(null); setDraft(emptyDraft); setMode("create"); };
@@ -106,11 +115,12 @@ export function GalleryManagement({ totalEstilos, totalPublicados, totalDestacad
       </div>
 
       {mode === "list" && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredGallery.length === 0 ? (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {paginatedGallery.length === 0 ? (
             <div className="col-span-full flex flex-col items-center gap-3 py-16"><Images size={32} className="text-[var(--text-muted)]" /><p className="text-sm text-[var(--text-muted)]">{query ? "No se encontraron estilos." : "No hay estilos. Crea el primero."}</p></div>
           ) : (
-            filteredGallery.map((item) => (
+            paginatedGallery.map((item) => (
               <article key={item.id} className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md overflow-hidden">
                 {item.imagen_url ? <img src={item.imagen_url} alt={item.titulo ?? ""} className="h-48 w-full object-cover" /> : <div className="flex h-48 items-center justify-center bg-[var(--foreground)]"><span className="text-2xl font-black text-[var(--background)]">{item.titulo?.slice(0, 2).toUpperCase() ?? "NA"}</span></div>}
                 <div className="p-4">
@@ -130,6 +140,8 @@ export function GalleryManagement({ totalEstilos, totalPublicados, totalDestacad
             ))
           )}
         </div>
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+        </>
       )}
 
       {(mode === "create" || mode === "edit") && (

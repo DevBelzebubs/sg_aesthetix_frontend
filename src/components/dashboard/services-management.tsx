@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Clock3, DollarSign, Loader2, Plus, Scissors, Search, Trash2, X } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
+import { Pagination } from "@/components/dashboard/pagination";
 import { createClient } from "@/lib/supabase/client";
 
 type Service = {
@@ -29,7 +30,7 @@ const emptyDraft: ServiceDraft = {
 };
 
 const inputClassName =
-  "w-full rounded-2xl border border-[var(--border)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+  "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
 
 type Props = {
   totalServicios: number;
@@ -50,6 +51,9 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
+
   useEffect(() => { fetchServices(); }, []);
 
   async function fetchServices() {
@@ -68,6 +72,10 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
       s.descripcion?.toLowerCase().includes(query.toLowerCase())
     );
   }, [query, services]);
+
+  useEffect(() => { setPage(1); }, [query]);
+  const totalPages = Math.ceil(filteredServices.length / pageSize);
+  const paginatedServices = filteredServices.slice((page - 1) * pageSize, page * pageSize);
 
   const selectedService = services.find((s) => s.id === selectedId);
 
@@ -202,8 +210,9 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
 
       {/* Listado */}
       {mode === "list" && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredServices.length === 0 ? (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {paginatedServices.length === 0 ? (
             <div className="col-span-full flex flex-col items-center gap-3 py-16">
               <Scissors size={32} className="text-[var(--text-muted)]" />
               <p className="text-sm text-[var(--text-muted)]">
@@ -211,7 +220,7 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
               </p>
             </div>
           ) : (
-            filteredServices.map((service) => (
+            paginatedServices.map((service) => (
               <article
                 key={service.id}
                 className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
@@ -264,6 +273,8 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
             ))
           )}
         </div>
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+        </>
       )}
 
       {/* Formulario crear / editar */}

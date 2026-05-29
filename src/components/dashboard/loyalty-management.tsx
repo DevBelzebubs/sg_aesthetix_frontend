@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, Gift, PencilLine, Plus, QrCode, Star, Trash2, X } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
+import { Pagination } from "@/components/dashboard/pagination";
 import { ConfiguracionService } from "@/services/configuracion.service";
 import { CustomersService } from "@/services/customers.service";
 import { RewardsService } from "@/services/rewards.service";
@@ -16,7 +17,7 @@ type RewardDraft = {
 };
 
 const emptyDraft: RewardDraft = { nombre: "", tipo_recompensa: "servicio", puntos_requeridos: 100, descripcion: "", esta_activo: true };
-const inputClassName = "w-full rounded-2xl border border-[var(--border)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+const inputClassName = "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
 
 type Props = { totalBeneficios: number; totalActivas: number; canjesPendientes: number; };
 
@@ -29,6 +30,9 @@ export function LoyaltyManagement({ totalBeneficios, totalActivas, canjesPendien
   const [draft, setDraft] = useState<RewardDraft>(emptyDraft);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
 
   const fetchRecompensas = useCallback(async () => {
     setLoading(true); setError("");
@@ -43,6 +47,9 @@ export function LoyaltyManagement({ totalBeneficios, totalActivas, canjesPendien
   useEffect(() => { fetchRecompensas(); }, [fetchRecompensas]);
 
   const selectedRecompensa = recompensas.find((r) => r.id === selectedId);
+
+  const totalPages = Math.ceil(recompensas.length / pageSize);
+  const paginatedRecompensas = recompensas.slice((page - 1) * pageSize, page * pageSize);
 
   const handleCreate = () => { setSelectedId(null); setDraft(emptyDraft); setMode("create"); };
   const handleEdit = (r: RecompensaPuntos) => {
@@ -184,10 +191,11 @@ export function LoyaltyManagement({ totalBeneficios, totalActivas, canjesPendien
       {error && <div className="rounded-3xl border border-[var(--destructive-border)] bg-[var(--destructive-hover)] p-4 text-sm text-[var(--destructive)]">{error}</div>}
 
       {mode === "list" && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {loading && recompensas.length === 0 ? <div className="col-span-full py-16 text-center text-sm text-[var(--text-muted)]">Cargando beneficios...</div> :
-           recompensas.length === 0 ? <div className="col-span-full flex flex-col items-center gap-3 py-16"><Gift size={32} className="text-[var(--text-muted)]" /><p className="text-sm text-[var(--text-muted)]">No hay beneficios. Crea el primero.</p></div> :
-           recompensas.map((r) => (
+           paginatedRecompensas.length === 0 ? <div className="col-span-full flex flex-col items-center gap-3 py-16"><Gift size={32} className="text-[var(--text-muted)]" /><p className="text-sm text-[var(--text-muted)]">No hay beneficios. Crea el primero.</p></div> :
+           paginatedRecompensas.map((r) => (
             <article key={r.id} className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--background)] text-[var(--foreground)]"><Gift size={20} /></div>
@@ -201,6 +209,8 @@ export function LoyaltyManagement({ totalBeneficios, totalActivas, canjesPendien
             </article>
           ))}
         </div>
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+        </>
       )}
 
       {(mode === "create" || mode === "edit") && (
