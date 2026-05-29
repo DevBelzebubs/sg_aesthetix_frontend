@@ -112,18 +112,38 @@ export function CustomerAuthModal() {
     setLoading(true);
     setError("");
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (authError) {
-        setError(authError.message === "Invalid login credentials"
-          ? "Credenciales incorrectas"
-          : authError.message);
+      // 1. Intentar signIn directo
+      let { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+
+      // 2. Si falla, sincronizar via API y reintentar
+      if (authError || !authData.session) {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Credenciales incorrectas");
+
+        const second = await supabase.auth.signInWithPassword({ email, password });
+        authData = second.data;
+        authError = second.error;
+      }
+
+      if (authError || !authData?.session) {
+        setError("Credenciales incorrectas");
         return;
       }
+
+      // Determinar rol y redirigir
+      const { data: usuario } = await supabase
+        .from("usuarios")
+        .select("rol")
+        .eq("auth_user_id", authData.session.user.id)
+        .single();
+
       closeModal();
-      router.push("/admin");
+      router.push(usuario?.rol === "empleado" ? "/empleado" : "/admin");
     } catch {
       setError("Error al conectar");
     } finally {
@@ -156,15 +176,6 @@ export function CustomerAuthModal() {
             }`}
           >
             Cliente
-          </button>
-          <button
-            type="button"
-            onClick={() => { setTab("registro"); setError(""); }}
-            className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-[0.15em] transition ${
-              tab === "registro" ? "bg-black text-white" : "bg-[var(--background)] text-neutral-500 hover:text-[var(--foreground)]"
-            }`}
-          >
-            Registro
           </button>
           <button
             type="button"
@@ -324,8 +335,8 @@ export function CustomerAuthModal() {
         )}
 
         {/* Pie */}
-        <div className="border-t border-transparent/10/10 px-6 py-3 text-center">
-          {tab !== "registro" ? (
+        {tab === "cliente" && (
+          <div className="border-t border-transparent/10/10 px-6 py-3 text-center">
             <button
               type="button"
               onClick={() => { setTab("registro"); setError(""); }}
@@ -333,7 +344,10 @@ export function CustomerAuthModal() {
             >
               ¿No tienes cuenta? Regístrate aquí
             </button>
-          ) : (
+          </div>
+        )}
+        {tab === "registro" && (
+          <div className="border-t border-transparent/10/10 px-6 py-3 text-center">
             <button
               type="button"
               onClick={() => { setTab("cliente"); setError(""); }}
@@ -341,8 +355,8 @@ export function CustomerAuthModal() {
             >
               ¿Ya tienes cuenta? Ingresa aquí
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

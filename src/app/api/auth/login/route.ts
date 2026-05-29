@@ -1,5 +1,3 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 
 export async function POST(request: Request) {
   const { email, password } = await request.json();
@@ -8,77 +6,125 @@ export async function POST(request: Request) {
     return Response.json({ error: "Email y contraseña requeridos" }, { status: 400 });
   }
 
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-        set() {},
-        remove() {},
-      },
-    },
+  // 1. Validar que el usuario existe y está activo en nuestra tabla
+  const userRes = await fetch(
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/usuarios?correo_electronico=eq.${encodeURIComponent(email)}&select=*`,
+    { headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}` } },
   );
+  const usuarios = await userRes.json();
 
-  // 1. Look up user in `usuarios` table
-  const { data: usuario, error: userError } = await supabase
-    .from("usuarios")
-    .select("*")
-    .eq("correo_electronico", email)
-    .single();
-
-  if (userError || !usuario) {
+  if (!usuarios?.length) {
     return Response.json({ error: "Credenciales incorrectas" }, { status: 401 });
   }
 
-  const u = usuario as Record<string, unknown>;
-
-  if (!u.esta_activo) {
+  const usuario = usuarios[0];
+  if (!usuario.esta_activo) {
     return Response.json({ error: "Cuenta desactivada" }, { status: 403 });
   }
 
-  // 2. Try to create/update the auth user via signUp
-  const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { role: u.rol } },
-  });
-
-  const newUserId = signUpData?.user?.id;
-
-  if (newUserId && !u.auth_user_id) {
-    // New auth user was created, link it
-    await supabase
-      .from("usuarios")
-      .update({ auth_user_id: newUserId })
-      .eq("id", u.id);
-    return Response.json({ created: true, email });
+  // 2. Sincronizar contraseña en Supabase Auth
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) {
+    return Response.json({ error: "Falta SUPABASE_SERVICE_ROLE_KEY en .env" }, { status: 500 });
   }
 
-  if (newUserId && u.auth_user_id) {
-    // Auth user was re-created with new password
-    await supabase
-      .from("usuarios")
-      .update({ auth_user_id: newUserId })
-      .eq("id", u.id);
-    return Response.json({ created: true, email });
+  // 2. Sincronizar usuario en Auth (sin enviar emails)
+  const listRes = await fetch(
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/users?filter=email&filter_value=${encodeURIComponent(email)}`,
+    { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } },
+  );
+  const authUsers = await listRes.json();
+  const existingAuthUser = authUsers?.users?.[0];
+
+  if (existingAuthUser?.id) {
+    // Ya existe → solo actualizar contraseña (sin email)
+    await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/users/${existingAuthUser.id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
+        },
+        body: JSON.stringify({ password, email_confirm: true }),
+      },
+    );
+  } else {
+    // No existe → crear (sin email de confirmación)
+    const createRes = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/users`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
+        },
+        body: JSON.stringify({ email, password, email_confirm: true, user_metadata: { role: usuario.rol } }),
+      },
+    );
+    const createData = await createRes.json();
+    if (createData?.user?.id) {
+      await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/usuarios?id=eq.${usuario.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({ auth_user_id: createData.user.id }),
+        },
+      );
+    }
   }
 
-  // signUp didn't create a new user (existing auth user, password unchanged)
-  // Try signing in directly — maybe the password matches auth.users already
-  const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+  // Crear nuevo usuario Auth via admin API (sin enviar email)
+  const createRes = await fetch(
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/users`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { role: usuario.rol },
+      }),
+    },
+  );
+  const createData = await createRes.json();
 
-  if (signInData?.session) {
-    return Response.json({ created: false, email });
+  if (!createData?.user?.id) {
+    console.error("Create auth user failed:", createData);
+    return Response.json({ error: `No se pudo crear el usuario en Auth: ${JSON.stringify(createData)}` }, { status: 500 });
   }
 
-  // Neither signIn nor signUp worked — user needs to reset password in dashboard
-  return Response.json({
-    error: `El usuario existe pero la contraseña no es válida. Ve a Supabase Dashboard > SQL Editor y ejecuta:
-UPDATE auth.users SET encrypted_password = crypt('${password}', gen_salt('bf')) WHERE email = '${email}';`,
-    needsReset: true,
-  }, { status: 409 });
+  // Vincular nuevo auth_user_id
+  const patchRes = await fetch(
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/usuarios?id=eq.${usuario.id}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({ auth_user_id: createData.user.id }),
+    },
+  );
+
+  if (!patchRes.ok) {
+    console.error("Patch auth_user_id failed:", await patchRes.text());
+  }
+
+  return Response.json({ success: true, email });
 }

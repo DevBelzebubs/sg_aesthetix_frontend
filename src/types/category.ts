@@ -3,4 +3,6 @@ export interface Category {
   nombre: string;
   descripcion: string | null;
   orden: number;
+  publico: boolean;
+  esta_activo: boolean;
 }

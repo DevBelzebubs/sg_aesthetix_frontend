@@ -1,10 +1,13 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { CalendarClock, Home, Scissors, UserRound, Sun, Moon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CalendarClock, Home, Scissors, UserRound, Sun, Moon, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/contexts/theme-context";
+import { useAuth } from "@/hooks/useAuth";
+import { createClient } from "@/lib/supabase/client";
 
 const navigation = [
   { href: "/empleado", label: "Mi jornada", icon: Home },
@@ -15,6 +18,41 @@ const navigation = [
 export default function EmployeeLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
+  const { isReady, isAuthenticated, role, logout } = useAuth();
+  const router = useRouter();
+  const supabase = createClient();
+  const [userName, setUserName] = useState("");
+
+  useEffect(() => {
+    if (isReady && !isAuthenticated) {
+      router.replace("/home");
+    }
+  }, [isReady, isAuthenticated, router]);
+
+  useEffect(() => {
+    async function loadName() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        const { data } = await supabase
+          .from("usuarios")
+          .select("nombres, apellidos")
+          .eq("auth_user_id", session.user.id)
+          .single();
+        if (data) {
+          setUserName(`${data.nombres} ${data.apellidos ?? ""}`.trim());
+        }
+      }
+    }
+    if (isReady && isAuthenticated) loadName();
+  }, [isReady, isAuthenticated, supabase]);
+
+  if (!isReady) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
+        <div className="h-4 w-4 animate-pulse rounded-full bg-[var(--text-muted)]" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
@@ -70,8 +108,8 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
                 <UserRound size={18} />
               </div>
               <div>
-                <p className="text-sm font-semibold text-[var(--foreground)]">Alejandro Ruiz</p>
-                <p className="text-xs text-[var(--text-muted)]">Barber Senior</p>
+                <p className="text-sm font-semibold text-[var(--foreground)]">{userName || "Empleado"}</p>
+                <p className="text-xs text-[var(--text-muted)]">{role === "admin" ? "Administrador" : "Empleado"}</p>
               </div>
             </div>
           </div>
@@ -98,7 +136,7 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
             })}
           </nav>
 
-          <div className="mt-4 border-t border-transparent/10 pt-4">
+          <div className="mt-4 border-t border-transparent/10 pt-4 space-y-1">
             <button
               type="button"
               onClick={toggleTheme}
@@ -106,6 +144,14 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
             >
               {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
               <span>{theme === "dark" ? "Modo claro" : "Modo oscuro"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => logout()}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-[var(--warning)] transition hover:bg-[var(--warning)]/10"
+            >
+              <X size={18} />
+              <span>Cerrar sesión</span>
             </button>
           </div>
         </aside>

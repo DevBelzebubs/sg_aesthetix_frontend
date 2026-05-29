@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import type { Employee, EmployeeRow } from "@/types/employee";
+import bcrypt from "bcryptjs";
 
 function mapRowToEmployee(row: EmployeeRow, specialties: string[]): Employee {
   return {
@@ -85,8 +86,9 @@ export const EmployeesService = {
     clave_hash?: string;
     servicio_ids?: string[];
     imagen_url?: string;
-  }): Promise<Employee> {
+  }  ): Promise<Employee> {
     const supabase = createClient();
+    const clave_hash = data.clave_hash ? await bcrypt.hash(data.clave_hash, 10) : "";
     const { data: row, error } = await supabase
       .from("usuarios")
       .insert({
@@ -94,7 +96,7 @@ export const EmployeesService = {
         apellidos: data.apellidos,
         rol: "empleado",
         correo_electronico: data.correo_electronico,
-        clave_hash: data.clave_hash || "",
+        clave_hash: clave_hash,
         telefono: data.telefono || null,
         esta_activo: data.esta_activo,
         imagen_url: data.imagen_url || null,
@@ -135,7 +137,7 @@ export const EmployeesService = {
     if (data.correo_electronico !== undefined) updateData.correo_electronico = data.correo_electronico;
     if (data.telefono !== undefined) updateData.telefono = data.telefono || null;
     if (data.esta_activo !== undefined) updateData.esta_activo = data.esta_activo;
-    if (data.clave_hash !== undefined) updateData.clave_hash = data.clave_hash;
+    if (data.clave_hash !== undefined) updateData.clave_hash = await bcrypt.hash(data.clave_hash, 10);
     if (data.imagen_url !== undefined) updateData.imagen_url = data.imagen_url || null;
     const { error } = await supabase.from("usuarios").update(updateData).eq("id", id);
     if (error) throw new Error(error.message);

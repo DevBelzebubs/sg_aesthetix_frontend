@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import type { AuthSession, UserRole } from "@/types/auth";
@@ -32,6 +33,7 @@ export const AuthContext = createContext<AuthContextValue | undefined>(
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const supabase = createClient();
+  const router = useRouter();
 
   const [token, setToken] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
@@ -181,7 +183,8 @@ function applySession(session: Session | null) {
     await supabase.auth.signOut();
     setToken(null);
     setRole(null);
-  }, [supabase]);
+    router.push("/home");
+  }, [supabase, router]);
 
   const setSession = useCallback((session: AuthSession) => {
     setToken(session.token);

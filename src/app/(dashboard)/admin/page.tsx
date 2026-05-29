@@ -191,9 +191,11 @@ export default async function AdminHomePage() {
           <div className="mt-5 grid grid-cols-2 gap-3">
             {[
               { label: "Agenda", href: "/admin/agenda" },
-              { label: "Inventario", href: "/admin/inventario" },
-              { label: "Fidelizaci\u00f3n", href: "/admin/fidelizacion" },
-              { label: "Galer\u00eda", href: "/admin/galeria" },
+              { label: "Productos", href: "/admin/inventario" },
+              { label: "Ventas", href: "/admin/ventas" },
+              { label: "Empleados", href: "/admin/empleados" },
+              { label: "Clientes", href: "/admin/clientes" },
+              { label: "Fidelización", href: "/admin/fidelizacion" },
             ].map((link) => (
               <Link
                 key={link.href}
