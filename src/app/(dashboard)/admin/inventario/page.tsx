@@ -22,9 +22,9 @@ export default async function InventarioPage() {
 
   return (
     <ModulePageShell
-      breadcrumb={[{ label: "Administracion", href: "/admin" }, { label: "Inventario" }]}
-      title="Inventario"
-      description="Controla el stock de productos, precios y destaca lo mas vendido."
+      breadcrumb={[{ label: "Administracion", href: "/admin" }, { label: "Productos" }]}
+      title="Productos"
+      description="Catalogo de productos, precios y visibilidad en la tienda publica."
     >
       <InventoryManagement totalProductos={count ?? 0} totalActivos={activos ?? 0} porReponer={porReponer} />
     </ModulePageShell>

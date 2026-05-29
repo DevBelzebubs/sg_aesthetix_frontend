@@ -26,15 +26,19 @@ export const CustomersService = {
     const { data, error } = await supabase
       .from("clientes")
       .select("*")
+      .eq("esta_activo", true)
       .order("creado_en", { ascending: false });
 
     if (error) throw new Error(error.message);
     return (data ?? []).map((row) => mapRowToCustomer(row as Record<string, unknown>));
   },
 
-  async delete(id: string): Promise<void> {
+  async remove(id: string): Promise<void> {
     const supabase = createClient();
-    const { error } = await supabase.from("clientes").delete().eq("id", id);
+    const { error } = await supabase
+      .from("clientes")
+      .update({ esta_activo: false })
+      .eq("id", id);
     if (error) throw new Error(error.message);
   },
 

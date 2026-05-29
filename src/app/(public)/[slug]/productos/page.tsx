@@ -14,6 +14,7 @@ export default async function ProductosPage({ params }: ProductosPageProps) {
     .from("productos")
     .select("id, nombre, descripcion, imagen_url, precio_venta, esta_activo, categoria_producto_id, categoria_producto(nombre)")
     .eq("esta_activo", true)
+    .eq("publico", true)
     .order("categoria_producto_id", { ascending: true });
 
   const categories = ["Todos", "Fijación", "Barba", "Afeitado"];

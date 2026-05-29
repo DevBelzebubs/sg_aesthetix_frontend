@@ -12,12 +12,17 @@ import {
   Image,
   Scissors,
   Star,
-  Building2,
   ArrowLeft,
   Menu,
   X,
   Sun,
   Moon,
+  Tag,
+  Folder,
+  Settings,
+  ShoppingCart,
+  ArrowDownToLine,
+  PackagePlus,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -30,10 +35,15 @@ const navigation = [
   { href: "/admin/empleados", label: "Empleados", icon: Users },
   { href: "/admin/clientes", label: "Clientes", icon: User },
   { href: "/admin/servicios", label: "Servicios", icon: Scissors },
-  { href: "/admin/inventario", label: "Inventario", icon: Boxes },
+  { href: "/admin/inventario", label: "Productos", icon: Boxes },
+  { href: "/admin/ventas", label: "Ventas", icon: ShoppingCart },
   { href: "/admin/fidelizacion", label: "Fidelizacion", icon: Star },
   { href: "/admin/galeria", label: "Galeria", icon: Image },
-  { href: "/admin/configuracion/empresa", label: "Configuración", icon: Building2 },
+  { href: "/admin/categoria-productos", label: "Cat. Productos", icon: Tag },
+  { href: "/admin/categoria-servicios", label: "Cat. Servicios", icon: Folder },
+  { href: "/admin/movimientos-inventario", label: "Mov. Inventario", icon: ArrowDownToLine },
+  { href: "/admin/ingreso-mercaderia", label: "Ingr. Mercaderia", icon: PackagePlus },
+  { href: "/admin/configuracion/puntos", label: "Config. Puntos", icon: Settings },
 ];
 
 function Sidebar({ onClose }: { onClose?: () => void }) {
