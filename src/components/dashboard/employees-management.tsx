@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Filter, Loader2, PencilLine, Plus, Search, ShieldCheck, UserCog, UserRound, Users, X, AlertCircle } from "lucide-react";
+import { ArrowLeft, Filter, Loader2, PencilLine, Plus, Search, ShieldCheck, Trash2, Undo2, UserCog, UserRound, Users, X, AlertCircle } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
+import { CloudinaryUpload } from "@/components/dashboard/cloudinary-upload";
 import { EmployeesService } from "@/services/employees.service";
 import type { Employee, EmployeeDraft, EmployeeFilter } from "@/types/employee";
 
@@ -17,6 +18,7 @@ const emptyDraft: EmployeeDraft = {
   specialties: "",
   weeklyLoad: "",
   commission: "",
+  imagen_url: "",
 };
 
 const inputClassName =
@@ -30,6 +32,8 @@ type Props = {
 
 export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Props) {
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [inactiveEmployees, setInactiveEmployees] = useState<Employee[]>([]);
+  const [showInactive, setShowInactive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -42,6 +46,7 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const pageSize = 10;
   const [page, setPage] = useState(1);
@@ -61,8 +66,24 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
     load();
   }, []);
 
+  useEffect(() => {
+    if (!showInactive) return;
+    setLoading(true);
+    EmployeesService.getInactivos()
+      .then(setInactiveEmployees)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [showInactive]);
+
+  const handleRestoreEmployee = async (id: string) => {
+    await EmployeesService.restore(id);
+    setInactiveEmployees((prev) => prev.filter((e) => e.id !== id));
+  };
+
+  const employeesForList = showInactive ? inactiveEmployees : employees;
+
   const filteredEmployees = useMemo(() => {
-    return employees.filter((employee) => {
+    return employeesForList.filter((employee) => {
       const matchesQuery =
         employee.name.toLowerCase().includes(query.toLowerCase()) ||
         employee.role.toLowerCase().includes(query.toLowerCase()) ||
@@ -73,14 +94,14 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
         roleFilter === "Todos" || employee.role === roleFilter;
       return matchesQuery && matchesStatus && matchesRole;
     });
-  }, [employees, query, statusFilter, roleFilter]);
+  }, [employeesForList, query, statusFilter, roleFilter]);
 
   useEffect(() => { setPage(1); }, [query, statusFilter, roleFilter]);
 
   const totalPages = Math.ceil(filteredEmployees.length / pageSize);
   const paginatedEmployees = filteredEmployees.slice((page - 1) * pageSize, page * pageSize);
 
-  const selectedEmployee = employees.find((employee) => employee.id === selectedId);
+  const selectedEmployee = (showInactive ? inactiveEmployees : employees).find((e) => e.id === selectedId);
 
   const handleEdit = (employee: Employee) => {
     setSelectedId(employee.id);
@@ -104,6 +125,22 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
     setMode("list");
     setSelectedId(null);
     setDraft(emptyDraft);
+    setShowInactive(false);
+  };
+
+  const handleDesactivate = async () => {
+    if (!selectedId) return;
+    try {
+      await EmployeesService.remove(selectedId);
+      setEmployees((prev) => prev.filter((e) => e.id !== selectedId));
+      setMode("list");
+      setSelectedId(null);
+      setDraft(emptyDraft);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al desactivar");
+    } finally {
+      setIsDeleteOpen(false);
+    }
   };
 
   const handleSave = async () => {
@@ -129,6 +166,7 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
           telefono: draft.telefono,
           esta_activo: draft.esta_activo,
           clave_hash: password,
+          imagen_url: draft.imagen_url,
         });
         setEmployees((current) => [created, ...current]);
       } else if (mode === "edit" && selectedId) {
@@ -139,6 +177,7 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
           telefono: draft.telefono,
           esta_activo: draft.esta_activo,
           ...(password ? { clave_hash: password } : {}),
+          imagen_url: draft.imagen_url,
         });
         setEmployees((current) =>
           current.map((emp) => (emp.id === selectedId ? updated : emp)),
@@ -214,12 +253,29 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
       <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-[var(--foreground)]">Tu equipo</p>
+            <p className="text-sm font-semibold text-[var(--foreground)]">
+              {showInactive ? "Empleados desactivados" : "Tu equipo"}
+            </p>
             <p className="mt-1 text-sm text-[var(--text-muted)]">
-              {employees.length} empleado{employees.length !== 1 ? "s" : ""} registrado{employees.length !== 1 ? "s" : ""}
+              {showInactive
+                ? `${inactiveEmployees.length} empleado(s) en papelera`
+                : `${employees.length} empleado${employees.length !== 1 ? "s" : ""} registrado${employees.length !== 1 ? "s" : ""}`}
             </p>
           </div>
-          {mode === "list" ? (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { setShowInactive((v) => !v); setQuery(""); setPage(1); }}
+              className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                showInactive
+                  ? "border-[var(--destructive-border)] bg-[var(--destructive-hover)] text-[var(--destructive)]"
+                  : "border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--background)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              <Trash2 size={16} />
+              Papelera
+            </button>
+            {mode === "list" ? (
             <button
               type="button"
               onClick={handleCreate}
@@ -238,9 +294,10 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
               Volver al listado
             </button>
           )}
+          </div>
         </div>
 
-        {mode === "list" && (
+        {mode === "list" && !showInactive && (
           <>
             <div className="mt-4 grid gap-3 md:grid-cols-[1fr_180px_180px]">
             <label className="flex items-center gap-3 rounded-2xl border border-[var(--border)] px-4 py-3">
@@ -289,74 +346,93 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
             <div className="col-span-full flex flex-col items-center gap-3 py-16">
               <UserRound size={32} className="text-[var(--text-muted)]" />
               <p className="text-sm text-[var(--text-muted)]">
-                {query || statusFilter !== "Todos" || roleFilter !== "Todos"
-                  ? "No se encontraron empleados con esos filtros."
-                  : "No hay empleados registrados. Crea el primero."}
+                {showInactive
+                  ? "No hay empleados en la papelera."
+                  : query || statusFilter !== "Todos" || roleFilter !== "Todos"
+                    ? "No se encontraron empleados con esos filtros."
+                    : "No hay empleados registrados. Crea el primero."}
               </p>
             </div>
           ) : (
             paginatedEmployees.map((employee) => (
               <article
                 key={employee.id}
-                className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--background)] text-[var(--foreground)]">
-                    <UserRound size={20} />
+                <div className="flex items-start gap-5">
+                  <div className={`flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] ${!employee.imagenUrl ? "bg-[var(--background)]" : ""}`}>
+                    {employee.imagenUrl ? (
+                      <img src={employee.imagenUrl} alt={employee.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <UserRound size={32} className="text-[var(--text-muted)]" />
+                    )}
                   </div>
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                      employee.status === "Activo"
-                        ? "bg-[var(--hover)]/15 text-[var(--hover)]"
-                        : "bg-[var(--warning)]/15 text-[var(--warning)]"
-                    }`}
-                  >
-                    {employee.status}
-                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-base font-semibold text-[var(--foreground)]">{employee.name}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                            employee.role === "admin"
+                              ? "bg-[var(--foreground)]/10 text-[var(--foreground)]"
+                              : "bg-[var(--hover)]/10 text-[var(--hover)]"
+                          }`}>
+                            {employee.role}
+                          </span>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            employee.status === "Activo"
+                              ? "bg-[var(--hover)]/15 text-[var(--hover)]"
+                              : "bg-[var(--warning)]/15 text-[var(--warning)]"
+                          }`}>
+                            {employee.status}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    {employee.specialties.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {employee.specialties.map((specialty) => (
+                          <span
+                            key={specialty}
+                            className="rounded-full bg-[var(--background)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-muted)]"
+                          >
+                            {specialty}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-
-                <div className="mt-3">
-                  <div className="flex items-center gap-2">
-                    <p className="text-base font-semibold text-[var(--foreground)]">{employee.name}</p>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                      employee.role === "admin"
-                        ? "bg-[var(--foreground)]/10 text-[var(--foreground)]"
-                        : "bg-[var(--hover)]/10 text-[var(--hover)]"
-                    }`}>
-                      {employee.role}
-                    </span>
-                  </div>
-                </div>
-
-                {employee.specialties.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {employee.specialties.map((specialty) => (
-                      <span
-                        key={specialty}
-                        className="rounded-full bg-[var(--background)] px-2.5 py-0.5 text-xs font-medium text-[var(--text-muted)]"
-                      >
-                        {specialty}
-                      </span>
-                    ))}
-                  </div>
-                )}
 
                 <div className="mt-4 flex items-center gap-2 border-t border-[var(--border)] pt-4">
-                  <button
-                    type="button"
-                    onClick={() => handleEdit(employee)}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] py-2 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--background)]"
-                  >
-                    <PencilLine size={14} />
-                    Editar
-                  </button>
-                  <Link
-                    href={`/admin/empleados/${employee.id}`}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] py-2 text-sm font-medium text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]"
-                  >
-                    <ArrowLeft size={14} className="rotate-180" />
-                    Perfil
-                  </Link>
+                  {showInactive ? (
+                    <button
+                      type="button"
+                      onClick={() => handleRestoreEmployee(employee.id)}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--hover)] py-2 text-sm font-semibold text-[var(--hover)] transition hover:bg-[var(--hover)]/10"
+                    >
+                      <Undo2 size={14} />
+                      Restaurar
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(employee)}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] py-2 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--background)]"
+                      >
+                        <PencilLine size={14} />
+                        Editar
+                      </button>
+                      <Link
+                        href={`/admin/empleados/${employee.id}`}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] py-2 text-sm font-medium text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]"
+                      >
+                        <ArrowLeft size={14} className="rotate-180" />
+                        Perfil
+                      </Link>
+                    </>
+                  )}
                 </div>
               </article>
             ))
@@ -383,88 +459,118 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Nombres" required>
-              <input
-                value={draft.nombres}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, nombres: event.target.value }))
-                }
-                className={inputClassName}
-                placeholder="Nombres"
-              />
-            </Field>
-            <Field label="Apellidos" required>
-              <input
-                value={draft.apellidos}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, apellidos: event.target.value }))
-                }
-                className={inputClassName}
-                placeholder="Apellidos"
-              />
-            </Field>
-            <Field label="Telefono">
-              <input
-                value={draft.telefono}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, telefono: event.target.value }))
-                }
-                className={inputClassName}
-                placeholder="999 999 999"
-              />
-            </Field>
-            <Field label="Email">
-              <input
-                value={draft.correo_electronico}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, correo_electronico: event.target.value }))
-                }
-                className={inputClassName}
-                placeholder="correo@negocio.com"
-              />
-            </Field>
-            <Field label="Estado">
-              <select
-                value={draft.esta_activo ? "Activo" : "Inactivo"}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    esta_activo: event.target.value === "Activo",
-                  }))
-                }
-                className={inputClassName}
-              >
-                <option>Activo</option>
-                <option>Inactivo</option>
-              </select>
-            </Field>
-          </div>
+          <div className="grid gap-6 lg:grid-cols-[200px_1fr] items-start">
+            <div className="flex flex-col items-center">
+              <p className="mb-2 text-sm font-medium text-[var(--foreground)]">Foto de perfil</p>
+              <div className="flex flex-col items-center gap-3">
+                  <div className={`flex h-40 w-40 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] ${!draft.imagen_url ? "bg-[var(--background)]" : ""}`}>
+                    {draft.imagen_url ? (
+                      <img src={draft.imagen_url} alt="Vista previa" className="h-full w-full object-cover" />
+                    ) : (
+                      <UserRound size={40} className="text-[var(--text-muted)]" />
+                    )}
+                  </div>
+                  <CloudinaryUpload
+                    cloudName={process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!}
+                    uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!}
+                    onUpload={(url) => setDraft((c) => ({ ...c, imagen_url: url }))}
+                  />
+                  {draft.imagen_url && (
+                    <button
+                      type="button"
+                      onClick={() => setDraft((c) => ({ ...c, imagen_url: "" }))}
+                      className="text-xs text-[var(--destructive)] underline transition hover:opacity-80"
+                    >
+                      Quitar foto
+                    </button>
+                  )}
+                </div>
+            </div>
 
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <Field label={`Clave ${mode === "edit" ? "(dejar en blanco para no cambiar)" : ""}`}>
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className={inputClassName}
-                placeholder={mode === "create" ? "Clave de acceso" : "Nueva clave (opcional)"}
-              />
-            </Field>
-            <Field label="Confirmar clave">
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                className={inputClassName}
-                placeholder={mode === "create" ? "Repetir clave de acceso" : "Repetir nueva clave"}
-              />
-            </Field>
-          </div>
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Nombres" required>
+                  <input
+                    value={draft.nombres}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, nombres: event.target.value }))
+                    }
+                    className={inputClassName}
+                    placeholder="Nombres"
+                  />
+                </Field>
+                <Field label="Apellidos" required>
+                  <input
+                    value={draft.apellidos}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, apellidos: event.target.value }))
+                    }
+                    className={inputClassName}
+                    placeholder="Apellidos"
+                  />
+                </Field>
+                <Field label="Telefono">
+                  <input
+                    value={draft.telefono}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, telefono: event.target.value }))
+                    }
+                    className={inputClassName}
+                    placeholder="999 999 999"
+                  />
+                </Field>
+                <Field label="Email">
+                  <input
+                    value={draft.correo_electronico}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, correo_electronico: event.target.value }))
+                    }
+                    className={inputClassName}
+                    placeholder="correo@negocio.com"
+                  />
+                </Field>
+                {mode === "edit" && selectedEmployee && (
+                  <>
+                    <Field label="Creado">
+                      <div className={inputClassName + " bg-[var(--background)] text-[var(--text-muted)]"}>
+                        {formatDate(selectedEmployee.creadoEn)}
+                      </div>
+                    </Field>
+                    <Field label="Actualizado">
+                      <div className={inputClassName + " bg-[var(--background)] text-[var(--text-muted)]"}>
+                        {formatDate(selectedEmployee.actualizadoEn)}
+                      </div>
+                    </Field>
+                  </>
+                )}
+              </div>
 
-          {passwordError && (
-            <p className="mt-3 text-sm text-[var(--destructive)]">{passwordError}</p>
-          )}
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label={`Clave ${mode === "edit" ? "(dejar en blanco para no cambiar)" : ""}`}>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    className={inputClassName}
+                    placeholder={mode === "create" ? "Clave de acceso" : "Nueva clave (opcional)"}
+                  />
+                </Field>
+                <Field label="Confirmar clave">
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    className={inputClassName}
+                    placeholder={mode === "create" ? "Repetir clave de acceso" : "Repetir nueva clave"}
+                  />
+                </Field>
+              </div>
+
+              {passwordError && (
+                <p className="text-sm text-[var(--destructive)]">{passwordError}</p>
+              )}
+            </div>
+          </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-6">
             <button
@@ -476,6 +582,16 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
               {saving && <Loader2 size={16} className="animate-spin" />}
               {mode === "create" ? "Crear empleado" : "Guardar cambios"}
             </button>
+            {mode === "edit" && (
+              <button
+                type="button"
+                onClick={() => setIsDeleteOpen(true)}
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-5 py-2.5 text-sm font-semibold text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]"
+              >
+                <Trash2 size={16} />
+                Desactivar
+              </button>
+            )}
             <button
               type="button"
               onClick={handleBack}
@@ -500,8 +616,23 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={handleSave}
       />
+
+      <ConfirmationModal
+        open={isDeleteOpen}
+        title="Desactivar empleado"
+        description="El empleado pasara a estado inactivo. Podras restaurarlo desde la papelera."
+        confirmLabel="Si, desactivar"
+        onClose={() => setIsDeleteOpen(false)}
+        onConfirm={handleDesactivate}
+      />
     </>
   );
+}
+
+function formatDate(iso: string): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
@@ -528,5 +659,6 @@ function toDraft(employee?: Employee): EmployeeDraft {
     specialties: employee.specialties.join(", "),
     weeklyLoad: employee.weeklyLoad,
     commission: employee.commission,
+    imagen_url: employee.imagenUrl ?? "",
   };
 }

@@ -8,7 +8,7 @@ import { CustomersService } from "@/services/customers.service";
 import { RewardsService } from "@/services/rewards.service";
 import { X } from "lucide-react";
 
-type Tab = "cliente" | "admin";
+type Tab = "cliente" | "registro" | "admin";
 
 export function CustomerAuthModal() {
   const { session, modalOpen, closeModal, login, logout, refreshPoints } = useCustomerAuth();
@@ -22,7 +22,57 @@ export function CustomerAuthModal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [regNombres, setRegNombres] = useState("");
+  const [regApellidos, setRegApellidos] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regDni, setRegDni] = useState("");
+  const [regTelefono, setRegTelefono] = useState("");
+  const [regFechaNacimiento, setRegFechaNacimiento] = useState("");
+  const [regSuccess, setRegSuccess] = useState(false);
+
   if (!modalOpen) return null;
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regNombres || !regDni) return;
+    setLoading(true);
+    setError("");
+    try {
+      const existente = await CustomersService.findByDni(regDni);
+      if (existente) {
+        setError("Ya existe un cliente con ese DNI. Usa la pestaña Cliente para ingresar.");
+        setLoading(false);
+        return;
+      }
+      const nuevo = await CustomersService.create({
+        nombres: regNombres,
+        apellidos: regApellidos || undefined,
+        dni: regDni,
+        telefono: regTelefono || undefined,
+        correoElectronico: regEmail || undefined,
+        fechaNacimiento: regFechaNacimiento || undefined,
+      });
+      await login(nuevo.id, nuevo.nombres);
+      try {
+        await RewardsService.claimWelcomeReward(nuevo.id);
+      } catch {}
+      setRegSuccess(true);
+      setTimeout(() => {
+        closeModal();
+        setRegSuccess(false);
+        setRegNombres("");
+        setRegApellidos("");
+        setRegEmail("");
+        setRegDni("");
+        setRegTelefono("");
+        setRegFechaNacimiento("");
+      }, 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al crear la cuenta");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCustomerLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,18 +112,38 @@ export function CustomerAuthModal() {
     setLoading(true);
     setError("");
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (authError) {
-        setError(authError.message === "Invalid login credentials"
-          ? "Credenciales incorrectas"
-          : authError.message);
+      // 1. Intentar signIn directo
+      let { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+
+      // 2. Si falla, sincronizar via API y reintentar
+      if (authError || !authData.session) {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Credenciales incorrectas");
+
+        const second = await supabase.auth.signInWithPassword({ email, password });
+        authData = second.data;
+        authError = second.error;
+      }
+
+      if (authError || !authData?.session) {
+        setError("Credenciales incorrectas");
         return;
       }
+
+      // Determinar rol y redirigir
+      const { data: usuario } = await supabase
+        .from("usuarios")
+        .select("rol")
+        .eq("auth_user_id", authData.session.user.id)
+        .single();
+
       closeModal();
-      router.push("/admin");
+      router.push(usuario?.rol === "empleado" ? "/empleado" : "/admin");
     } catch {
       setError("Error al conectar");
     } finally {
@@ -100,7 +170,7 @@ export function CustomerAuthModal() {
         <div className="flex border-b border-transparent/10/10">
           <button
             type="button"
-            onClick={() => setTab("cliente")}
+            onClick={() => { setTab("cliente"); setError(""); }}
             className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-[0.15em] transition ${
               tab === "cliente" ? "bg-black text-white" : "bg-[var(--background)] text-neutral-500 hover:text-[var(--foreground)]"
             }`}
@@ -109,7 +179,7 @@ export function CustomerAuthModal() {
           </button>
           <button
             type="button"
-            onClick={() => setTab("admin")}
+            onClick={() => { setTab("admin"); setError(""); }}
             className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-[0.15em] transition ${
               tab === "admin" ? "bg-black text-white" : "bg-[var(--background)] text-neutral-500 hover:text-[var(--foreground)]"
             }`}
@@ -179,6 +249,53 @@ export function CustomerAuthModal() {
             </button>
             {error && <p className="text-[10px] font-semibold text-red-600 text-center">{error}</p>}
           </form>
+        ) : tab === "registro" ? (
+          <form onSubmit={handleRegister} className="px-6 py-8 space-y-3">
+            {regSuccess ? (
+              <div className="text-center space-y-3">
+                <p className="text-lg font-bold">¡Registro exitoso!</p>
+                <p className="text-sm text-[var(--text-muted)]">+50 puntos de bienvenida</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center mb-2">
+                  Crea tu cuenta de cliente
+                </p>
+                <label className="space-y-1 block">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Nombres</span>
+                  <input required type="text" value={regNombres} onChange={(e) => setRegNombres(e.target.value)} placeholder="Tus nombres" className={inputClassName} />
+                </label>
+                <label className="space-y-1 block">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Apellidos</span>
+                  <input type="text" value={regApellidos} onChange={(e) => setRegApellidos(e.target.value)} placeholder="Tus apellidos" className={inputClassName} />
+                </label>
+                <label className="space-y-1 block">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">DNI</span>
+                  <input required type="text" value={regDni} onChange={(e) => setRegDni(e.target.value)} placeholder="12345678" className={inputClassName} />
+                </label>
+                <label className="space-y-1 block">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Email (opcional)</span>
+                  <input type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="correo@ejemplo.com" className={inputClassName} />
+                </label>
+                <label className="space-y-1 block">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Teléfono (opcional)</span>
+                  <input type="text" value={regTelefono} onChange={(e) => setRegTelefono(e.target.value)} placeholder="999 999 999" className={inputClassName} />
+                </label>
+                <label className="space-y-1 block">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Fecha de nacimiento (opcional)</span>
+                  <input type="date" value={regFechaNacimiento} onChange={(e) => setRegFechaNacimiento(e.target.value)} className={inputClassName} />
+                </label>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-black px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-80 disabled:opacity-40"
+                >
+                  {loading ? "Registrando..." : "Registrarme"}
+                </button>
+                {error && <p className="text-[10px] font-semibold text-red-600 text-center">{error}</p>}
+              </>
+            )}
+          </form>
         ) : (
           <form onSubmit={handleAdminLogin} className="px-6 py-8 space-y-4">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center mb-4">
@@ -218,15 +335,28 @@ export function CustomerAuthModal() {
         )}
 
         {/* Pie */}
-        <div className="border-t border-transparent/10/10 px-6 py-3 text-center">
-          <a
-            href="/promocion"
-            onClick={(e) => { e.preventDefault(); closeModal(); }}
-            className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--foreground)] transition"
-          >
-            ¿No tienes cuenta? Regístrate aquí
-          </a>
-        </div>
+        {tab === "cliente" && (
+          <div className="border-t border-transparent/10/10 px-6 py-3 text-center">
+            <button
+              type="button"
+              onClick={() => { setTab("registro"); setError(""); }}
+              className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--foreground)] transition"
+            >
+              ¿No tienes cuenta? Regístrate aquí
+            </button>
+          </div>
+        )}
+        {tab === "registro" && (
+          <div className="border-t border-transparent/10/10 px-6 py-3 text-center">
+            <button
+              type="button"
+              onClick={() => { setTab("cliente"); setError(""); }}
+              className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--foreground)] transition"
+            >
+              ¿Ya tienes cuenta? Ingresa aquí
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

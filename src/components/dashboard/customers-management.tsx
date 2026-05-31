@@ -1,26 +1,35 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, PencilLine, Phone, Search, Trash2, UserRound, Users, X } from "lucide-react";
+import { ArrowLeft, Calendar, PencilLine, Phone, Search, Trash2, Undo2, UserRound, Users, X } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { CustomersService } from "@/services/customers.service";
+import { createClient } from "@/lib/supabase/client";
 import type { Customer } from "@/types/customer";
 
 type CustomerRecord = {
   id: string;
   name: string;
+  nombres: string;
+  apellidos: string;
   phone: string;
   email: string;
   dni: string;
+  fechaNacimiento: string;
+  estaActivo: boolean;
 };
 
 const emptyDraft: CustomerRecord = {
   id: "",
   name: "",
+  nombres: "",
+  apellidos: "",
   phone: "",
   email: "",
   dni: "",
+  fechaNacimiento: "",
+  estaActivo: true,
 };
 
 const inputClassName =
@@ -33,8 +42,11 @@ type Props = {
 };
 
 export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono }: Props) {
+  const supabase = createClient();
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
+  const [inactiveCustomers, setInactiveCustomers] = useState<CustomerRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showInactive, setShowInactive] = useState(false);
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<"list" | "edit">("list");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -53,15 +65,52 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
           data.map((c) => ({
             id: c.id,
             name: `${c.nombres} ${c.apellidos ?? ""}`.trim(),
+            nombres: c.nombres,
+            apellidos: c.apellidos ?? "",
             phone: c.telefono ?? "",
             email: c.correoElectronico ?? "",
             dni: c.dni ?? "",
+            fechaNacimiento: c.fechaNacimiento ?? "",
+            estaActivo: c.estaActivo,
           })),
         );
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!showInactive) return;
+    setLoading(true);
+    (async () => {
+      const { data } = await supabase
+        .from("clientes")
+        .select("*")
+        .eq("esta_activo", false)
+        .order("creado_en", { ascending: false });
+      if (data) {
+        setInactiveCustomers(
+          data.map((c: Record<string, unknown>) => ({
+            id: c.id as string,
+            name: `${c.nombres as string} ${(c.apellidos as string) ?? ""}`.trim(),
+            nombres: c.nombres as string,
+            apellidos: (c.apellidos as string) ?? "",
+            phone: (c.telefono as string) ?? "",
+            email: (c.correo_electronico as string) ?? "",
+            dni: (c.dni as string) ?? "",
+            fechaNacimiento: (c.fecha_nacimiento as string) ?? "",
+            estaActivo: false,
+          })),
+        );
+      }
+      setLoading(false);
+    })();
+  }, [showInactive]);
+
+  const handleRestore = async (id: string) => {
+    await supabase.from("clientes").update({ esta_activo: true }).eq("id", id);
+    setInactiveCustomers((prev) => prev.filter((c) => c.id !== id));
+  };
 
   const filteredCustomers = useMemo(() => {
     return customers.filter((customer) => {
@@ -79,7 +128,20 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
   const totalPages = Math.ceil(filteredCustomers.length / pageSize);
   const paginatedCustomers = filteredCustomers.slice((page - 1) * pageSize, page * pageSize);
 
-  const selectedCustomer = customers.find((customer) => customer.id === selectedId);
+  const filteredInactive = useMemo(() => {
+    return inactiveCustomers.filter((c) =>
+      c.name.toLowerCase().includes(query.toLowerCase()) ||
+      c.phone.toLowerCase().includes(query.toLowerCase()) ||
+      c.email.toLowerCase().includes(query.toLowerCase()) ||
+      c.dni.toLowerCase().includes(query.toLowerCase())
+    );
+  }, [inactiveCustomers, query]);
+  const totalPagesInactive = Math.ceil(filteredInactive.length / pageSize);
+  const paginatedInactive = filteredInactive.slice((page - 1) * pageSize, page * pageSize);
+
+  const selectedCustomer = showInactive
+    ? inactiveCustomers.find((c) => c.id === selectedId)
+    : customers.find((customer) => customer.id === selectedId);
 
   const handleEdit = (customer: CustomerRecord) => {
     setSelectedId(customer.id);
@@ -94,20 +156,19 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
   };
 
   const handleSave = async () => {
-    if (!selectedId || !draft.name) return;
+    if (!selectedId || !draft.nombres) return;
     setSaving(true);
     try {
-      const nameParts = draft.name.trim().split(/\s+/);
-      const nombres = nameParts.slice(0, -1).join(" ") || nameParts[0] || "";
-      const apellidos = nameParts.slice(-1).join("") || "";
       await CustomersService.update(selectedId, {
-        nombres,
-        apellidos: apellidos || undefined,
+        nombres: draft.nombres,
+        apellidos: draft.apellidos || undefined,
         telefono: draft.phone || undefined,
         correoElectronico: draft.email || undefined,
+        dni: draft.dni || undefined,
+        fechaNacimiento: draft.fechaNacimiento || undefined,
       });
       setCustomers((prev) =>
-        prev.map((c) => (c.id === selectedId ? { ...draft } : c)),
+        prev.map((c) => (c.id === selectedId ? { ...draft, name: `${draft.nombres} ${draft.apellidos}`.trim() } : c)),
       );
       setMode("list");
       setSelectedId(null);
@@ -123,7 +184,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
   const handleDelete = async () => {
     if (!selectedId) return;
     try {
-      await CustomersService.delete(selectedId);
+      await CustomersService.remove(selectedId);
       const next = customers.filter((c) => c.id !== selectedId);
       setCustomers(next);
       setMode("list");
@@ -176,21 +237,39 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
       <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-[var(--foreground)]">Clientes registrados</p>
+            <p className="text-sm font-semibold text-[var(--foreground)]">
+              {showInactive ? "Clientes desactivados" : "Clientes registrados"}
+            </p>
             <p className="mt-1 text-sm text-[var(--text-muted)]">
-              {customers.length} cliente(s) en el sistema
+              {showInactive
+                ? `${inactiveCustomers.length} cliente(s) en papelera`
+                : `${customers.length} cliente(s) en el sistema`}
             </p>
           </div>
-          {mode === "edit" && (
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={handleBack}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--background)]"
+              onClick={() => { setShowInactive((v) => !v); setQuery(""); setPage(1); }}
+              className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                showInactive
+                  ? "border-[var(--destructive-border)] bg-[var(--destructive-hover)] text-[var(--destructive)]"
+                  : "border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--background)] hover:text-[var(--foreground)]"
+              }`}
             >
-              <ArrowLeft size={16} />
-              Volver al listado
+              <Trash2 size={16} />
+              Papelera
             </button>
-          )}
+            {mode === "edit" && (
+              <button
+                type="button"
+                onClick={handleBack}
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--background)]"
+              >
+                <ArrowLeft size={16} />
+                Volver al listado
+              </button>
+            )}
+          </div>
         </div>
 
         {mode === "list" && (
@@ -207,7 +286,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
       </div>
 
       {/* Listado */}
-      {mode === "list" && (
+      {mode === "list" && !showInactive && (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {paginatedCustomers.length === 0 ? (
@@ -221,22 +300,50 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
             paginatedCustomers.map((customer) => (
               <article
                 key={customer.id}
-                className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--background)] text-[var(--foreground)]">
-                    <UserRound size={20} />
+                <div className="flex items-start gap-5">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[var(--background)]">
+                    <UserRound size={28} className="text-[var(--text-muted)]" />
                   </div>
-                </div>
-
-                <div className="mt-3">
-                  <p className="text-base font-semibold text-[var(--foreground)]">{customer.name}</p>
-                </div>
-
-                <div className="mt-2 space-y-1 text-sm text-[var(--text-muted)]">
-                  {customer.phone && <p>{customer.phone}</p>}
-                  {customer.email && <p className="truncate">{customer.email}</p>}
-                  {customer.dni && <p className="text-xs">DNI: {customer.dni}</p>}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="truncate text-base font-semibold text-[var(--foreground)]">{customer.nombres} {customer.apellidos}</p>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                        customer.estaActivo
+                          ? "bg-[var(--hover)]/15 text-[var(--hover)]"
+                          : "bg-[var(--warning)]/15 text-[var(--warning)]"
+                      }`}>
+                        {customer.estaActivo ? "Activo" : "Inactivo"}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      {customer.email && (
+                        <span className="rounded-full bg-[var(--background)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">
+                          {customer.email}
+                        </span>
+                      )}
+                      {customer.fechaNacimiento && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--background)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">
+                          <Calendar size={10} />
+                          {new Date(customer.fechaNacimiento).toLocaleDateString("es-PE")}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      {customer.dni && (
+                        <span className="rounded-full bg-[var(--background)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">
+                          DNI: {customer.dni}
+                        </span>
+                      )}
+                      {customer.phone && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--hover)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--hover)]">
+                          <Phone size={10} />
+                          {customer.phone}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="mt-4 flex items-center gap-2 border-t border-[var(--border)] pt-4">
@@ -253,7 +360,82 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
             ))
           )}
         </div>
-        {/* <Pagination page={page} totalPages={totalPages} onPageChange={setPage} /> */}
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+        </>
+      )}
+
+      {/* Papelera */}
+      {mode === "list" && showInactive && (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {paginatedInactive.length === 0 ? (
+            <div className="col-span-full flex flex-col items-center gap-3 py-16">
+              <Trash2 size={32} className="text-[var(--text-muted)]" />
+              <p className="text-sm text-[var(--text-muted)]">
+                {query ? "No se encontraron clientes con esos filtros." : "No hay clientes en la papelera."}
+              </p>
+            </div>
+          ) : (
+            paginatedInactive.map((customer) => (
+              <article
+                key={customer.id}
+                className="rounded-3xl border border-[var(--warning)]/20 bg-[var(--background-secondary)] p-6 shadow-sm"
+              >
+                <div className="flex items-start gap-5">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[var(--warning)]/10">
+                    <UserRound size={28} className="text-[var(--warning)]" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="truncate text-base font-semibold text-[var(--foreground)]">{customer.nombres} {customer.apellidos}</p>
+                      <span className="shrink-0 rounded-full bg-[var(--warning)]/15 px-2 py-0.5 text-[10px] font-semibold text-[var(--warning)]">
+                        Inactivo
+                      </span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      {customer.email && (
+                        <span className="rounded-full bg-[var(--background)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">
+                          {customer.email}
+                        </span>
+                      )}
+                      {customer.fechaNacimiento && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--background)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">
+                          <Calendar size={10} />
+                          {new Date(customer.fechaNacimiento).toLocaleDateString("es-PE")}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      {customer.dni && (
+                        <span className="rounded-full bg-[var(--background)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">
+                          DNI: {customer.dni}
+                        </span>
+                      )}
+                      {customer.phone && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--hover)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--hover)]">
+                          <Phone size={10} />
+                          {customer.phone}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center gap-2 border-t border-[var(--border)] pt-4">
+                  <button
+                    type="button"
+                    onClick={() => handleRestore(customer.id)}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--hover)] py-2 text-sm font-semibold text-[var(--hover)] transition hover:bg-[var(--hover)]/10"
+                  >
+                    <Undo2 size={14} />
+                    Restaurar
+                  </button>
+                </div>
+              </article>
+            ))
+          )}
+        </div>
+        <Pagination page={page} totalPages={totalPagesInactive} onPageChange={setPage} />
         </>
       )}
 
@@ -273,12 +455,20 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Nombre completo" required>
+            <Field label="Nombres" required>
               <input
                 className={inputClassName}
-                value={draft.name}
-                onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
-                placeholder="Nombres y apellidos"
+                value={draft.nombres}
+                onChange={(event) => setDraft((current) => ({ ...current, nombres: event.target.value }))}
+                placeholder="Nombres"
+              />
+            </Field>
+            <Field label="Apellidos">
+              <input
+                className={inputClassName}
+                value={draft.apellidos}
+                onChange={(event) => setDraft((current) => ({ ...current, apellidos: event.target.value }))}
+                placeholder="Apellidos"
               />
             </Field>
             <Field label="Telefono">
@@ -305,13 +495,21 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
                 placeholder="12345678"
               />
             </Field>
+            <Field label="Fecha de nacimiento">
+              <input
+                type="date"
+                className={inputClassName}
+                value={draft.fechaNacimiento ? draft.fechaNacimiento.slice(0, 10) : ""}
+                onChange={(event) => setDraft((current) => ({ ...current, fechaNacimiento: event.target.value }))}
+              />
+            </Field>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-6">
             <button
               type="button"
               onClick={() => setIsConfirmOpen(true)}
-              disabled={!draft.name || saving}
+              disabled={!draft.nombres || saving}
               className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50"
             >
               <PencilLine size={16} />
@@ -323,7 +521,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
               className="inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-5 py-2.5 text-sm font-semibold text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]"
             >
               <Trash2 size={16} />
-              Eliminar cliente
+              Desactivar cliente
             </button>
             <button
               type="button"
@@ -349,7 +547,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
       <ConfirmationModal
         open={isDeleteConfirmOpen}
         title="Confirmar eliminacion"
-        description="Este cliente se eliminara del sistema."
+        description="El cliente se desactivara. No perdera sus datos ni historial."
         confirmLabel="Si, eliminar"
         onClose={() => setIsDeleteConfirmOpen(false)}
         onConfirm={handleDelete}

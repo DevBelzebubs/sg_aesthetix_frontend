@@ -10,6 +10,7 @@ export type EmployeeRow = {
   creado_en: string;
   actualizado_en: string;
   auth_user_id: string | null;
+  imagen_url: string | null;
 };
 
 export type Employee = {
@@ -27,6 +28,7 @@ export type Employee = {
   auth_user_id: string | null;
   creadoEn: string;
   actualizadoEn: string;
+  imagenUrl: string | null;
 };
 
 export type EmployeeDraft = {
@@ -39,6 +41,7 @@ export type EmployeeDraft = {
   specialties: string;
   weeklyLoad: string;
   commission: string;
+  imagen_url: string;
 };
 
 export type EmployeeFilter = "Todos" | "Activo" | "Inactivo";

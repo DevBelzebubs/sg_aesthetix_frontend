@@ -1,7 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Shield,
   LayoutDashboard,
@@ -12,15 +13,19 @@ import {
   Image,
   Scissors,
   Star,
-  Building2,
   ArrowLeft,
   Menu,
   X,
   Sun,
   Moon,
+  Tag,
+  Folder,
+  Settings,
+  ShoppingCart,
+  ArrowDownToLine,
+  PackagePlus,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/contexts/theme-context";
 
@@ -30,10 +35,15 @@ const navigation = [
   { href: "/admin/empleados", label: "Empleados", icon: Users },
   { href: "/admin/clientes", label: "Clientes", icon: User },
   { href: "/admin/servicios", label: "Servicios", icon: Scissors },
-  { href: "/admin/inventario", label: "Inventario", icon: Boxes },
+  { href: "/admin/inventario", label: "Productos", icon: Boxes },
+  { href: "/admin/ventas", label: "Ventas", icon: ShoppingCart },
   { href: "/admin/fidelizacion", label: "Fidelizacion", icon: Star },
   { href: "/admin/galeria", label: "Galeria", icon: Image },
-  { href: "/admin/configuracion/empresa", label: "Configuración", icon: Building2 },
+  { href: "/admin/categoria-productos", label: "Cat. Productos", icon: Tag },
+  { href: "/admin/categoria-servicios", label: "Cat. Servicios", icon: Folder },
+  { href: "/admin/movimientos-inventario", label: "Mov. Inventario", icon: ArrowDownToLine },
+  { href: "/admin/ingreso-mercaderia", label: "Ingr. Mercaderia", icon: PackagePlus },
+  { href: "/admin/configuracion/puntos", label: "Config. Puntos", icon: Settings },
 ];
 
 function Sidebar({ onClose }: { onClose?: () => void }) {
@@ -45,7 +55,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
     <div className="flex h-full flex-col">
       <div className="px-2">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Menu</p>
-        <p className="pt-1 text-lg font-bold text-[var(--foreground)]">ZONA FADE</p>
+        <p className="pt-1 text-lg font-bold text-[var(--foreground)]">PANEL ADMIN</p>
       </div>
 
       <div
@@ -124,13 +134,32 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
+  const { isReady, isAuthenticated, role } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isReady) return;
+    if (!isAuthenticated) {
+      router.replace("/home");
+    } else if (role === "empleado") {
+      router.replace("/empleado");
+    }
+  }, [isReady, isAuthenticated, role, router]);
+
+  if (!isReady) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
+        <div className="h-4 w-4 animate-pulse rounded-full bg-[var(--text-muted)]" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
 
       {/* Header mobile */}
       <header className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--background-secondary)] px-4 py-3 lg:hidden">
-        <p className="text-base font-bold text-[var(--foreground)]">ZONA FADE</p>
+        <p className="text-base font-bold text-[var(--foreground)]">PANEL ADMIN</p>
         <div className="flex items-center gap-2">
           <button
             type="button"

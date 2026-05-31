@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { KeyRound, Loader2, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import bcrypt from "bcryptjs";
 
 const inputClassName =
   "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
@@ -27,9 +28,10 @@ export function EmployeePasswordSection({ userId }: Props) {
     setError("");
     setSuccess(false);
     try {
+      const hash = await bcrypt.hash(password, 10);
       const { error: updateError } = await supabase
         .from("usuarios")
-        .update({ clave_hash: password })
+        .update({ clave_hash: hash })
         .eq("id", userId);
       if (updateError) throw new Error(updateError.message);
       setSuccess(true);

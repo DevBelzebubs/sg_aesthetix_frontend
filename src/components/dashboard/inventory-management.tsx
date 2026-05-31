@@ -20,6 +20,7 @@ type Product = {
   puntos_otorgados: number;
   esta_activo: boolean;
   destacado: boolean;
+  publico: boolean;
   categoria_producto_id: number;
 };
 
@@ -37,6 +38,7 @@ const emptyDraft: ProductDraft = {
   puntos_otorgados: 0,
   esta_activo: true,
   destacado: false,
+  publico: false,
   categoria_producto_id: 1,
 };
 
@@ -255,13 +257,17 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
             </div>
             <Field label="Precio costo"><input type="number" className={inputClassName} value={draft.precio_costo ?? 0} onChange={(e) => setDraft((d) => ({ ...d, precio_costo: Number(e.target.value) }))} /></Field>
             <Field label="Precio venta"><input type="number" className={inputClassName} value={draft.precio_venta} onChange={(e) => setDraft((d) => ({ ...d, precio_venta: Number(e.target.value) }))} /></Field>
-            <Field label="Stock actual"><input type="number" className={inputClassName} value={draft.stock_actual} onChange={(e) => setDraft((d) => ({ ...d, stock_actual: Number(e.target.value) }))} /></Field>
-            <Field label="Stock minimo"><input type="number" className={inputClassName} value={draft.stock_minimo} onChange={(e) => setDraft((d) => ({ ...d, stock_minimo: Number(e.target.value) }))} /></Field>
             <Field label="Puntos otorgados"><input type="number" className={inputClassName} value={draft.puntos_otorgados} onChange={(e) => setDraft((d) => ({ ...d, puntos_otorgados: Number(e.target.value) }))} /></Field>
             <Field label="Estado">
               <select className={inputClassName} value={draft.esta_activo ? "activo" : "inactivo"} onChange={(e) => setDraft((d) => ({ ...d, esta_activo: e.target.value === "activo" }))}>
                 <option value="activo">Activo</option>
                 <option value="inactivo">Inactivo</option>
+              </select>
+            </Field>
+            <Field label="Visible en tienda">
+              <select className={inputClassName} value={draft.publico ? "si" : "no"} onChange={(e) => setDraft((d) => ({ ...d, publico: e.target.value === "si" }))}>
+                <option value="si">Si - Mostrar en la tienda publica</option>
+                <option value="no">No - Solo panel admin</option>
               </select>
             </Field>
           </div>
@@ -294,5 +300,5 @@ function Field({ label, required, children }: { label: string; required?: boolea
 }
 
 function toDraft(item: Product): ProductDraft {
-  return { nombre: item.nombre, descripcion: item.descripcion, imagen_url: item.imagen_url ?? "", sku: item.sku, precio_costo: item.precio_costo, precio_venta: item.precio_venta, stock_actual: item.stock_actual, stock_minimo: item.stock_minimo, puntos_otorgados: item.puntos_otorgados, esta_activo: item.esta_activo, destacado: item.destacado, categoria_producto_id: item.categoria_producto_id };
+  return { nombre: item.nombre, descripcion: item.descripcion, imagen_url: item.imagen_url ?? "", sku: item.sku, precio_costo: item.precio_costo, precio_venta: item.precio_venta, stock_actual: item.stock_actual, stock_minimo: item.stock_minimo, puntos_otorgados: item.puntos_otorgados, esta_activo: item.esta_activo, destacado: item.destacado, publico: item.publico, categoria_producto_id: item.categoria_producto_id };
 }

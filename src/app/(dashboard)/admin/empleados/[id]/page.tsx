@@ -91,10 +91,14 @@ export default async function EmpleadoDetailPage({ params }: EmpleadoDetailPageP
         <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
             <div
-              className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl"
-              style={{ background: "color-mix(in srgb, var(--hover) 15%, var(--background))" }}
+              className={`flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl ${!employee.imagenUrl ? "" : ""}`}
+              style={{ background: employee.imagenUrl ? "transparent" : "color-mix(in srgb, var(--hover) 15%, var(--background))" }}
             >
-              <UserRound size={28} style={{ color: "var(--hover)" }} />
+              {employee.imagenUrl ? (
+                <img src={employee.imagenUrl} alt={employee.name} className="h-full w-full object-cover" />
+              ) : (
+                <UserRound size={28} style={{ color: "var(--hover)" }} />
+              )}
             </div>
 
             <div className="min-w-0 flex-1">
