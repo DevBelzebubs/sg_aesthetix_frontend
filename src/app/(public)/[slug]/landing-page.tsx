@@ -588,7 +588,7 @@ export default function LandingPage({
             />
             <div className="mb-3 flex items-center gap-3">
               <p className="text-xs font-semibold tracking-[0.2em] uppercase text-[var(--text-muted)]">
-                San Miguel · Barbería
+                Barbería
               </p>
               <StoreStatus />
             </div>
@@ -636,7 +636,7 @@ export default function LandingPage({
                   className="text-xs font-semibold tracking-[0.2em] uppercase"
                   style={{ color: "var(--hover)" }}
                 >
-                  San Miguel · Barbería
+                  Barbería
                 </p>
                 <StoreStatus />
               </div>

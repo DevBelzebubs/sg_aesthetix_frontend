@@ -438,7 +438,7 @@ export function BookingForm({
                     setIsSubmitted(false);
                   }}
                   className={`flex items-center justify-between px-5 py-4 text-left transition ${
-                    isActive ? "bg-[var(--background)] text-white" : "bg-[var(--background-secondary)] hover:bg-[var(--background-secondary)]"
+                    isActive ? "bg-[var(--background)] text-white" : "bg-[var(--background-secondary)] hover:opacity-75"
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -494,7 +494,7 @@ export function BookingForm({
                     className={`px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest transition ${
                       isActive
                         ? "bg-black text-white"
-                        : "bg-[var(--background)] text-[var(--text-muted)] hover:bg-[var(--background)] hover:text-[var(--foreground)]"
+                        : "bg-[var(--background)] text-[var(--text-muted)] hover:opacity-75"
                     }`}
                   >
                     {month.label}
@@ -539,7 +539,7 @@ export function BookingForm({
                     isActive
                       ? "bg-black text-white"
                       : isAvailable
-                        ? "bg-[var(--background-secondary)] text-[var(--foreground)] hover:bg-[var(--background)]"
+                        ? "bg-[var(--background-secondary)] text-[var(--foreground)] hover:opacity-75"
                         : "bg-[var(--background-secondary)] text-[var(--text-muted)] cursor-default"
                   }`}
                 >
@@ -577,7 +577,7 @@ export function BookingForm({
                   className={`py-3 text-center text-xs font-bold uppercase tracking-wide transition ${
                     isActive
                       ? "bg-[var(--background)] text-white"
-                      : "bg-[var(--background-secondary)] text-[var(--foreground)] hover:bg-[var(--background-secondary)]"
+                      : "bg-[var(--background-secondary)] text-[var(--foreground)] hover:opacity-75"
                   }`}
                 >
                   {slot}
@@ -726,7 +726,7 @@ export function BookingForm({
                       setIsSubmitted(false);
                     }}
                     className={`px-4 py-3 text-left transition ${
-                      isActive ? "bg-[var(--background)] text-white" : "bg-[var(--background-secondary)] hover:bg-[var(--background-secondary)]"
+                      isActive ? "bg-[var(--background)] text-white" : "bg-[var(--background-secondary)] hover:opacity-75"
                     }`}
                   >
                     <p className="text-sm font-bold uppercase tracking-tight">{barber.name}</p>

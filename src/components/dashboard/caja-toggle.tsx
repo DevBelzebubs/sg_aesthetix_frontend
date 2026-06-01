@@ -12,11 +12,11 @@ export function CajaToggle() {
   const [toggling, setToggling] = useState(false);
   const [saldoInput, setSaldoInput] = useState("0");
   const [userId, setUserId] = useState<string | null>(null);
-  const channelRef = useRef<ReturnType<ReturnType<typeof createClient>["channel"]> | null>(null);
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
 
   useEffect(() => {
-    if (channelRef.current) return;
     const supabase = createClient();
+    supabaseRef.current = supabase;
 
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) setUserId(data.session.user.id);
@@ -28,14 +28,14 @@ export function CajaToggle() {
       setLoading(false);
     });
 
-    const channel = supabase.channel(`caja_changes_${Date.now()}`);
+    const channelId = Date.now();
+    const channel = supabase.channel(`caja_changes_${channelId}`);
     channel.on("postgres_changes", { event: "*", schema: "public", table: "caja" }, (payload) => {
       setCaja(payload.new as Caja);
     });
     channel.subscribe();
-    channelRef.current = channel;
 
-    return () => { supabase.removeChannel(channel); channelRef.current = null; };
+    return () => { supabase.removeChannel(channel); supabaseRef.current = null; };
   }, []);
 
   const handleToggle = async () => {
