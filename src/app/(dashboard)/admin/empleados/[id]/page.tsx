@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Calendar, Clock, Mail, Phone, UserRound } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Globe, Mail, Phone, UserRound } from "lucide-react";
 import { EmployeesService } from "@/services/employees.service";
 import { EmployeePasswordSection } from "@/components/dashboard/employee-password-section";
 import { ModulePageShell } from "@/components/dashboard/module-page-shell";
@@ -129,6 +129,43 @@ export default async function EmpleadoDetailPage({ params }: EmpleadoDetailPageP
                   {employee.phone || "Sin telefono"}
                 </span>
               </div>
+              {(employee.instagram || employee.facebook || employee.tiktok) && (
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-[var(--text-muted)]">
+                  {employee.instagram && (
+                    <a
+                      href={employee.instagram.startsWith("http") ? employee.instagram : `https://instagram.com/${employee.instagram.replace("@", "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 transition hover:text-[var(--hover)]"
+                    >
+                      <Globe size={14} />
+                      Instagram
+                    </a>
+                  )}
+                  {employee.facebook && (
+                    <a
+                      href={employee.facebook.startsWith("http") ? employee.facebook : `https://facebook.com/${employee.facebook}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 transition hover:text-[var(--hover)]"
+                    >
+                      <Globe size={14} />
+                      Facebook
+                    </a>
+                  )}
+                  {employee.tiktok && (
+                    <a
+                      href={employee.tiktok.startsWith("http") ? employee.tiktok : `https://tiktok.com/@${employee.tiktok.replace("@", "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 transition hover:text-[var(--hover)]"
+                    >
+                      <Globe size={14} />
+                      TikTok
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

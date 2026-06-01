@@ -12,6 +12,7 @@ function mapRecompensa(row: Record<string, unknown>): RecompensaPuntos {
     puntosRequeridos: row.puntos_requeridos as number,
     cantidadEntregada: row.cantidad_entregada as number,
     estaActivo: row.esta_activo as boolean,
+    imagenUrl: row.imagen_url as string | undefined,
     creadoEn: row.creado_en as string | undefined,
     actualizadoEn: row.actualizado_en as string | undefined,
   };
@@ -67,6 +68,7 @@ export const RecompensasService = {
     descripcion?: string;
     puntosRequeridos: number;
     cantidadEntregada: number;
+    imagenUrl?: string;
   }): Promise<RecompensaPuntos> {
     const supabase = createClient();
 
@@ -81,6 +83,7 @@ export const RecompensasService = {
         puntos_requeridos: recompensa.puntosRequeridos,
         cantidad_entregada: recompensa.cantidadEntregada,
         esta_activo: true,
+        imagen_url: recompensa.imagenUrl ?? null,
       })
       .select()
       .single();
@@ -98,6 +101,7 @@ export const RecompensasService = {
     tipoRecompensa: string;
     servicioId: string;
     productoId: string;
+    imagenUrl: string;
   }>): Promise<RecompensaPuntos> {
     const supabase = createClient();
 
@@ -110,6 +114,7 @@ export const RecompensasService = {
     if (data.tipoRecompensa !== undefined) payload.tipo_recompensa = data.tipoRecompensa;
     if (data.servicioId !== undefined) payload.servicio_id = data.servicioId;
     if (data.productoId !== undefined) payload.producto_id = data.productoId;
+    if (data.imagenUrl !== undefined) payload.imagen_url = data.imagenUrl;
     payload.actualizado_en = new Date().toISOString();
 
     const { error } = await supabase

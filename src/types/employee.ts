@@ -11,6 +11,9 @@ export type EmployeeRow = {
   actualizado_en: string;
   auth_user_id: string | null;
   imagen_url: string | null;
+  instagram: string | null;
+  facebook: string | null;
+  tiktok: string | null;
 };
 
 export type Employee = {
@@ -29,6 +32,9 @@ export type Employee = {
   creadoEn: string;
   actualizadoEn: string;
   imagenUrl: string | null;
+  instagram: string;
+  facebook: string;
+  tiktok: string;
 };
 
 export type EmployeeDraft = {
@@ -42,6 +48,9 @@ export type EmployeeDraft = {
   weeklyLoad: string;
   commission: string;
   imagen_url: string;
+  instagram: string;
+  facebook: string;
+  tiktok: string;
 };
 
 export type EmployeeFilter = "Todos" | "Activo" | "Inactivo";

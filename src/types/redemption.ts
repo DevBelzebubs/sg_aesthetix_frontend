@@ -8,6 +8,7 @@ export interface RecompensaPuntos {
   puntosRequeridos: number;
   cantidadEntregada: number;
   estaActivo: boolean;
+  imagenUrl?: string;
   creadoEn?: string;
   actualizadoEn?: string;
 }

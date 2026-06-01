@@ -19,6 +19,9 @@ function mapRowToEmployee(row: EmployeeRow, specialties: string[]): Employee {
     creadoEn: row.creado_en ?? "",
     actualizadoEn: row.actualizado_en ?? "",
     imagenUrl: row.imagen_url ?? null,
+    instagram: row.instagram ?? "",
+    facebook: row.facebook ?? "",
+    tiktok: row.tiktok ?? "",
   };
 }
 
@@ -86,6 +89,9 @@ export const EmployeesService = {
     clave_hash?: string;
     servicio_ids?: string[];
     imagen_url?: string;
+    instagram?: string;
+    facebook?: string;
+    tiktok?: string;
   }  ): Promise<Employee> {
     const supabase = createClient();
     const clave_hash = data.clave_hash ? await bcrypt.hash(data.clave_hash, 10) : "";
@@ -100,6 +106,9 @@ export const EmployeesService = {
         telefono: data.telefono || null,
         esta_activo: data.esta_activo,
         imagen_url: data.imagen_url || null,
+        instagram: data.instagram || null,
+        facebook: data.facebook || null,
+        tiktok: data.tiktok || null,
       })
       .select()
       .single();
@@ -128,6 +137,9 @@ export const EmployeesService = {
       clave_hash?: string;
       servicio_ids?: string[];
       imagen_url?: string;
+      instagram?: string;
+      facebook?: string;
+      tiktok?: string;
     },
   ): Promise<Employee> {
     const supabase = createClient();
@@ -139,6 +151,9 @@ export const EmployeesService = {
     if (data.esta_activo !== undefined) updateData.esta_activo = data.esta_activo;
     if (data.clave_hash !== undefined) updateData.clave_hash = await bcrypt.hash(data.clave_hash, 10);
     if (data.imagen_url !== undefined) updateData.imagen_url = data.imagen_url || null;
+    if (data.instagram !== undefined) updateData.instagram = data.instagram || null;
+    if (data.facebook !== undefined) updateData.facebook = data.facebook || null;
+    if (data.tiktok !== undefined) updateData.tiktok = data.tiktok || null;
     const { error } = await supabase.from("usuarios").update(updateData).eq("id", id);
     if (error) throw new Error(error.message);
     if (data.servicio_ids !== undefined) {

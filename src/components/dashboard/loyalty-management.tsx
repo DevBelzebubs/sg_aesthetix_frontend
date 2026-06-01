@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Gift, PencilLine, Plus, QrCode, Star, Trash2, X } from "lucide-react";
+import { ArrowLeft, Gift, PencilLine, Plus, QrCode, Star, Trash2, UserRound, X } from "lucide-react";
+import { CloudinaryUpload } from "@/components/dashboard/cloudinary-upload";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { ConfiguracionService } from "@/services/configuracion.service";
@@ -13,10 +14,10 @@ import type { CanjePuntos, RecompensaPuntos } from "@/types/redemption";
 
 type RewardDraft = {
   nombre: string; tipo_recompensa: string; puntos_requeridos: number;
-  descripcion: string; esta_activo: boolean;
+  descripcion: string; esta_activo: boolean; imagen_url: string;
 };
 
-const emptyDraft: RewardDraft = { nombre: "", tipo_recompensa: "servicio", puntos_requeridos: 100, descripcion: "", esta_activo: true };
+const emptyDraft: RewardDraft = { nombre: "", tipo_recompensa: "servicio", puntos_requeridos: 100, descripcion: "", esta_activo: true, imagen_url: "" };
 const inputClassName = "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
 
 type Props = { totalBeneficios: number; totalActivas: number; canjesPendientes: number; };
@@ -54,7 +55,7 @@ export function LoyaltyManagement({ totalBeneficios, totalActivas, canjesPendien
   const handleCreate = () => { setSelectedId(null); setDraft(emptyDraft); setMode("create"); };
   const handleEdit = (r: RecompensaPuntos) => {
     setSelectedId(r.id);
-    setDraft({ nombre: r.nombre, tipo_recompensa: r.tipoRecompensa, puntos_requeridos: r.puntosRequeridos, descripcion: r.descripcion ?? "", esta_activo: r.estaActivo });
+    setDraft({ nombre: r.nombre, tipo_recompensa: r.tipoRecompensa, puntos_requeridos: r.puntosRequeridos, descripcion: r.descripcion ?? "", esta_activo: r.estaActivo, imagen_url: r.imagenUrl ?? "" });
     setMode("edit");
   };
   const handleBack = () => { setMode("list"); setSelectedId(null); setDraft(emptyDraft); };
@@ -63,9 +64,9 @@ export function LoyaltyManagement({ totalBeneficios, totalActivas, canjesPendien
     if (!draft.nombre || draft.puntos_requeridos < 1) return;
     try {
       if (mode === "edit" && selectedId) {
-        await RecompensasService.update(selectedId, { nombre: draft.nombre, tipoRecompensa: draft.tipo_recompensa, puntosRequeridos: draft.puntos_requeridos, descripcion: draft.descripcion, estaActivo: draft.esta_activo });
+        await RecompensasService.update(selectedId, { nombre: draft.nombre, tipoRecompensa: draft.tipo_recompensa, puntosRequeridos: draft.puntos_requeridos, descripcion: draft.descripcion, estaActivo: draft.esta_activo, imagenUrl: draft.imagen_url || undefined });
       } else {
-        await RecompensasService.create({ tipoRecompensa: draft.tipo_recompensa, nombre: draft.nombre, descripcion: draft.descripcion || undefined, puntosRequeridos: draft.puntos_requeridos, cantidadEntregada: 1 });
+        await RecompensasService.create({ tipoRecompensa: draft.tipo_recompensa, nombre: draft.nombre, descripcion: draft.descripcion || undefined, puntosRequeridos: draft.puntos_requeridos, cantidadEntregada: 1, imagenUrl: draft.imagen_url || undefined });
       }
       await fetchRecompensas();
       setMode("list"); setSelectedId(null); setDraft(emptyDraft);
@@ -195,10 +196,16 @@ export function LoyaltyManagement({ totalBeneficios, totalActivas, canjesPendien
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {loading && recompensas.length === 0 ? <div className="col-span-full py-16 text-center text-sm text-[var(--text-muted)]">Cargando beneficios...</div> :
            paginatedRecompensas.length === 0 ? <div className="col-span-full flex flex-col items-center gap-3 py-16"><Gift size={32} className="text-[var(--text-muted)]" /><p className="text-sm text-[var(--text-muted)]">No hay beneficios. Crea el primero.</p></div> :
-           paginatedRecompensas.map((r) => (
+            paginatedRecompensas.map((r) => (
             <article key={r.id} className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
               <div className="flex items-start justify-between gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--background)] text-[var(--foreground)]"><Gift size={20} /></div>
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl ${r.imagenUrl ? "" : "bg-[var(--background)] text-[var(--foreground)]"}`}>
+                  {r.imagenUrl ? (
+                    <img src={r.imagenUrl} alt={r.nombre} className="h-full w-full object-cover" />
+                  ) : (
+                    <Gift size={20} />
+                  )}
+                </div>
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold ${r.estaActivo ? "bg-[var(--hover)]/15 text-[var(--hover)]" : "bg-[var(--background)] text-[var(--text-muted)]"}`}>{r.estaActivo ? "Activa" : "Pausada"}</span>
               </div>
               <div className="mt-3"><p className="text-base font-semibold text-[var(--foreground)]">{r.nombre}</p><p className="mt-1 text-sm text-[var(--text-muted)]">{r.puntosRequeridos} pts · {r.tipoRecompensa}</p></div>
@@ -216,12 +223,42 @@ export function LoyaltyManagement({ totalBeneficios, totalActivas, canjesPendien
       {(mode === "create" || mode === "edit") && (
         <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm">
           <div className="mb-6 flex items-center gap-3"><div className="rounded-2xl bg-[var(--background)] p-3"><Gift size={20} className="text-[var(--foreground)]" /></div><div><p className="text-lg font-semibold text-[var(--foreground)]">{mode === "create" ? "Nuevo beneficio" : "Editar beneficio"}</p><p className="text-sm text-[var(--text-muted)]">Define que puede canjear el cliente con sus puntos.</p></div></div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="col-span-full"><Field label="Nombre" required><input className={inputClassName} value={draft.nombre} onChange={(e) => setDraft((c) => ({ ...c, nombre: e.target.value }))} /></Field></div>
-            <Field label="Tipo"><select className={inputClassName} value={draft.tipo_recompensa} onChange={(e) => setDraft((c) => ({ ...c, tipo_recompensa: e.target.value }))}><option value="servicio">Servicio</option><option value="producto">Producto</option><option value="descuento">Descuento</option><option value="general">General</option></select></Field>
-            <Field label="Puntos requeridos"><input type="number" min={1} className={inputClassName} value={draft.puntos_requeridos} onChange={(e) => setDraft((c) => ({ ...c, puntos_requeridos: Number(e.target.value) }))} /></Field>
-            <Field label="Estado"><select className={inputClassName} value={draft.esta_activo ? "Activa" : "Pausada"} onChange={(e) => setDraft((c) => ({ ...c, esta_activo: e.target.value === "Activa" }))}><option>Activa</option><option>Pausada</option></select></Field>
-            <div className="col-span-full"><Field label="Descripcion"><textarea className={`${inputClassName} min-h-28 resize-none`} value={draft.descripcion} onChange={(e) => setDraft((c) => ({ ...c, descripcion: e.target.value }))} /></Field></div>
+          <div className="grid gap-6 lg:grid-cols-[200px_1fr] items-start">
+            <div className="flex flex-col items-center">
+              <p className="mb-2 text-sm font-medium text-[var(--foreground)]">Imagen del beneficio</p>
+              <div className="flex flex-col items-center gap-3">
+                <div className={`flex h-40 w-40 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] ${!draft.imagen_url ? "bg-[var(--background)]" : ""}`}>
+                  {draft.imagen_url ? (
+                    <img src={draft.imagen_url} alt="Vista previa" className="h-full w-full object-cover" />
+                  ) : (
+                    <UserRound size={40} className="text-[var(--text-muted)]" />
+                  )}
+                </div>
+                <CloudinaryUpload
+                  cloudName={process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!}
+                  uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!}
+                  onUpload={(url) => setDraft((c) => ({ ...c, imagen_url: url }))}
+                />
+                {draft.imagen_url && (
+                  <button
+                    type="button"
+                    onClick={() => setDraft((c) => ({ ...c, imagen_url: "" }))}
+                    className="text-xs text-[var(--destructive)] underline transition hover:opacity-80"
+                  >
+                    Quitar imagen
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="col-span-full"><Field label="Nombre" required><input className={inputClassName} value={draft.nombre} onChange={(e) => setDraft((c) => ({ ...c, nombre: e.target.value }))} /></Field></div>
+                <Field label="Tipo"><select className={inputClassName} value={draft.tipo_recompensa} onChange={(e) => setDraft((c) => ({ ...c, tipo_recompensa: e.target.value }))}><option value="servicio">Servicio</option><option value="producto">Producto</option><option value="descuento">Descuento</option><option value="general">General</option></select></Field>
+                <Field label="Puntos requeridos"><input type="number" min={1} className={inputClassName} value={draft.puntos_requeridos} onChange={(e) => setDraft((c) => ({ ...c, puntos_requeridos: Number(e.target.value) }))} /></Field>
+                <Field label="Estado"><select className={inputClassName} value={draft.esta_activo ? "Activa" : "Pausada"} onChange={(e) => setDraft((c) => ({ ...c, esta_activo: e.target.value === "Activa" }))}><option>Activa</option><option>Pausada</option></select></Field>
+                <div className="col-span-full"><Field label="Descripcion"><textarea className={`${inputClassName} min-h-28 resize-none`} value={draft.descripcion} onChange={(e) => setDraft((c) => ({ ...c, descripcion: e.target.value }))} /></Field></div>
+              </div>
+            </div>
           </div>
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-6">
             <button type="button" onClick={() => setIsConfirmOpen(true)} disabled={!draft.nombre || draft.puntos_requeridos < 1} className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50"><PencilLine size={16} />{mode === "create" ? "Crear beneficio" : "Guardar beneficio"}</button>

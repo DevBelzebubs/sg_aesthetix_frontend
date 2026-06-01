@@ -9,6 +9,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { CajaToggle } from "@/components/dashboard/caja-toggle";
 
 export default async function AdminHomePage() {
   const supabase = await createServerSupabase();
@@ -80,11 +81,18 @@ export default async function AdminHomePage() {
   return (
     <section className="space-y-6">
       <header className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm">
-        <p className="text-sm text-[var(--text-muted)]">Bienvenido de nuevo</p>
-        <h1 className="mt-1 text-3xl font-bold text-[var(--foreground)]">Resumen del negocio</h1>
-        <p className="mt-2 text-sm text-[var(--text-muted)]">
-          Esto es lo que importa hoy.
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm text-[var(--text-muted)]">Bienvenido de nuevo</p>
+            <h1 className="mt-1 text-3xl font-bold text-[var(--foreground)]">Resumen del negocio</h1>
+            <p className="mt-2 text-sm text-[var(--text-muted)]">
+              Esto es lo que importa hoy.
+            </p>
+          </div>
+          <div className="shrink-0 w-64">
+            <CajaToggle />
+          </div>
+        </div>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

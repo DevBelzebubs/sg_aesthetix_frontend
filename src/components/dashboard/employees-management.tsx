@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Filter, Loader2, PencilLine, Plus, Search, ShieldCheck, Trash2, Undo2, UserCog, UserRound, Users, X, AlertCircle } from "lucide-react";
+import { ArrowLeft, Filter, Globe, Loader2, PencilLine, Plus, Search, ShieldCheck, Trash2, Undo2, UserCog, UserRound, Users, X, AlertCircle } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { CloudinaryUpload } from "@/components/dashboard/cloudinary-upload";
@@ -19,6 +19,9 @@ const emptyDraft: EmployeeDraft = {
   weeklyLoad: "",
   commission: "",
   imagen_url: "",
+  instagram: "",
+  facebook: "",
+  tiktok: "",
 };
 
 const inputClassName =
@@ -167,6 +170,9 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
           esta_activo: draft.esta_activo,
           clave_hash: password,
           imagen_url: draft.imagen_url,
+          instagram: draft.instagram || undefined,
+          facebook: draft.facebook || undefined,
+          tiktok: draft.tiktok || undefined,
         });
         setEmployees((current) => [created, ...current]);
       } else if (mode === "edit" && selectedId) {
@@ -178,6 +184,9 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
           esta_activo: draft.esta_activo,
           ...(password ? { clave_hash: password } : {}),
           imagen_url: draft.imagen_url,
+          instagram: draft.instagram || undefined,
+          facebook: draft.facebook || undefined,
+          tiktok: draft.tiktok || undefined,
         });
         setEmployees((current) =>
           current.map((emp) => (emp.id === selectedId ? updated : emp)),
@@ -401,6 +410,43 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
                         ))}
                       </div>
                     )}
+                    {(employee.instagram || employee.facebook || employee.tiktok) && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {employee.instagram && (
+                          <a
+                            href={employee.instagram.startsWith("http") ? employee.instagram : `https://instagram.com/${employee.instagram.replace("@", "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[var(--text-muted)] transition hover:text-[var(--foreground)]"
+                            title="Instagram"
+                          >
+                            <Globe size={14} />
+                          </a>
+                        )}
+                        {employee.facebook && (
+                          <a
+                            href={employee.facebook.startsWith("http") ? employee.facebook : `https://facebook.com/${employee.facebook}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[var(--text-muted)] transition hover:text-[var(--foreground)]"
+                            title="Facebook"
+                          >
+                            <Globe size={14} />
+                          </a>
+                        )}
+                        {employee.tiktok && (
+                          <a
+                            href={employee.tiktok.startsWith("http") ? employee.tiktok : `https://tiktok.com/@${employee.tiktok.replace("@", "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[var(--text-muted)] transition hover:text-[var(--foreground)]"
+                            title="TikTok"
+                          >
+                            <Globe size={14} />
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -527,6 +573,36 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
                     }
                     className={inputClassName}
                     placeholder="correo@negocio.com"
+                  />
+                </Field>
+                <Field label="Instagram">
+                  <input
+                    value={draft.instagram}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, instagram: event.target.value }))
+                    }
+                    className={inputClassName}
+                    placeholder="@usuario o url"
+                  />
+                </Field>
+                <Field label="Facebook">
+                  <input
+                    value={draft.facebook}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, facebook: event.target.value }))
+                    }
+                    className={inputClassName}
+                    placeholder="url o usuario"
+                  />
+                </Field>
+                <Field label="TikTok">
+                  <input
+                    value={draft.tiktok}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, tiktok: event.target.value }))
+                    }
+                    className={inputClassName}
+                    placeholder="@usuario o url"
                   />
                 </Field>
                 {mode === "edit" && selectedEmployee && (
@@ -660,5 +736,8 @@ function toDraft(employee?: Employee): EmployeeDraft {
     weeklyLoad: employee.weeklyLoad,
     commission: employee.commission,
     imagen_url: employee.imagenUrl ?? "",
+    instagram: employee.instagram ?? "",
+    facebook: employee.facebook ?? "",
+    tiktok: employee.tiktok ?? "",
   };
 }

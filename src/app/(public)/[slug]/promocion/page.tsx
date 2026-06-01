@@ -90,10 +90,14 @@ export default function PromocionPage() {
               className="flex items-center gap-5 border border-transparent/10 bg-[var(--background-secondary)] px-6 py-6"
             >
               <div
-                className="flex h-14 w-14 shrink-0 items-center justify-center text-lg font-black text-white"
-                style={{ background: "var(--hover)" }}
+                className={`flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden ${r.imagenUrl ? "" : "text-lg font-black text-white"}`}
+                style={{ background: r.imagenUrl ? "transparent" : "var(--hover)" }}
               >
-                {r.puntosRequeridos > 999 ? "∞" : String(r.puntosRequeridos).charAt(0)}
+                {r.imagenUrl ? (
+                  <img src={r.imagenUrl} alt={r.nombre} className="h-full w-full object-cover" />
+                ) : (
+                  <span>{r.puntosRequeridos > 999 ? "∞" : String(r.puntosRequeridos).charAt(0)}</span>
+                )}
               </div>
               <div className="min-w-0">
                 <h3 className="text-base font-black uppercase tracking-tight">{r.nombre}</h3>
