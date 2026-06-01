@@ -286,15 +286,15 @@ function ProductCarousel({ products }: { products: ProductItem[] }) {
         style={{ background: "var(--hover)" }}
       >
         {/* Imagen */}
-        <div className="relative overflow-hidden bg-[var(--background-secondary)]">
+        <div className="flex items-center justify-center bg-[var(--background-secondary)] p-6">
           {product.imagenUrl ? (
             <img
               src={product.imagenUrl}
               alt={product.nombre}
-              className="h-full w-full object-cover absolute inset-0"
+              className="aspect-square w-full max-w-[340px] object-cover"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-[var(--background-secondary)]">
+            <div className="aspect-square w-full max-w-[340px] flex items-center justify-center bg-[var(--background-secondary)]">
               <span className="text-5xl font-black text-[var(--text-muted)]">
                 {product.nombre.charAt(0)}
               </span>
@@ -303,7 +303,7 @@ function ProductCarousel({ products }: { products: ProductItem[] }) {
         </div>
 
         {/* Info */}
-        <div className="flex flex-col justify-center bg-[var(--background-secondary)] px-8 py-6 md:px-12 md:py-8 overflow-y-auto">
+        <div className="flex flex-col justify-end bg-[var(--background-secondary)] px-8 py-6 md:px-12 md:py-8 overflow-y-auto">
           <div className="mb-3 h-[2px] w-6" style={{ background: "var(--hover)" }} />
           <p
             className="text-[12px] font-semibold uppercase tracking-[0.2em]"
@@ -315,7 +315,7 @@ function ProductCarousel({ products }: { products: ProductItem[] }) {
           <h3 className="mt-2 text-xl font-black uppercase tracking-tight leading-tight text-[var(--foreground)] md:text-2xl">
             {product.nombre}
           </h3>
-          <p className="mt-3 text-3xl text-[var(--text-muted)] leading-relaxed">
+          <p className="mt-3 text-base text-[var(--text-muted)] leading-relaxed">
             {product.descripcion}
           </p>
           <p className="mt-6 text-3xl font-black" style={{ color: "var(--hover)" }}>
@@ -944,7 +944,7 @@ export default function LandingPage({
                 <article
                   key={barber.id}
                   className="relative flex items-center gap-5 px-7 py-7 transition group bg-[var(--background-secondary)] border"
-                  style={{ borderColor: "var(--hover)" }}
+                  style={{ borderColor: "var(--border)" }}
                 >
                   {/* Avatar con foto o inicial */}
                   <div
