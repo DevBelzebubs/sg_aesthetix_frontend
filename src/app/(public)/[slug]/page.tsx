@@ -6,13 +6,14 @@ type BarberRow = {
   nombres: string;
   apellidos: string;
   telefono: string | null;
+  imagen_url: string | null;
 };
 
 async function fetchBarbers() {
   const supabase = createClient();
   const { data: rows } = await supabase
     .from("usuarios")
-    .select("id, nombres, apellidos, telefono")
+    .select("id, nombres, apellidos, telefono, imagen_url")
     .eq("esta_activo", true)
     .order("creado_en", { ascending: true });
 
@@ -31,6 +32,7 @@ async function fetchBarbers() {
         id: row.id,
         nombre: `${row.nombres} ${row.apellidos}`,
         specialties,
+        imagenUrl: row.imagen_url,
       };
     }),
   );

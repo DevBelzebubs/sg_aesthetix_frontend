@@ -31,6 +31,7 @@ type Barber = {
   id: string;
   nombre: string;
   specialties: string[];
+  imagenUrl: string | null;
 };
 
 type LandingPageProps = {
@@ -757,7 +758,7 @@ export default function LandingPage({
           </div>
           <div
             className="grid gap-[1px] md:grid-cols-2 lg:grid-cols-3"
-            style={{ background: "var(--hover)" }}
+            style={{ background: "var(--background)" }}
           >
             {barbers.map((barber, i) => {
               const isDark = i % 2 !== 0;
@@ -766,12 +767,19 @@ export default function LandingPage({
                   key={barber.id}
                   className={`relative flex items-center gap-5 px-7 py-7 transition group ${isDark ? "bg-neutral-900 text-white" : "bg-[var(--background-secondary)]"}`}
                 >
-                  {/* Avatar con inicial */}
+                  {/* Avatar con foto o inicial */}
                   <div
-                    className="flex h-16 w-16 shrink-0 items-center justify-center text-xl font-black text-white"
-                    style={{ background: "var(--hover)" }}
+                    className={`flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden text-xl font-black ${isDark ? "bg-neutral-900 text-white" : "bg-[var(--background-secondary)] text-[var(--foreground)]"}`}
                   >
-                    {barber.nombre.charAt(0)}
+                    {barber.imagenUrl ? (
+                      <img
+                        src={barber.imagenUrl}
+                        alt={barber.nombre}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      barber.nombre.charAt(0)
+                    )}
                   </div>
                   <div className="min-w-0">
                     <h3
