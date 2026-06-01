@@ -1,94 +1,98 @@
 import Link from "next/link";
 import {
-  ArrowRight,
-  Boxes,
-  Briefcase,
-  Building2,
-  Calendar,
   CalendarCheck,
-  Heart,
-  Image,
-  KeyRound,
-  Scissors,
-  User,
   UserPlus,
-  Users,
   AlertTriangle,
+  TrendingUp,
+  Clock,
+  DollarSign,
+  ArrowRight,
 } from "lucide-react";
+import { createServerSupabase } from "@/lib/supabase/server";
+import { CajaToggle } from "@/components/dashboard/caja-toggle";
 
-const kpis = [
-  { label: "Negocios activos", value: "12", icon: Users },
-  { label: "Citas hoy", value: "48", icon: CalendarCheck },
-  { label: "Clientes registrados", value: "1,284", icon: UserPlus },
-  { label: "Productos por terminarse", value: "7", icon: AlertTriangle },
-];
+export default async function AdminHomePage() {
+  const supabase = await createServerSupabase();
 
-const modules = [
-  {
-    title: "Acceso y seguridad",
-    desc: "Revisa quien puede entrar y que puede hacer cada persona.",
-    href: "/admin/acceso-seguridad",
-    icon: KeyRound,
-  },
-  {
-    title: "Servicios",
-    desc: "Crea y organiza los servicios que ofreces.",
-    href: "/admin/servicios",
-    icon: Scissors,
-  },
-  {
-    title: "Equipo de trabajo",
-    desc: "Mira tu equipo, edita sus datos y organiza sus turnos.",
-    href: "/admin/empleados",
-    icon: Briefcase,
-  },
-  {
-    title: "Agenda",
-    desc: "Mira las citas del dia, cambia horarios o elimina una reserva.",
-    href: "/admin/agenda",
-    icon: Calendar,
-  },
-  {
-    title: "Clientes",
-    desc: "Encuentra clientes, corrige sus datos o elimina registros.",
-    href: "/admin/clientes",
-    icon: User,
-  },
-  {
-    title: "Fidelizacion",
-    desc: "Crea beneficios simples para que tus clientes vuelvan.",
-    href: "/admin/fidelizacion",
-    icon: Heart,
-  },
-  {
-    title: "Inventario",
-    desc: "Controla productos, cantidades y avisos de reposicion.",
-    href: "/admin/inventario",
-    icon: Boxes,
-  },
-  {
-    title: "Galeria",
-    desc: "Ordena las fotos y estilos que veran tus clientes.",
-    href: "/admin/galeria",
-    icon: Image,
-  },
-  {
-    title: "Negocio",
-    desc: "Edita los datos principales de tu negocio.",
-    href: "/admin/configuracion/empresa",
-    icon: Building2,
-  },
-];
+  const today = new Date().toISOString().split("T")[0];
 
-export default function AdminHomePage() {
+  const { count: citasHoy } = await supabase
+    .from("reservas")
+    .select("*", { count: "exact", head: true })
+    .eq("fecha_reserva", today);
+
+  const { count: clientesRegistrados } = await supabase
+    .from("clientes")
+    .select("*", { count: "exact", head: true });
+
+  const { data: productos } = await supabase
+    .from("productos")
+    .select("stock_actual, stock_minimo");
+
+  const productosPorTerminarse =
+    productos?.filter((p) => p.stock_actual <= p.stock_minimo).length ?? 0;
+
+  const { data: reservasCompletadas } = await supabase
+    .from("reservas")
+    .select("servicio_id")
+    .eq("fecha_reserva", today)
+    .eq("estado", "Completada");
+
+  const servicioIds = [...new Set(reservasCompletadas?.map((r) => r.servicio_id) ?? [])];
+
+  let gananciaDelDia = 0;
+  if (servicioIds.length > 0) {
+    const { data: servicios } = await supabase
+      .from("servicios")
+      .select("precio")
+      .in("id", servicioIds);
+
+    const precioMap = new Map(
+      servicios?.map((s, i) => [servicioIds[i], Number(s.precio)]) ?? []
+    );
+
+    gananciaDelDia = reservasCompletadas?.reduce(
+      (sum, r) => sum + (precioMap.get(r.servicio_id) ?? 0),
+      0
+    ) ?? 0;
+  }
+
+  const { data: proximasCitas } = await supabase
+    .from("reservas")
+    .select("hora_inicio, cliente_id")
+    .eq("fecha_reserva", today)
+    .neq("estado", "Completada")
+    .order("hora_inicio", { ascending: true })
+    .limit(5);
+
+  const { count: pendientes } = await supabase
+    .from("reservas")
+    .select("*", { count: "exact", head: true })
+    .eq("fecha_reserva", today)
+    .eq("estado", "Pendiente");
+
+  const kpis = [
+    { label: "Ganancia del d\u00eda", value: `S/${gananciaDelDia.toFixed(2)}`, icon: DollarSign },
+    { label: "Citas hoy", value: String(citasHoy ?? 0), icon: CalendarCheck },
+    { label: "Pendientes por atender", value: String(pendientes ?? 0), icon: Clock },
+    { label: "Productos por terminarse", value: String(productosPorTerminarse), icon: AlertTriangle },
+  ];
+
   return (
     <section className="space-y-6">
-      <header className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <p className="text-sm text-zinc-500">Bienvenido de nuevo</p>
-        <h1 className="mt-1 text-3xl font-bold text-zinc-900">Resumen del negocio</h1>
-        <p className="mt-2 text-sm text-zinc-600">
-          Aqui tienes lo mas importante del dia, sin tanta vuelta.
-        </p>
+      <header className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm text-[var(--text-muted)]">Bienvenido de nuevo</p>
+            <h1 className="mt-1 text-3xl font-bold text-[var(--foreground)]">Resumen del negocio</h1>
+            <p className="mt-2 text-sm text-[var(--text-muted)]">
+              Esto es lo que importa hoy.
+            </p>
+          </div>
+          <div className="shrink-0 w-64">
+            <CajaToggle />
+          </div>
+        </div>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -98,63 +102,118 @@ export default function AdminHomePage() {
           return (
             <article
               key={kpi.label}
-              className="flex items-center gap-4 rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+              className="flex items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+              style={{
+                background: "var(--background-secondary)",
+              }}
             >
-              <div className="rounded-xl bg-gradient-to-br from-sky-100 to-fuchsia-100 p-3">
-                <Icon size={20} className="text-zinc-700" />
+              <div
+                className="rounded-xl p-3"
+                style={{
+                  background: "color-mix(in srgb, var(--hover) 12%, var(--background-secondary))",
+                }}
+              >
+                <Icon size={20} style={{ color: "var(--hover)" }} />
               </div>
 
               <div>
-                <p className="text-sm text-zinc-500">{kpi.label}</p>
-                <p className="text-2xl font-bold text-zinc-900">{kpi.value}</p>
+                <p className="text-sm text-[var(--text-muted)]">{kpi.label}</p>
+                <p className="text-2xl font-bold text-[var(--foreground)]">{kpi.value}</p>
               </div>
             </article>
           );
         })}
       </div>
 
-      <div>
-        <div className="mb-4 flex items-end justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-              Secciones
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                Pr&oacute;ximas citas
+              </p>
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-[var(--foreground)]">Hoy</h2>
+            </div>
+            <Link
+              href="/admin/agenda"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--foreground)] transition hover:gap-2"
+            >
+              Ver todas
+              <ArrowRight size={16} />
+            </Link>
+          </div>
+
+          {proximasCitas && proximasCitas.length > 0 ? (
+            <ul className="mt-5 divide-y divide-transparent/5">
+              {proximasCitas.map((cita, i) => (
+                <li key={i} className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--background)] text-xs font-bold text-[var(--text-muted)]">
+                      {cita.hora_inicio?.slice(0, 2)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--foreground)]">
+                        {cita.hora_inicio?.slice(0, 5)}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-[var(--background)] px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                    Pendiente
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-5 text-sm text-[var(--text-muted)]">
+              No hay citas pendientes para hoy.
             </p>
-            <h2 className="mt-1 text-2xl font-bold tracking-tight text-zinc-900">
-              Accesos rapidos
-            </h2>
-          </div>
-          <div className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">
-            {modules.length} secciones
-          </div>
+          )}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {modules.map((module) => {
-            const Icon = module.icon;
+        <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                Clientes
+              </p>
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-[var(--foreground)]">
+                {clientesRegistrados ?? 0} registrados
+              </h2>
+            </div>
+            <Link
+              href="/admin/clientes"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--foreground)] transition hover:gap-2"
+            >
+              Ver todos
+              <ArrowRight size={16} />
+            </Link>
+          </div>
+          <p className="mt-3 text-sm text-[var(--text-muted)]">
+            {productosPorTerminarse > 0
+              ? `${productosPorTerminarse} producto${
+                  productosPorTerminarse === 1 ? "" : "s"
+                } por reponer.`
+              : "Inventario al d\u00eda."}
+          </p>
 
-            return (
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            {[
+              { label: "Agenda", href: "/admin/agenda" },
+              { label: "Productos", href: "/admin/inventario" },
+              { label: "Ventas", href: "/admin/ventas" },
+              { label: "Empleados", href: "/admin/empleados" },
+              { label: "Clientes", href: "/admin/clientes" },
+              { label: "Fidelización", href: "/admin/fidelizacion" },
+            ].map((link) => (
               <Link
-                key={module.title}
-                href={module.href}
-                className="group rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+                key={link.href}
+                href={link.href}
+                className="rounded-xl border border-[var(--border)] px-4 py-3 text-center text-sm font-semibold text-[var(--text-muted)] transition hover:border-[var(--hover)] hover:text-[var(--foreground)]"
               >
-                <div className="flex items-center gap-3">
-                  <div className="rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 p-2">
-                    <Icon size={18} className="text-zinc-700" />
-                  </div>
-
-                  <h2 className="text-lg font-semibold text-zinc-900">{module.title}</h2>
-                </div>
-
-                <p className="mt-3 text-sm text-zinc-600">{module.desc}</p>
-
-                <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-zinc-900">
-                  Abrir
-                  <ArrowRight size={16} className="transition group-hover:translate-x-1" />
-                </span>
+                {link.label}
               </Link>
-            );
-          })}
+            ))}
+          </div>
         </div>
       </div>
     </section>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 
 type GaleriaPageProps = {
   params: Promise<{ slug: string }>;
@@ -6,43 +7,69 @@ type GaleriaPageProps = {
 
 export default async function GaleriaPage({ params }: GaleriaPageProps) {
   const { slug } = await params;
+  const supabase = createClient();
+
+  const { data: photos } = await supabase
+    .from("galeria_cortes")
+    .select("id, titulo, imagen_url, orden")
+    .eq("esta_activo", true)
+    .order("orden", { ascending: true });
 
   return (
-    <section className="space-y-8">
+    <section className="space-y-10 pt-8">
+      {/* Header */}
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--tenant-muted)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--text-muted)]">
           Portfolio
         </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-          Galería de cortes
+        <h1 className="mt-2 text-5xl font-black uppercase tracking-tight sm:text-6xl">
+          Galería
         </h1>
-        <p className="mt-2 max-w-2xl text-[var(--tenant-muted)]">
-          Vista inicial de la galería pública de {slug}. Próximamente se
-          alimentará desde el módulo de contenido.
+        <p className="mt-3 max-w-md text-lg font-light leading-relaxed text-[var(--text-muted)]">
+          Cada corte es una firma. Explorá nuestro trabajo y elegí tu estilo.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, index) => (
+      {/* Grid */}
+      <div className="grid gap-[3px] sm:grid-cols-2 md:grid-cols-3">
+        {(photos ?? []).map((photo, index) => (
           <article
-            key={index}
-            className="group aspect-square overflow-hidden rounded-3xl border border-black/10 bg-[var(--tenant-surface)] p-3 shadow-lg shadow-black/5"
+            key={photo.id}
+            className="group relative aspect-square overflow-hidden bg-[var(--background)]"
           >
-            <div className="flex h-full items-end rounded-2xl bg-gradient-to-br from-black/70 via-black/40 to-black/10 p-4 transition group-hover:scale-[1.02]">
-              <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-zinc-800">
-                Corte #{index + 1}
+            <img
+              src={photo.imagen_url}
+              alt={photo.titulo ?? ""}
+              className="h-full w-full object-cover brightness-90 saturate-[0.85] transition duration-500 group-hover:scale-105 group-hover:brightness-75 group-hover:saturate-100"
+            />
+
+            <div className="absolute inset-0 flex flex-col justify-between p-5 opacity-0 transition duration-300 group-hover:opacity-100">
+              <span
+                className="self-end font-black leading-none text-white/20"
+                style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "56px" }}
+              >
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <span className="inline-flex w-fit items-center gap-2 bg-[var(--tenant-primary)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white">
+                {photo.titulo}
               </span>
             </div>
           </article>
         ))}
       </div>
 
-      <Link
-        href={`/${slug}`}
-        className="inline-flex rounded-full border border-black/15 px-5 py-2.5 text-sm font-medium transition hover:bg-black/5"
-      >
-        Volver al inicio
-      </Link>
+      {/* Footer */}
+      <div className="flex items-center gap-6 pt-8 pb-12">
+        <Link
+          href={`/${slug}`}
+          className="inline-flex items-center gap-2 border border-[var(--border)] px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)] transition hover:border-[var(--hover)] hover:text-[var(--hover)]"
+        >
+          ← Volver al inicio
+        </Link>
+        <span className="text-[10px] uppercase tracking-widest text-[var(--text-muted)]/40">
+          {photos?.length ?? 0} trabajos
+        </span>
+      </div>
     </section>
   );
 }

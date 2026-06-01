@@ -1,13 +1,31 @@
 import { GalleryManagement } from "@/components/dashboard/gallery-management";
 import { ModulePageShell } from "@/components/dashboard/module-page-shell";
+import { createServerSupabase } from "@/lib/supabase/server";
 
-export default function GaleriaAdminPage() {
+export default async function GaleriaPage() {
+  const supabase = await createServerSupabase();
+
+  const { count } = await supabase
+    .from("galeria_cortes")
+    .select("*", { count: "exact", head: true });
+
+  const { count: publicados } = await supabase
+    .from("galeria_cortes")
+    .select("*", { count: "exact", head: true })
+    .eq("esta_activo", true);
+
+  const { count: destacados } = await supabase
+    .from("galeria_cortes")
+    .select("*", { count: "exact", head: true })
+    .eq("destacado", true);
+
   return (
     <ModulePageShell
-      title="Catalogo de estilos"
-      description="Ordena las fotos y estilos que quieres mostrar en tu pagina."
+      breadcrumb={[{ label: "Administracion", href: "/admin" }, { label: "Galeria" }]}
+      title="Galeria"
+      description="Sube y organiza las fotos de tus cortes y estilos."
     >
-      <GalleryManagement />
+      <GalleryManagement totalEstilos={count ?? 0} totalPublicados={publicados ?? 0} totalDestacados={destacados ?? 0} />
     </ModulePageShell>
   );
 }

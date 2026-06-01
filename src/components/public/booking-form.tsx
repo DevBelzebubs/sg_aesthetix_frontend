@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { CalendarDays, CheckCircle2, Clock3, Scissors, UserRound } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 import { AppointmentsService } from "@/services/appointments.service";
+import { CustomersService } from "@/services/customers.service";
+import { useCustomerAuth } from "@/contexts/customer-auth-context";
 
 type BookingOption = {
   id: string;
@@ -42,6 +44,7 @@ type BookingDraft = {
   customerName: string;
   phone: string;
   email: string;
+  dni: string;
 };
 
 const initialDraft: BookingDraft = {
@@ -52,12 +55,13 @@ const initialDraft: BookingDraft = {
   customerName: "",
   phone: "",
   email: "",
+  dni: "",
 };
 
 const inputClassName =
-  "w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-[var(--tenant-text)] outline-none transition placeholder:text-[var(--tenant-muted)] focus:border-[var(--tenant-primary)] focus:ring-4 focus:ring-[color:color-mix(in_srgb,var(--tenant-primary)_14%,white)]";
+  "w-full border border-transparent/10 bg-[var(--background-secondary)] px-4 py-3.5 text-base text-[var(--foreground)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-black focus:ring-0";
 
-const calendarWeekdays = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
+const calendarWeekdays = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 export function BookingForm({
   businessName,
@@ -66,6 +70,9 @@ export function BookingForm({
   availableDates,
   availableSlots,
 }: BookingFormProps) {
+  const [stage, setStage] = useState<"dni" | "register" | "booking">("dni");
+  const [dni, setDni] = useState("");
+  const [customerId, setCustomerId] = useState<string | null>(null);
   const [formData, setFormData] = useState<BookingDraft>({
     ...initialDraft,
     serviceId: services[0]?.id ?? "",
@@ -73,15 +80,40 @@ export function BookingForm({
     date: availableDates[0]?.value ?? "",
     time: availableSlots[0] ?? "",
   });
-  
+
+  const { session: customerSession } = useCustomerAuth();
+
+  useEffect(() => {
+    if (!customerSession) return;
+    setCustomerId(customerSession.id);
+    (async () => {
+      try {
+        const all = await CustomersService.getAll();
+        const found = all.find((c) => c.id === customerSession.id);
+        if (found) {
+          const parts = found.nombres.trim().split(/\s+/);
+          const nombres = parts.slice(0, -1).join(" ") || parts[0] || "";
+          const apellidos = parts.slice(-1).join("") || parts[0] || "";
+          setFormData((c) => ({
+            ...c,
+            customerName: `${nombres} ${apellidos}`.trim(),
+            phone: found.telefono ?? c.phone,
+            email: found.correoElectronico ?? c.email,
+            dni: found.dni ?? c.dni,
+          }));
+        }
+      } catch {}
+    })();
+    setStage("booking");
+  }, [customerSession]);
+
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
   const monthOptions = useMemo(() => {
-    const groupedMonths = new Map<
-      string,
-      {
+    const groupedMonths = new Map
+      <string,{
         key: string;
         label: string;
         year: number;
@@ -129,8 +161,10 @@ export function BookingForm({
     () => availableDates.find((date) => date.value === formData.date),
     [availableDates, formData.date],
   );
-  
-  const selectedMonthKey = selectedDate ? buildMonthKey(parseCalendarDate(selectedDate.value)) : "";
+
+  const selectedMonthKey = selectedDate
+    ? buildMonthKey(parseCalendarDate(selectedDate.value))
+    : "";
 
   const activeMonth = useMemo(
     () =>
@@ -141,33 +175,79 @@ export function BookingForm({
   );
 
   const calendarCells = useMemo(() => {
-    if (!activeMonth) {
-      return [];
-    }
+    if (!activeMonth) return [];
 
-    return Array.from({ length: activeMonth.firstDay + activeMonth.totalDays }, (_, index) => {
-      if (index < activeMonth.firstDay) {
-        return null;
-      }
-
-      const dayNumber = index - activeMonth.firstDay + 1;
-      const availableDate = activeMonth.datesByDay.get(dayNumber);
-
-      return {
-        dayNumber,
-        availableDate,
-      };
-    });
+    return Array.from(
+      { length: activeMonth.firstDay + activeMonth.totalDays },
+      (_, index) => {
+        if (index < activeMonth.firstDay) return null;
+        const dayNumber = index - activeMonth.firstDay + 1;
+        const availableDate = activeMonth.datesByDay.get(dayNumber);
+        return { dayNumber, availableDate };
+      },
+    );
   }, [activeMonth]);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
-    setFormData((current) => ({
-      ...current,
-      [name]: value,
-    }));
+    setFormData((current) => ({ ...current, [name]: value }));
     setIsSubmitted(false);
-    setError(""); // Limpiamos el error si el usuario modifica algo
+    setError("");
+  };
+
+  const handleDniLookup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+    try {
+      const customer = await CustomersService.findByDni(dni);
+      if (customer) {
+        setCustomerId(customer.id);
+        const nameParts = customer.nombres.trim().split(/\s+/);
+        const nombres = nameParts.slice(0, -1).join(" ") || nameParts[0] || "";
+        const apellidos = nameParts.slice(-1).join("") || nameParts[0] || "";
+        setFormData((c) => ({
+          ...c,
+          customerName: `${nombres} ${apellidos}`.trim(),
+          phone: customer.telefono ?? c.phone,
+          email: customer.correoElectronico ?? c.email,
+          dni: customer.dni ?? dni,
+        }));
+        setStage("booking");
+      } else {
+        setFormData((c) => ({ ...c, dni }));
+        setStage("register");
+      }
+    } catch {
+      setError("Error al buscar DNI");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.customerName || !formData.phone) return;
+    setIsLoading(true);
+    setError("");
+    try {
+      const nameParts = formData.customerName.trim().split(/\s+/);
+      const nombres = nameParts.slice(0, -1).join(" ") || nameParts[0] || "";
+      const apellidos = nameParts.slice(-1).join("") || nameParts[0] || "";
+      const newCustomer = await CustomersService.create({
+        nombres,
+        apellidos,
+        dni: formData.dni || undefined,
+        telefono: formData.phone,
+        correoElectronico: formData.email,
+      });
+      setCustomerId(newCustomer.id);
+      setStage("booking");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al registrar");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -176,33 +256,27 @@ export function BookingForm({
     setError("");
 
     try {
+      if (!customerId) throw new Error("Cliente no identificado");
       const exactService = services.find((s) => s.id === formData.serviceId);
       const exactBarber = barbers.find((b) => b.id === formData.barberId);
 
-      const serviceId = exactService?.id ?? "";
-      const employeeId = exactBarber?.id ?? "";
+      const servicioId = exactService?.id ?? "";
+      const empleadoId = exactBarber?.id ?? "";
       const duration = exactService?.duration ?? "30 min";
-
       const endTimeHHMM = calculateEndTime(formData.time, duration);
 
       const payload = {
-        id: crypto.randomUUID(), 
-        customerId: crypto.randomUUID(),
-        serviceId: serviceId,
-        employeeId: employeeId,
-        reservationDate: formData.date,
-        startTime: `${formData.time}:00`, 
-        endTime: `${endTimeHHMM}:00`,
-        channel: "landing",
-        status: "pendiente",
-        notes: `Nombre: ${formData.customerName} | Tel: ${formData.phone} | Email: ${formData.email}`,
+        clienteId: customerId,
+        servicioId,
+        empleadoId,
+        fechaReserva: formData.date,
+        horaInicio: `${formData.time}:00`,
+        horaFin: `${endTimeHHMM}:00`,
+        canalReserva: "landing",
+        estado: "pendiente",
       };
 
-      console.log("🚀 Payload final enviado:", payload);
-
-      // 3. Llamamos al API Service
-      await AppointmentsService.createPublic(businessName, payload);
-
+      await AppointmentsService.createPublic(payload);
       setIsSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al conectar con el servidor.");
@@ -211,58 +285,148 @@ export function BookingForm({
     }
   };
 
-  return (
-    <div className="grid gap-6 xl:grid-cols-[1.2fr_0.72fr]">
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-6 rounded-[2rem] border border-black/10 bg-[linear-gradient(180deg,white,color-mix(in_srgb,var(--tenant-accent)_10%,white))] p-5 shadow-xl shadow-black/5 sm:p-8"
-      >
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--tenant-muted)]">
+  return stage === "dni" || stage === "register" ? (
+    <div className="mx-auto max-w-md px-4 py-12">
+      <div className="mb-8 text-center">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
+          {businessName}
+        </p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight">
+          {stage === "dni" ? "Reserva online" : "Completa tus datos"}
+        </h1>
+        <p className="mt-2 text-base leading-relaxed text-[var(--text-muted)]">
+          {stage === "dni"
+            ? "Ingresa tu DNI para agilizar la reserva."
+            : "Llena los campos para registrarte."}
+        </p>
+      </div>
+
+      {error && (
+        <div className="mb-6 border border-red-500/20 bg-red-50 px-4 py-3">
+          <p className="text-xs font-semibold text-red-600">{error}</p>
+        </div>
+      )}
+
+      {stage === "dni" && (
+        <form onSubmit={handleDniLookup} className="space-y-4">
+          <label className="space-y-2">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+              Número de DNI
+            </span>
+            <input
+              required
+              type="text"
+              value={dni}
+              onChange={(e) => setDni(e.target.value)}
+              placeholder="12345678"
+              className={inputClassName}
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-black px-8 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-75 disabled:opacity-40"
+          >
+            {isLoading ? "Buscando..." : "Buscar"}
+          </button>
+        </form>
+      )}
+
+      {stage === "register" && (
+        <form onSubmit={handleRegister} className="space-y-4">
+          <label className="space-y-2">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+              Nombre completo
+            </span>
+            <input
+              required
+              type="text"
+              value={formData.customerName}
+              onChange={(e) => setFormData((c) => ({ ...c, customerName: e.target.value }))}
+              placeholder="Juan Pérez"
+              className={inputClassName}
+            />
+          </label>
+          <label className="space-y-2">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+              Teléfono
+            </span>
+            <input
+              required
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => setFormData((c) => ({ ...c, phone: e.target.value }))}
+              placeholder="999 999 999"
+              className={inputClassName}
+            />
+          </label>
+          <label className="space-y-2">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+              Email
+            </span>
+            <input
+              required
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData((c) => ({ ...c, email: e.target.value }))}
+              placeholder="nombre@correo.com"
+              className={inputClassName}
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-black px-8 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-75 disabled:opacity-40"
+          >
+            {isLoading ? "Registrando..." : "Continuar"}
+          </button>
+        </form>
+      )}
+    </div>
+  ) : (
+    <div className="grid gap-px bg-[var(--background)] xl:grid-cols-[1.2fr_0.72fr]">
+      <form onSubmit={handleSubmit} className="space-y-0 bg-[var(--background-secondary)]">
+
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-transparent/10 px-8 py-8">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
               Reserva online
             </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-              Elige tu fecha y hora
-            </h1>
-            <p className="mt-3 text-sm leading-relaxed text-[var(--tenant-muted)] sm:text-base">
-              Simplificamos la reserva para que elijas el turno sin ruido. Confirmación rápida y segura.
+            <h1 className="mt-2 text-4xl font-bold tracking-tight">Elige tu fecha y hora</h1>
+            <p className="mt-2 text-base leading-relaxed text-[var(--text-muted)]">
+              Confirmación rápida, sin esperas ni llamadas.
             </p>
           </div>
-
-          <div className="rounded-3xl border border-[var(--tenant-primary)]/15 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--tenant-primary)_12%,white),color-mix(in_srgb,var(--tenant-accent)_14%,white))] px-4 py-3 text-sm shadow-sm">
-            <p className="font-semibold text-[var(--tenant-text)]">{businessName}</p>
-            <p className="mt-1 text-[var(--tenant-muted)]">Agenda visual interactiva</p>
+          <div className="border border-transparent/10 bg-[var(--background-secondary)] px-4 py-3">
+            <p className="text-sm font-bold uppercase tracking-tight">{businessName}</p>
+            <p className="mt-0.5 text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
+              Agenda visual
+            </p>
           </div>
         </div>
 
-        {isSubmitted ? (
-          <div className="flex items-start gap-3 rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-900">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+        {isSubmitted && (
+          <div className="flex items-start gap-3 border-b border-transparent/10 bg-[var(--background)] px-8 py-5 text-white">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
-              <p className="font-semibold">¡Turno confirmado con éxito!</p>
-              <p className="mt-1">
-                Hemos registrado tu reserva para el {selectedDate?.label ?? "día elegido"} a las {formData.time}. 
-                Te esperamos.
+              <p className="text-sm font-bold uppercase tracking-tight">¡Turno confirmado!</p>
+              <p className="mt-1 text-[11px] text-white/60">
+                Reserva registrada para el {selectedDate?.label ?? "día elegido"} a las{" "}
+                {formData.time}. Te esperamos.
               </p>
             </div>
           </div>
-        ) : null}
+        )}
 
-        <section className="space-y-4 rounded-[1.75rem] border border-sky-200 bg-gradient-to-br from-white to-sky-50 p-5 sm:p-6">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--tenant-primary)] text-white">
-              <Scissors className="h-4 w-4" />
-            </span>
-            <div>
-              <h2 className="text-lg font-semibold">Servicio</h2>
-              <p className="text-sm text-[var(--tenant-muted)]">
-                Empieza por lo esencial y ajusta el resto despues.
-              </p>
+        <div className="border-b border-transparent/10 px-8 py-8">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-black text-[10px] font-bold text-white">
+              1
             </div>
+            <p className="text-sm font-bold uppercase tracking-tight">Servicio</p>
           </div>
 
-          <div className="grid gap-3">
+          <div className="grid gap-px bg-[var(--background)]">
             {services.map((service) => {
               const isActive = formData.serviceId === service.id;
               return (
@@ -270,59 +434,56 @@ export function BookingForm({
                   key={service.id}
                   type="button"
                   onClick={() => {
-                    setFormData((current) => ({ ...current, serviceId: service.id }));
+                    setFormData((c) => ({ ...c, serviceId: service.id }));
                     setIsSubmitted(false);
                   }}
-                  className={`rounded-3xl border px-4 py-4 text-left transition ${
-                    isActive
-                      ? "border-[var(--tenant-primary)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--tenant-primary)_11%,white),white)] shadow-lg shadow-black/5"
-                      : "border-black/10 bg-white hover:-translate-y-0.5 hover:border-[var(--tenant-primary)]/30 hover:bg-sky-50/60"
+                  className={`flex items-center justify-between px-5 py-4 text-left transition ${
+                    isActive ? "bg-[var(--background)] text-white" : "bg-[var(--background-secondary)] hover:bg-[var(--background-secondary)]"
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`h-2 w-2 shrink-0 ${
+                        isActive ? "bg-[var(--background-secondary)]" : "border border-transparent/20 bg-transparent"
+                      }`}
+                    />
                     <div>
-                      <p className="font-semibold">{service.name}</p>
-                      <p className="mt-1 text-sm text-[var(--tenant-muted)]">{service.duration}</p>
+                      <p className="text-sm font-bold uppercase tracking-tight">{service.name}</p>
+                      <p
+                        className={`mt-0.5 text-[10px] uppercase tracking-widest ${
+                          isActive ? "text-white/40" : "text-[var(--text-muted)]"
+                        }`}
+                      >
+                        {service.duration}
+                      </p>
                     </div>
-                    <p className="text-base font-semibold text-[var(--tenant-primary)]">
-                      {service.price}
-                    </p>
                   </div>
+                  <span
+                    className={`text-base font-black tracking-tight ${
+                      isActive ? "text-white" : "text-[var(--tenant-primary)]"
+                    }`}
+                  >
+                    {service.price}
+                  </span>
                 </button>
               );
             })}
           </div>
-        </section>
-        <section className="space-y-4 rounded-[1.75rem] border border-amber-200 bg-gradient-to-br from-white to-amber-50 p-5 sm:p-6">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--tenant-primary)] text-white">
-              <CalendarDays className="h-4 w-4" />
-            </span>
-            <div>
-              <h2 className="text-lg font-semibold">Calendario de reservas</h2>
-              <p className="text-sm text-[var(--tenant-muted)]">
-                Selecciona un dia y luego el horario disponible.
-              </p>
+        </div>
+
+        <div className="border-b border-transparent/10 px-8 py-8">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-black text-[10px] font-bold text-white">
+              2
             </div>
+            <p className="text-sm font-bold uppercase tracking-tight">Fecha</p>
           </div>
 
-          <div className="rounded-[1.5rem] border border-amber-200 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--tenant-primary)_4%,white),color-mix(in_srgb,#f59e0b_14%,white))] p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--tenant-muted)]">
-                  Fechas disponibles
-                </p>
-                <p className="mt-1 text-sm text-[var(--tenant-muted)]">
-                  {activeMonth?.label ?? "Disponibilidad actual"}
-                </p>
-              </div>
-
-              <div className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                {availableSlots.length} horarios abiertos
-              </div>
-            </div>
-
-            <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+          <div className="mb-4 flex items-center justify-between border-b border-transparent/10 pb-4">
+            <p className="text-sm font-bold uppercase tracking-tight">
+              {activeMonth?.label ?? ""}
+            </p>
+            <div className="flex gap-px">
               {monthOptions.map((month) => {
                 const isActive = month.key === activeMonth?.key;
                 return (
@@ -330,10 +491,10 @@ export function BookingForm({
                     key={month.key}
                     type="button"
                     onClick={() => setActiveMonthKey(month.key)}
-                    className={`shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                    className={`px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest transition ${
                       isActive
-                        ? "border-[var(--tenant-primary)] bg-white text-[var(--tenant-primary)] shadow-sm"
-                        : "border-black/10 bg-white/80 text-[var(--tenant-muted)] hover:border-[var(--tenant-primary)]/30 hover:text-[var(--tenant-text)]"
+                        ? "bg-black text-white"
+                        : "bg-[var(--background)] text-[var(--text-muted)] hover:bg-[var(--background)] hover:text-[var(--foreground)]"
                     }`}
                   >
                     {month.label}
@@ -341,126 +502,119 @@ export function BookingForm({
                 );
               })}
             </div>
+          </div>
 
-            <div className="mt-4 rounded-[1.25rem] border border-black/10 bg-white/85 p-2 sm:p-3">
-              <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
-                {calendarWeekdays.map((weekday) => (
-                  <span
-                    key={weekday}
-                    className="pb-1 text-center text-[9px] font-semibold uppercase tracking-[0.08em] text-[var(--tenant-muted)] sm:pb-2 sm:text-[11px] sm:tracking-[0.12em]"
-                  >
-                    {weekday}
-                  </span>
-                ))}
-
-                {calendarCells.map((cell, index) => {
-                  if (!cell) {
-                    return <span key={`empty-${index}`} className="aspect-square" />;
-                  }
-
-                  const isActive = formData.date === cell.availableDate?.value;
-                  const isAvailable = Boolean(cell.availableDate);
-
-                  return (
-                    <button
-                      key={cell.availableDate?.value ?? `day-${cell.dayNumber}`}
-                      type="button"
-                      disabled={!isAvailable}
-                      onClick={() => {
-                        if (!cell.availableDate) return;
-                        setFormData((current) => ({
-                          ...current,
-                          date: cell.availableDate?.value ?? current.date,
-                        }));
-                        setIsSubmitted(false);
-                      }}
-                      className={`flex h-10 items-center justify-center rounded-xl border text-xs font-semibold transition sm:aspect-square sm:min-h-11 sm:flex-col sm:rounded-2xl sm:text-sm ${
-                        isActive
-                          ? "border-[var(--tenant-primary)] bg-[var(--tenant-primary)] text-white shadow-md shadow-black/10"
-                          : isAvailable
-                            ? "border-black/10 bg-white text-[var(--tenant-text)] hover:border-[var(--tenant-primary)]/30 hover:bg-amber-50"
-                            : "border-transparent bg-transparent text-zinc-300"
-                      }`}
-                    >
-                      <span>{String(cell.dayNumber).padStart(2, "0")}</span>
-                      <span
-                        className={`ml-1 h-1.5 w-1.5 rounded-full sm:ml-0 sm:mt-1 ${
-                          isActive
-                            ? "bg-white"
-                            : isAvailable
-                              ? "bg-[var(--tenant-primary)]/55"
-                              : "bg-transparent"
-                        }`}
-                      />
-                    </button>
-                  );
-                })}
+          <div className="grid grid-cols-7 gap-px bg-[var(--background)]">
+            {calendarWeekdays.map((wd) => (
+              <div
+                key={wd}
+                className="bg-[var(--background-secondary)] py-2 text-center text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]"
+              >
+                {wd}
               </div>
-            </div>
+            ))}
+
+            {calendarCells.map((cell, index) => {
+              if (!cell) {
+                return <div key={`empty-${index}`} className="bg-[var(--background-secondary)]" />;
+              }
+
+              const isActive = formData.date === cell.availableDate?.value;
+              const isAvailable = Boolean(cell.availableDate);
+
+              return (
+                <button
+                  key={cell.availableDate?.value ?? `day-${cell.dayNumber}`}
+                  type="button"
+                  disabled={!isAvailable}
+                  onClick={() => {
+                    if (!cell.availableDate) return;
+                    setFormData((c) => ({
+                      ...c,
+                      date: cell.availableDate?.value ?? c.date,
+                    }));
+                    setIsSubmitted(false);
+                  }}
+                  className={`flex aspect-square items-center justify-center text-xs font-bold transition ${
+                    isActive
+                      ? "bg-black text-white"
+                      : isAvailable
+                        ? "bg-[var(--background-secondary)] text-[var(--foreground)] hover:bg-[var(--background)]"
+                        : "bg-[var(--background-secondary)] text-[var(--text-muted)] cursor-default"
+                  }`}
+                >
+                  {String(cell.dayNumber).padStart(2, "0")}
+                </button>
+              );
+            })}
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium">Horarios</p>
-              <p className="text-sm text-[var(--tenant-muted)]">
-                {selectedDate?.label ?? "Selecciona una fecha"}
-              </p>
-            </div>
+          <p className="mt-3 text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
+            {availableSlots.length} horarios disponibles ·{" "}
+            {selectedDate?.label ?? "Selecciona un día"}
+          </p>
+        </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {availableSlots.map((slot) => {
-                const isActive = formData.time === slot;
-                return (
-                  <button
-                    key={slot}
-                    type="button"
-                    onClick={() => {
-                      setFormData((current) => ({ ...current, time: slot }));
-                      setIsSubmitted(false);
-                    }}
-                    className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
-                      isActive
-                        ? "border-[var(--tenant-primary)] bg-[var(--tenant-primary)] text-white shadow-lg shadow-black/10"
-                        : "border-black/10 bg-white hover:border-[var(--tenant-primary)]/30 hover:bg-[linear-gradient(135deg,color-mix(in_srgb,var(--tenant-primary)_7%,white),color-mix(in_srgb,#f59e0b_9%,white))]"
-                    }`}
-                  >
-                    {slot}
-                  </button>
-                );
-              })}
+        <div className="border-b border-transparent/10 px-8 py-8">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-black text-[10px] font-bold text-white">
+              3
             </div>
+            <p className="text-sm font-bold uppercase tracking-tight">Horario</p>
           </div>
-        </section>
 
-        <section className="space-y-4 rounded-[1.75rem] border border-emerald-200 bg-gradient-to-br from-white to-emerald-50 p-5 sm:p-6">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--tenant-primary)] text-white">
-              <UserRound className="h-4 w-4" />
-            </span>
-            <div>
-              <h2 className="text-lg font-semibold">Datos de contacto</h2>
-              <p className="text-sm text-[var(--tenant-muted)]">
-                Solo lo necesario para sostener tu reserva.
-              </p>
+          <div className="grid grid-cols-3 gap-px bg-[var(--background)] sm:grid-cols-4 lg:grid-cols-6">
+            {availableSlots.map((slot) => {
+              const isActive = formData.time === slot;
+              return (
+                <button
+                  key={slot}
+                  type="button"
+                  onClick={() => {
+                    setFormData((c) => ({ ...c, time: slot }));
+                    setIsSubmitted(false);
+                  }}
+                  className={`py-3 text-center text-xs font-bold uppercase tracking-wide transition ${
+                    isActive
+                      ? "bg-[var(--background)] text-white"
+                      : "bg-[var(--background-secondary)] text-[var(--foreground)] hover:bg-[var(--background-secondary)]"
+                  }`}
+                >
+                  {slot}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="px-8 py-8">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-black text-[10px] font-bold text-white">
+              4
             </div>
+            <p className="text-sm font-bold uppercase tracking-tight">Datos de contacto</p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-2 sm:col-span-2">
-              <span className="text-sm font-medium">Nombre completo</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                Nombre completo
+              </span>
               <input
                 required
                 type="text"
                 name="customerName"
                 value={formData.customerName}
                 onChange={handleChange}
-                placeholder="Ej. Juan Perez"
+                placeholder="Juan Pérez"
                 className={inputClassName}
               />
             </label>
 
             <label className="space-y-2">
-              <span className="text-sm font-medium">Teléfono</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                Teléfono
+              </span>
               <input
                 required
                 type="tel"
@@ -473,7 +627,9 @@ export function BookingForm({
             </label>
 
             <label className="space-y-2">
-              <span className="text-sm font-medium">Email</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                Email
+              </span>
               <input
                 required
                 type="email"
@@ -484,80 +640,103 @@ export function BookingForm({
                 className={inputClassName}
               />
             </label>
+
+            <label className="space-y-2 sm:col-span-2">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                DNI <span className="text-[var(--text-muted)]">(opcional)</span>
+              </span>
+              <input
+                type="text"
+                name="dni"
+                value={formData.dni}
+                onChange={handleChange}
+                placeholder="12345678"
+                className={inputClassName}
+              />
+            </label>
           </div>
-        </section>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.75rem] border border-black/10 bg-[linear-gradient(135deg,white,color-mix(in_srgb,var(--tenant-primary)_6%,white))] px-5 py-4">
-          <p className="max-w-xl text-sm text-[var(--tenant-muted)]">
-            Al confirmar, tu turno se agendará directamente en nuestro sistema.
-          </p>
-
-          <div className="flex flex-col items-end gap-2">
-            <button
-              type="submit"
-              disabled={isLoading || isSubmitted}
-              className="inline-flex items-center justify-center rounded-full bg-[var(--tenant-primary)] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:opacity-95 disabled:opacity-50 disabled:hover:translate-y-0"
-            >
-              {isLoading ? "Procesando..." : isSubmitted ? "¡Confirmado!" : "Confirmar turno"}
-            </button>
-            {error && <span className="text-xs font-medium text-red-500">{error}</span>}
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-transparent/10 pt-6">
+            <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
+              Al confirmar, tu turno se agendará en nuestro sistema.
+            </p>
+            <div className="flex flex-col items-end gap-2">
+              <button
+                type="submit"
+                disabled={isLoading || isSubmitted}
+                className="bg-black px-8 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-75 disabled:opacity-40"
+              >
+                {isLoading ? "Procesando..." : isSubmitted ? "¡Confirmado!" : "Confirmar turno"}
+              </button>
+              {error && (
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-red-500">
+                  {error}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </form>
 
-      <aside className="space-y-5">
-        <div className="rounded-[2rem] border border-black/10 bg-[linear-gradient(145deg,white,color-mix(in_srgb,var(--tenant-primary)_8%,white),color-mix(in_srgb,var(--tenant-accent)_14%,white))] p-6 shadow-xl shadow-black/5 xl:sticky xl:top-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--tenant-muted)]">
-            Resumen rápido
-          </p>
-          <h2 className="mt-2 text-2xl font-bold tracking-tight">Tu cita</h2>
+      <aside className="bg-[var(--background-secondary)]">
+        <div className="xl:sticky xl:top-6">
 
-          <div className="mt-5 space-y-3">
+          <div className="border-b border-transparent/10 px-6 py-8">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
+              Resumen
+            </p>
+            <h2 className="mt-2 text-xl font-bold uppercase tracking-tight">Tu cita</h2>
+          </div>
+
+          <div className="divide-y divide-black/10">
+            <SummaryRow label="Servicio" value={selectedService?.name ?? "Pendiente"} />
             <SummaryRow
-              icon={<Scissors className="h-4 w-4" />}
-              label="Servicio"
-              value={formData.serviceId}
-            />
-            <SummaryRow
-              icon={<UserRound className="h-4 w-4" />}
               label="Profesional"
-              value={formData.barberId}
+              value={barbers.find((b) => b.id === formData.barberId)?.name ?? "Pendiente"}
             />
-            <SummaryRow
-              icon={<CalendarDays className="h-4 w-4" />}
-              label="Fecha"
-              value={selectedDate?.label ?? ""}
-            />
-            <SummaryRow icon={<Clock3 className="h-4 w-4" />} label="Hora" value={formData.time} />
+            <SummaryRow label="Fecha" value={selectedDate?.label ?? "Pendiente"} />
+            <SummaryRow label="Hora" value={formData.time || "Pendiente"} />
           </div>
 
-          <div className="mt-5 rounded-[1.75rem] bg-[linear-gradient(135deg,var(--tenant-primary),color-mix(in_srgb,var(--tenant-primary)_70%,var(--tenant-accent)))] px-5 py-5 text-white">
-            <p className="text-sm text-white/80">Inversión estimada</p>
-            <p className="mt-1 text-3xl font-bold">{selectedService?.price ?? "--"}</p>
-            <p className="mt-1 text-sm text-white/80">{selectedService?.duration ?? "Sin duración"}</p>
+          <div className="bg-[var(--background)] px-6 py-6 text-white">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-white/40">
+              Inversión
+            </p>
+            <p className="mt-2 text-4xl font-black tracking-tight">
+              {selectedService?.price ?? "--"}
+            </p>
+            <p className="mt-1 text-[10px] uppercase tracking-widest text-white/40">
+              {selectedService?.duration ?? "Sin duración"}
+            </p>
           </div>
 
-          <div className="mt-5 rounded-[1.5rem] border border-black/10 bg-white/90 px-4 py-4">
-            <p className="text-sm font-semibold">Profesional asignado</p>
-            <div className="mt-3 flex flex-wrap gap-2">
+          <div className="px-6 py-6">
+            <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+              Profesional
+            </p>
+            <div className="grid gap-px bg-[var(--background)]">
               {barbers.map((barber) => {
                 const isActive = formData.barberId === barber.id;
-
                 return (
                   <button
                     key={barber.id}
                     type="button"
                     onClick={() => {
-                      setFormData((current) => ({ ...current, barberId: barber.id }));
+                      setFormData((c) => ({ ...c, barberId: barber.id }));
                       setIsSubmitted(false);
                     }}
-                    className={`rounded-full border px-3 py-2 text-sm transition ${
-                      isActive
-                        ? "border-[var(--tenant-primary)] bg-[color:color-mix(in_srgb,var(--tenant-primary)_10%,white)] font-semibold text-[var(--tenant-primary)]"
-                        : "border-black/10 bg-white text-[var(--tenant-muted)] hover:border-[var(--tenant-primary)]/30 hover:bg-[color:color-mix(in_srgb,var(--tenant-accent)_10%,white)] hover:text-[var(--tenant-text)]"
+                    className={`px-4 py-3 text-left transition ${
+                      isActive ? "bg-[var(--background)] text-white" : "bg-[var(--background-secondary)] hover:bg-[var(--background-secondary)]"
                     }`}
                   >
-                    {barber.name}
+                    <p className="text-sm font-bold uppercase tracking-tight">{barber.name}</p>
+                    <p
+                      className={`mt-0.5 text-[10px] uppercase tracking-widest ${
+                        isActive ? "text-white/40" : "text-[var(--text-muted)]"
+                      }`}
+                    >
+                      {barber.role}
+                    </p>
                   </button>
                 );
               })}
@@ -569,26 +748,11 @@ export function BookingForm({
   );
 }
 
-function SummaryRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
+function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-black/10 bg-white px-4 py-3">
-      <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--tenant-primary)]/10 text-[var(--tenant-primary)]">
-        {icon}
-      </span>
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--tenant-muted)]">
-          {label}
-        </p>
-        <p className="mt-1 text-sm font-semibold">{value || "Pendiente"}</p>
-      </div>
+    <div className="flex items-center justify-between px-6 py-4">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">{label}</p>
+      <p className="text-sm font-bold uppercase tracking-tight">{value}</p>
     </div>
   );
 }
@@ -604,11 +768,9 @@ function buildMonthKey(date: Date) {
 
 function calculateEndTime(startTime: string, durationString: string): string {
   if (!startTime) return "";
-  const minutesToAdd = parseInt(durationString.replace(/\D/g, "")) || 30; // 30 por defecto
+  const minutesToAdd = parseInt(durationString.replace(/\D/g, "")) || 30;
   const [hours, minutes] = startTime.split(":").map(Number);
-  
   const dateObj = new Date();
   dateObj.setHours(hours, minutes + minutesToAdd);
-  
   return `${String(dateObj.getHours()).padStart(2, "0")}:${String(dateObj.getMinutes()).padStart(2, "0")}`;
 }

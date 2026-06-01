@@ -2,11 +2,11 @@ import type { ThemeSettings } from "@/types/theme";
 
 const DEFAULT_THEME: ThemeSettings = {
   brandName: "SG Aesthetix",
-  primaryColor: "#111827",
-  accentColor: "#d4af37",
-  backgroundColor: "#f8fafc",
-  surfaceColor: "#ffffff",
-  textColor: "#0f172a",
+  primaryColor: "#3A5A36",
+  accentColor: "#4A7A46",
+  backgroundColor: "#161616",
+  surfaceColor: "#1C1C1C",
+  textColor: "#E5E2E1",
   mutedTextColor: "#475569",
 };
 

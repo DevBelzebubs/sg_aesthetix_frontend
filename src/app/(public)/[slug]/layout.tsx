@@ -3,6 +3,8 @@ import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import { getThemeSettingsByTenantId } from "@/lib/theme/get-theme-settings";
 import { resolveTenantBySlug } from "@/lib/tenant/resolve-tenant";
+import { TapeDecor } from "@/components/tape-decor";
+import { PublicLayoutShell } from "@/components/public/public-layout-shell";
 
 type PublicLandingLayoutProps = {
   children: ReactNode;
@@ -32,71 +34,171 @@ export default async function PublicLandingLayout({
   const themeVariables: CSSProperties = {
     ["--tenant-primary" as string]: theme.primaryColor,
     ["--tenant-accent" as string]: theme.accentColor,
-    ["--tenant-background" as string]: theme.backgroundColor,
-    ["--tenant-surface" as string]: theme.surfaceColor,
-    ["--tenant-text" as string]: theme.textColor,
-    ["--tenant-muted" as string]: theme.mutedTextColor,
   };
 
   const basePath = `/${tenant.slug}`;
 
+  const footer = (
+    <footer className="mt-auto px-6 pb-8 max-w-[1400px] mx-auto w-full">
+      {/* Tarjeta principal */}
+      <div className="relative bg-[var(--background-secondary)] border border-transparent/10 rounded-3xl px-8 py-12 flex flex-col md:flex-row justify-between items-start gap-8 overflow-visible">
+        <div className="hidden md:block absolute -top-5 -left-6 w-[80px] scale-75 opacity-80 dark:invert dark:opacity-60">
+          <TapeDecor />
+        </div>
+        <div className="hidden md:block absolute -top-5 -right-6 rotate-90 w-[80px] scale-75 opacity-80 dark:invert dark:opacity-60">
+          <TapeDecor />
+        </div>
+
+        {/* Marca + tagline */}
+        <div className="flex flex-col gap-3 max-w-xs">
+          <Link href={basePath} className="flex items-center gap-3">
+            <img
+              src="https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
+              alt={theme.brandName}
+              className="h-[80px] w-auto scale-150"
+            />
+          </Link>
+          <p className="text-sm text-[var(--text-muted)] leading-relaxed">
+            Cortes de precisión, ambiente cuidado y reserva online sin
+            esperas.
+          </p>
+        </div>
+
+        {/* Columnas de links */}
+        <div className="flex flex-col sm:flex-row gap-8 md:gap-16">
+          {/* Navegar */}
+          <div className="flex flex-col gap-3">
+            <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
+              Navegar
+            </h4>
+            <div className="flex flex-col gap-2 text-sm text-[var(--text-muted)]">
+              <Link
+                href={basePath}
+                className="hover:text-[var(--foreground)] transition-colors"
+              >
+                Inicio
+              </Link>
+              <Link
+                href={`${basePath}#servicios`}
+                className="hover:text-[var(--foreground)] transition-colors"
+              >
+                Servicios
+              </Link>
+              <Link
+                href={`${basePath}#equipo`}
+                className="hover:text-[var(--foreground)] transition-colors"
+              >
+                Equipo
+              </Link>
+              <Link
+                href={`${basePath}/galeria`}
+                className="hover:text-[var(--foreground)] transition-colors"
+              >
+                Galería
+              </Link>
+              <Link
+                href={`${basePath}/productos`}
+                className="hover:text-[var(--foreground)] transition-colors"
+              >
+                Productos
+              </Link>
+            </div>
+          </div>
+
+          {/* Reservas */}
+          <div className="flex flex-col gap-3">
+            <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
+              Reservas
+            </h4>
+            <div className="flex flex-col gap-2 text-sm text-[var(--text-muted)]">
+              <Link
+                href={`${basePath}/reservar`}
+                className="hover:text-[var(--foreground)] transition-colors"
+              >
+                Reservar turno
+              </Link>
+              <Link
+                href={`${basePath}#reservas`}
+                className="hover:text-[var(--foreground)] transition-colors"
+              >
+                Horarios disponibles
+              </Link>
+    
+            </div>
+          </div>
+
+          {/* Legal */}
+          <div className="flex flex-col gap-3">
+            <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
+              Legal
+            </h4>
+            <div className="flex flex-col gap-2 text-sm text-[var(--text-muted)]">
+              <Link
+                href={`${basePath}/privacidad`}
+                className="hover:text-[var(--foreground)] transition-colors"
+              >
+                Política de privacidad
+              </Link>
+              <Link
+                href={`${basePath}/terminos`}
+                className="hover:text-[var(--foreground)] transition-colors"
+              >
+                Términos de uso
+              </Link>
+              <Link
+                href={`${basePath}/libro-reclamaciones`}
+                className="flex-shrink-0 mt-2"
+              >
+                <img
+                  src="https://res.cloudinary.com/dxuk9bogw/image/upload/v1776155530/7f85d794-58b5-47d0-850d-d06179563fb2.png"
+                  alt="Libro de Reclamaciones"
+                  className="h-14 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
+                />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+{/* Barra inferior */}
+<div className="mt-4 px-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-[11px] tracking-[0.08em] uppercase text-[var(--text-muted)]">
+  <p>
+    © {new Date().getFullYear()} {theme.brandName} · Todos los derechos reservados
+  </p>
+
+  <p>Barbería · Reservas online · Atención personalizada</p>
+</div>
+
+<div className="mt-8 flex justify-center">
+  <a
+    href="https://www.instagram.com/solvegrades.com_/"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="opacity-40 hover:opacity-80 transition-opacity"
+  >
+    <img
+      src="https://res.cloudinary.com/dp1vgjhsq/image/upload/v1778834655/WhatsApp_Image_2026-05-15_at_3.21.36_AM-removebg-preview_wtgmkr.png"
+      alt="Designed & Built by SolveGrades"
+      className="h-14 w-auto object-contain invert"
+    />
+  </a>
+</div>
+    </footer>
+  );
+
   return (
     <div
       style={themeVariables}
-      className="relative min-h-screen overflow-x-hidden bg-[var(--tenant-background)] text-[var(--tenant-text)]"
+      className="relative min-h-screen overflow-x-hidden bg-[var(--background)] text-[var(--foreground)]"
     >
-      {/* Navbar — full width, cuadrado, minimalista */}
-      <header className="sticky top-0 z-20 border-b border-black/10 bg-white/95 backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-          {/* Logo */}
-          <Link href={basePath} className="flex items-center gap-3">
-            <span className="inline-flex h-9 w-9 items-center justify-center bg-[var(--tenant-primary)] text-xs font-bold text-white">
-              SG
-            </span>
-            <span className="text-sm font-semibold tracking-[0.06em] uppercase">
-              {theme.brandName}
-            </span>
-          </Link>
-
-          {/* Nav desktop */}
-          <nav className="hidden items-center gap-8 text-xs font-semibold tracking-[0.14em] uppercase text-[var(--tenant-muted)] md:flex">
-            <Link href={basePath} className="transition hover:text-black">
-              Inicio
-            </Link>
-            <Link href={`${basePath}/galeria`} className="transition hover:text-black">
-              Galería
-            </Link>
-            <Link href={`${basePath}/galeria`} className="transition hover:text-black">
-              Productos
-            </Link>
-            <Link
-              href={`${basePath}/reservar`}
-              className="bg-[var(--tenant-primary)] px-5 py-2.5 text-white transition hover:opacity-90"
-            >
-              Reservar
-            </Link>
-          </nav>
-
-          {/* Nav mobile */}
-          <Link
-            href={`${basePath}/reservar`}
-            className="bg-[var(--tenant-primary)] px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase text-white md:hidden"
-          >
-            Reservar
-          </Link>
-        </div>
-      </header>
-
-      <main className="mx-auto w-full max-w-6xl px-6 py-10 sm:py-14">
+      <PublicLayoutShell
+        slug={tenant.slug}
+        basePath={basePath}
+        brandName={theme.brandName}
+        footer={footer}
+      >
         {children}
-      </main>
-
-      <footer className="mt-auto border-t border-black/10 bg-white/90">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-6 text-xs tracking-[0.1em] uppercase text-[var(--tenant-muted)] sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} {theme.brandName}</p>
-          <p>Barbería · Reservas online · Atención personalizada</p>
-        </div>
-      </footer>
+      </PublicLayoutShell>
     </div>
   );
 }
