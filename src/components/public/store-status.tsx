@@ -8,30 +8,32 @@ type CajaRow = {
   esta_abierta: boolean;
 };
 
+let channelCounter = 0;
+
 export function StoreStatus() {
   const [abierta, setAbierta] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const channelRef = useRef<ReturnType<ReturnType<typeof createClient>["channel"]> | null>(null);
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
 
   useEffect(() => {
-    if (channelRef.current) return;
     const supabase = createClient();
+    supabaseRef.current = supabase;
 
     supabase.from("caja").select("esta_abierta").maybeSingle().then(({ data }) => {
       if (data) setAbierta((data as CajaRow).esta_abierta);
       setLoaded(true);
     });
 
-    const channel = supabase.channel(`caja_public_${Date.now()}`);
+    const channelId = ++channelCounter;
+    const channel = supabase.channel(`caja_public_${channelId}`);
     channel.on("postgres_changes", { event: "*", schema: "public", table: "caja" }, (payload) => {
       setAbierta((payload.new as CajaRow).esta_abierta);
     });
     channel.subscribe();
-    channelRef.current = channel;
 
     return () => {
       supabase.removeChannel(channel);
-      channelRef.current = null;
+      supabaseRef.current = null;
     };
   }, []);
 
