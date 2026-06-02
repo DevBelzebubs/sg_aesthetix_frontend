@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Clock3, DollarSign, Loader2, Plus, Scissors, Search, Trash2, X } from "lucide-react";
+import { ArrowLeft, Clock3, DollarSign, Loader2, PencilLine, Plus, Scissors, Search, Trash2, Undo2, X } from "lucide-react";
 import { CloudinaryUpload } from "@/components/dashboard/cloudinary-upload";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
+import { Toast } from "@/components/dashboard/toast";
+import type { ToastType } from "@/components/dashboard/toast";
 import { createClient } from "@/lib/supabase/client";
 
 type Service = {
@@ -45,6 +47,8 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
   const supabase = createClient();
 
   const [services, setServices] = useState<Service[]>([]);
+  const [inactiveServices, setInactiveServices] = useState<Service[]>([]);
+  const [showInactive, setShowInactive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState("");
@@ -53,34 +57,53 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
   const [draft, setDraft] = useState<ServiceDraft>(emptyDraft);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deactivateTarget, setDeactivateTarget] = useState<Service | null>(null);
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<ToastType>("success");
 
   const pageSize = 10;
   const [page, setPage] = useState(1);
 
-  useEffect(() => { fetchServices(); }, []);
+  useEffect(() => { fetchActiveServices(); }, []);
 
-  async function fetchServices() {
+  async function fetchActiveServices() {
     setLoading(true);
     const { data } = await supabase
       .from("servicios")
       .select("*")
+      .eq("esta_activo", true)
       .order("nombre", { ascending: true });
     setServices(data ?? []);
     setLoading(false);
   }
 
+  useEffect(() => {
+    if (!showInactive) return;
+    setLoading(true);
+    supabase
+      .from("servicios")
+      .select("*")
+      .eq("esta_activo", false)
+      .order("nombre", { ascending: true })
+      .then(({ data }) => setInactiveServices(data ?? []))
+      .finally(() => setLoading(false));
+  }, [showInactive]);
+
+  const servicesForList = showInactive ? inactiveServices : services;
+
   const filteredServices = useMemo(() => {
-    return services.filter((s) =>
+    return servicesForList.filter((s) =>
       s.nombre.toLowerCase().includes(query.toLowerCase()) ||
       s.descripcion?.toLowerCase().includes(query.toLowerCase())
     );
-  }, [query, services]);
+  }, [query, servicesForList]);
 
-  useEffect(() => { setPage(1); }, [query]);
+  useEffect(() => { setPage(1); }, [query, showInactive]);
   const totalPages = Math.ceil(filteredServices.length / pageSize);
   const paginatedServices = filteredServices.slice((page - 1) * pageSize, page * pageSize);
 
-  const selectedService = services.find((s) => s.id === selectedId);
+  const selectedService = servicesForList.find((s) => s.id === selectedId);
 
   const handleCreate = () => {
     setSelectedId(null);
@@ -98,6 +121,7 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
     setMode("list");
     setSelectedId(null);
     setDraft(emptyDraft);
+    setShowInactive(false);
   };
 
   async function saveService() {
@@ -115,7 +139,7 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
         actualizado_en: new Date().toISOString(),
       });
     }
-    await fetchServices();
+    await fetchActiveServices();
     setSaving(false);
     setMode("list");
     setSelectedId(null);
@@ -129,9 +153,31 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
     setSelectedId(null);
     setDraft(emptyDraft);
     setMode("list");
-    await fetchServices();
+    await fetchActiveServices();
     setIsDeleteOpen(false);
   }
+
+  const handleDeactivateFromCard = async () => {
+    if (!deactivateTarget) return;
+    try {
+      await supabase.from("servicios").update({ esta_activo: false }).eq("id", deactivateTarget.id);
+      setServices((prev) => prev.filter((s) => s.id !== deactivateTarget.id));
+      setToastMessage(`${deactivateTarget.nombre} ha sido desactivado.`);
+      setToastType("success");
+      setToastOpen(true);
+    } catch (err) {
+      setToastMessage(err instanceof Error ? err.message : "Error al desactivar");
+      setToastType("error");
+      setToastOpen(true);
+    } finally {
+      setDeactivateTarget(null);
+    }
+  };
+
+  const handleRestoreService = async (id: string) => {
+    await supabase.from("servicios").update({ esta_activo: true }).eq("id", id);
+    setInactiveServices((prev) => prev.filter((s) => s.id !== id));
+  };
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
@@ -172,30 +218,48 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
       <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-[var(--foreground)]">Catalogo de servicios</p>
+            <p className="text-sm font-semibold text-[var(--foreground)]">
+              {showInactive ? "Servicios desactivados" : "Catalogo de servicios"}
+            </p>
             <p className="mt-1 text-sm text-[var(--text-muted)]">
-              {services.length} servicio(s) registrado(s)
+              {showInactive
+                ? `${inactiveServices.length} servicio(s) desactivado(s)`
+                : `${services.length} servicio(s) registrado(s)`}
             </p>
           </div>
-          {mode === "list" ? (
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={handleCreate}
-              className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-4 py-2 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90"
+              onClick={() => { setShowInactive((v) => !v); setQuery(""); setPage(1); }}
+              className={`inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-4 py-2 text-sm font-semibold text-[var(--destructive)] transition ${
+                showInactive
+                  ? "bg-[var(--destructive-hover)]"
+                  : "hover:bg-[var(--destructive-hover)]"
+              }`}
             >
-              <Plus size={16} />
-              Nuevo servicio
+              <Trash2 size={16} />
+              Papelera
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleBack}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--background)]"
-            >
-              <ArrowLeft size={16} />
-              Volver al listado
-            </button>
-          )}
+            {mode === "list" ? (
+              <button
+                type="button"
+                onClick={handleCreate}
+                className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-4 py-2 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90"
+              >
+                <Plus size={16} />
+                Nuevo servicio
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleBack}
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--background)]"
+              >
+                <ArrowLeft size={16} />
+                Volver al listado
+              </button>
+            )}
+          </div>
         </div>
 
         {mode === "list" && (
@@ -219,7 +283,11 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
             <div className="col-span-full flex flex-col items-center gap-3 py-16">
               <Scissors size={32} className="text-[var(--text-muted)]" />
               <p className="text-sm text-[var(--text-muted)]">
-                {query ? "No se encontraron servicios con ese filtro." : "No hay servicios registrados. Crea el primero."}
+                {showInactive
+                  ? "No hay servicios en la papelera."
+                  : query
+                    ? "No se encontraron servicios con ese filtro."
+                    : "No hay servicios registrados. Crea el primero."}
               </p>
             </div>
           ) : (
@@ -259,14 +327,34 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
                     )}
                   </div>
                   <div className="mt-auto flex items-center gap-2 border-t border-[var(--border)] pt-4">
-                    <button
-                      type="button"
-                      onClick={() => handleEdit(service)}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] py-2 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--background)]"
-                    >
-                      <Plus size={14} className="rotate-45" />
-                      Editar
-                    </button>
+                    {showInactive ? (
+                      <button
+                        type="button"
+                        onClick={() => handleRestoreService(service.id)}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--hover)] py-2 text-sm font-semibold text-[var(--hover)] transition hover:bg-[var(--hover)]/10"
+                      >
+                        <Undo2 size={14} />
+                        Restaurar
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(service)}
+                          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] py-2 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--background)]"
+                        >
+                          <Plus size={14} className="rotate-45" />
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeactivateTarget(service)}
+                          className="flex shrink-0 items-center justify-center rounded-xl border border-[var(--destructive-border)] p-2 text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </article>
@@ -282,7 +370,11 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
         <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm">
           <div className="mb-6 flex items-center gap-3">
             <div className="rounded-2xl bg-[var(--background)] p-3">
-              <Scissors size={20} className="text-[var(--foreground)]" />
+              {mode === "edit" ? (
+                <PencilLine size={20} className="text-[var(--foreground)]" />
+              ) : (
+                <Scissors size={20} className="text-[var(--foreground)]" />
+              )}
             </div>
             <div>
               <p className="text-lg font-semibold text-[var(--foreground)]">
@@ -406,6 +498,22 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
         confirmLabel="Si, eliminar"
         onClose={() => setIsDeleteOpen(false)}
         onConfirm={deleteService}
+      />
+
+      <ConfirmationModal
+        open={deactivateTarget !== null}
+        title="Desactivar servicio"
+        description={`${deactivateTarget?.nombre ?? ""} pasara a estado inactivo. Podras restaurarlo desde la papelera.`}
+        confirmLabel="Si, desactivar"
+        onClose={() => setDeactivateTarget(null)}
+        onConfirm={handleDeactivateFromCard}
+      />
+
+      <Toast
+        message={toastMessage}
+        type={toastType}
+        open={toastOpen}
+        onClose={() => setToastOpen(false)}
       />
     </>
   );

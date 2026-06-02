@@ -250,10 +250,10 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
             <button
               type="button"
               onClick={() => { setShowInactive((v) => !v); setQuery(""); setPage(1); }}
-              className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+              className={`inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-4 py-2 text-sm font-semibold text-[var(--destructive)] transition ${
                 showInactive
-                  ? "border-[var(--destructive-border)] bg-[var(--destructive-hover)] text-[var(--destructive)]"
-                  : "border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--background)] hover:text-[var(--foreground)]"
+                  ? "bg-[var(--destructive-hover)]"
+                  : "hover:bg-[var(--destructive-hover)]"
               }`}
             >
               <Trash2 size={16} />
@@ -333,7 +333,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
                           <button
                             type="button"
                             onClick={() => { setSelectedId(customer.id); setIsDeleteConfirmOpen(true); }}
-                            className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--destructive-hover)] hover:text-[var(--destructive)]"
+                            className="rounded-lg p-2 text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]"
                             title="Desactivar"
                           >
                             <Trash2 size={15} />

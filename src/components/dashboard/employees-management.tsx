@@ -5,6 +5,8 @@ import { ArrowLeft, Eye, EyeOff, Filter, Globe, Loader2, PencilLine, Plus, Searc
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { CloudinaryUpload } from "@/components/dashboard/cloudinary-upload";
+import { Toast } from "@/components/dashboard/toast";
+import type { ToastType } from "@/components/dashboard/toast";
 import { EmployeesService } from "@/services/employees.service";
 import type { Employee, EmployeeDraft, EmployeeFilter } from "@/types/employee";
 
@@ -51,7 +53,11 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
   const [showPassword, setShowPassword] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deactivateTarget, setDeactivateTarget] = useState<Employee | null>(null);
   const [saving, setSaving] = useState(false);
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<ToastType>("success");
   const pageSize = 10;
   const [page, setPage] = useState(1);
 
@@ -144,6 +150,23 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
       setError(err instanceof Error ? err.message : "Error al desactivar");
     } finally {
       setIsDeleteOpen(false);
+    }
+  };
+
+  const handleDeactivateFromCard = async () => {
+    if (!deactivateTarget) return;
+    try {
+      await EmployeesService.remove(deactivateTarget.id);
+      setEmployees((prev) => prev.filter((e) => e.id !== deactivateTarget.id));
+      setToastMessage(`${deactivateTarget.name} ha sido desactivado.`);
+      setToastType("success");
+      setToastOpen(true);
+    } catch (err) {
+      setToastMessage(err instanceof Error ? err.message : "Error al desactivar");
+      setToastType("error");
+      setToastOpen(true);
+    } finally {
+      setDeactivateTarget(null);
     }
   };
 
@@ -276,10 +299,10 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
             <button
               type="button"
               onClick={() => { setShowInactive((v) => !v); setQuery(""); setPage(1); }}
-              className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+              className={`inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-4 py-2 text-sm font-semibold text-[var(--destructive)] transition ${
                 showInactive
-                  ? "border-[var(--destructive-border)] bg-[var(--destructive-hover)] text-[var(--destructive)]"
-                  : "border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--background)] hover:text-[var(--foreground)]"
+                  ? "bg-[var(--destructive-hover)]"
+                  : "hover:bg-[var(--destructive-hover)]"
               }`}
             >
               <Trash2 size={16} />
@@ -478,6 +501,13 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
                         <ArrowLeft size={14} className="rotate-180" />
                         Perfil
                       </Link>
+                      <button
+                        type="button"
+                        onClick={() => setDeactivateTarget(employee)}
+                        className="flex shrink-0 items-center justify-center rounded-xl border border-[var(--destructive-border)] p-2 text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </>
                   )}
                 </div>
@@ -725,6 +755,22 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
         confirmLabel="Si, desactivar"
         onClose={() => setIsDeleteOpen(false)}
         onConfirm={handleDesactivate}
+      />
+
+      <ConfirmationModal
+        open={deactivateTarget !== null}
+        title="Desactivar empleado"
+        description={`${deactivateTarget?.name ?? ""} pasara a estado inactivo. Podras restaurarlo desde la papelera.`}
+        confirmLabel="Si, desactivar"
+        onClose={() => setDeactivateTarget(null)}
+        onConfirm={handleDeactivateFromCard}
+      />
+
+      <Toast
+        message={toastMessage}
+        type={toastType}
+        open={toastOpen}
+        onClose={() => setToastOpen(false)}
       />
     </>
   );

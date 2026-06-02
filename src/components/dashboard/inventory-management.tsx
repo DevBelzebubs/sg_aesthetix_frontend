@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, Boxes, Loader2, PackagePlus, Plus, Search, TrendingDown, TrendingUp, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Boxes, Loader2, PencilLine, Plus, Search, TrendingDown, TrendingUp, Trash2, Undo2, X } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { CloudinaryUpload } from "@/components/dashboard/cloudinary-upload";
+import { Toast } from "@/components/dashboard/toast";
+import type { ToastType } from "@/components/dashboard/toast";
 import { createClient } from "@/lib/supabase/client";
 
 type Product = {
@@ -55,6 +57,8 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
   const supabase = createClient();
 
   const [inventory, setInventory] = useState<Product[]>([]);
+  const [inactiveInventory, setInactiveInventory] = useState<Product[]>([]);
+  const [showInactive, setShowInactive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState("");
@@ -63,39 +67,58 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
   const [draft, setDraft] = useState<ProductDraft>(emptyDraft);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deactivateTarget, setDeactivateTarget] = useState<Product | null>(null);
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<ToastType>("success");
 
   const pageSize = 10;
   const [page, setPage] = useState(1);
 
-  useEffect(() => { fetchInventory(); }, []);
+  useEffect(() => { fetchActiveInventory(); }, []);
 
-  async function fetchInventory() {
+  async function fetchActiveInventory() {
     setLoading(true);
     const { data } = await supabase
       .from("productos")
       .select("*")
+      .eq("esta_activo", true)
       .order("nombre", { ascending: true });
     setInventory(data ?? []);
     setLoading(false);
   }
 
+  useEffect(() => {
+    if (!showInactive) return;
+    setLoading(true);
+    supabase
+      .from("productos")
+      .select("*")
+      .eq("esta_activo", false)
+      .order("nombre", { ascending: true })
+      .then(({ data }) => setInactiveInventory(data ?? []))
+      .finally(() => setLoading(false));
+  }, [showInactive]);
+
+  const inventoryForList = showInactive ? inactiveInventory : inventory;
+
   const filteredInventory = useMemo(() => {
-    return inventory.filter((item) =>
+    return inventoryForList.filter((item) =>
       item.nombre.toLowerCase().includes(query.toLowerCase()) ||
       item.sku?.toLowerCase().includes(query.toLowerCase())
     );
-  }, [inventory, query]);
+  }, [inventoryForList, query]);
 
-  useEffect(() => { setPage(1); }, [query]);
+  useEffect(() => { setPage(1); }, [query, showInactive]);
   const totalPages = Math.ceil(filteredInventory.length / pageSize);
   const paginatedInventory = filteredInventory.slice((page - 1) * pageSize, page * pageSize);
 
-  const selectedItem = inventory.find((item) => item.id === selectedId);
+  const selectedItem = inventoryForList.find((item) => item.id === selectedId);
 
   const handleCreate = () => { setSelectedId(null); setDraft(emptyDraft); setMode("create"); };
   const handleEdit = (item: Product) => { setSelectedId(item.id); setDraft(toDraft(item)); setMode("edit"); };
   const handleDelete = (item: Product) => { setSelectedId(item.id); setIsDeleteOpen(true); };
-  const handleBack = () => { setMode("list"); setSelectedId(null); setDraft(emptyDraft); };
+  const handleBack = () => { setMode("list"); setSelectedId(null); setDraft(emptyDraft); setShowInactive(false); };
 
   async function saveItem() {
     if (!draft.nombre) return;
@@ -105,7 +128,7 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
     } else {
       await supabase.from("productos").insert({ ...draft, creado_en: new Date().toISOString(), actualizado_en: new Date().toISOString() });
     }
-    await fetchInventory();
+    await fetchActiveInventory();
     setSaving(false);
     setMode("list");
     setSelectedId(null);
@@ -119,9 +142,31 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
     setSelectedId(null);
     setDraft(emptyDraft);
     setMode("list");
-    await fetchInventory();
+    await fetchActiveInventory();
     setIsDeleteOpen(false);
   }
+
+  const handleDeactivateFromCard = async () => {
+    if (!deactivateTarget) return;
+    try {
+      await supabase.from("productos").update({ esta_activo: false }).eq("id", deactivateTarget.id);
+      setInventory((prev) => prev.filter((p) => p.id !== deactivateTarget.id));
+      setToastMessage(`${deactivateTarget.nombre} ha sido desactivado.`);
+      setToastType("success");
+      setToastOpen(true);
+    } catch (err) {
+      setToastMessage(err instanceof Error ? err.message : "Error al desactivar");
+      setToastType("error");
+      setToastOpen(true);
+    } finally {
+      setDeactivateTarget(null);
+    }
+  };
+
+  const handleRestoreItem = async (id: string) => {
+    await supabase.from("productos").update({ esta_activo: true }).eq("id", id);
+    setInactiveInventory((prev) => prev.filter((p) => p.id !== id));
+  };
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
@@ -160,18 +205,38 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
       <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-[var(--foreground)]">Control de stock</p>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">{inventory.length} producto(s)</p>
+            <p className="text-sm font-semibold text-[var(--foreground)]">
+              {showInactive ? "Productos desactivados" : "Control de stock"}
+            </p>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">
+              {showInactive
+                ? `${inactiveInventory.length} producto(s) desactivado(s)`
+                : `${inventory.length} producto(s)`}
+            </p>
           </div>
-          {mode === "list" ? (
-            <button type="button" onClick={handleCreate} className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-4 py-2 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90">
-              <Plus size={16} /> Nuevo producto
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { setShowInactive((v) => !v); setQuery(""); setPage(1); }}
+              className={`inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-4 py-2 text-sm font-semibold text-[var(--destructive)] transition ${
+                showInactive
+                  ? "bg-[var(--destructive-hover)]"
+                  : "hover:bg-[var(--destructive-hover)]"
+              }`}
+            >
+              <Trash2 size={16} />
+              Papelera
             </button>
-          ) : (
-            <button type="button" onClick={handleBack} className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--background)]">
-              <ArrowLeft size={16} /> Volver al listado
-            </button>
-          )}
+            {mode === "list" ? (
+              <button type="button" onClick={handleCreate} className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-4 py-2 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90">
+                <Plus size={16} /> Nuevo producto
+              </button>
+            ) : (
+              <button type="button" onClick={handleBack} className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--background)]">
+                <ArrowLeft size={16} /> Volver al listado
+              </button>
+            )}
+          </div>
         </div>
         {mode === "list" && (
           <label className="mt-4 flex items-center gap-3 rounded-2xl border border-[var(--border)] px-4 py-3">
@@ -187,7 +252,13 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
           {paginatedInventory.length === 0 ? (
             <div className="col-span-full flex flex-col items-center gap-3 py-16">
               <Boxes size={32} className="text-[var(--text-muted)]" />
-              <p className="text-sm text-[var(--text-muted)]">{query ? "No se encontraron productos." : "No hay productos. Crea el primero."}</p>
+              <p className="text-sm text-[var(--text-muted)]">
+                {showInactive
+                  ? "No hay productos en la papelera."
+                  : query
+                    ? "No se encontraron productos."
+                    : "No hay productos. Crea el primero."}
+              </p>
             </div>
           ) : (
             paginatedInventory.map((item) => {
@@ -223,12 +294,29 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
                     </div>
                   )}
                   <div className="mt-auto flex items-center gap-2 border-t border-[var(--border)] pt-4">
-                    <button type="button" onClick={() => handleEdit(item)} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] py-2 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--background)]">
-                      <Plus size={14} className="rotate-45" /> Editar
-                    </button>
-                    <button type="button" onClick={() => handleDelete(item)} className="flex shrink-0 items-center justify-center rounded-xl border border-[var(--destructive-border)] p-2 text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]">
-                      <Trash2 size={14} />
-                    </button>
+                    {showInactive ? (
+                      <button
+                        type="button"
+                        onClick={() => handleRestoreItem(item.id)}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--hover)] py-2 text-sm font-semibold text-[var(--hover)] transition hover:bg-[var(--hover)]/10"
+                      >
+                        <Undo2 size={14} />
+                        Restaurar
+                      </button>
+                    ) : (
+                      <>
+                        <button type="button" onClick={() => handleEdit(item)} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] py-2 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--background)]">
+                          <PencilLine size={14} /> Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeactivateTarget(item)}
+                          className="flex shrink-0 items-center justify-center rounded-xl border border-[var(--destructive-border)] p-2 text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
                   </div>
                   </div>
                 </article>
@@ -243,7 +331,13 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
       {(mode === "create" || mode === "edit") && (
         <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm">
           <div className="mb-6 flex items-center gap-3">
-            <div className="rounded-2xl bg-[var(--background)] p-3"><Boxes size={20} className="text-[var(--foreground)]" /></div>
+            <div className="rounded-2xl bg-[var(--background)] p-3">
+              {mode === "edit" ? (
+                <PencilLine size={20} className="text-[var(--foreground)]" />
+              ) : (
+                <Boxes size={20} className="text-[var(--foreground)]" />
+              )}
+            </div>
             <div>
               <p className="text-lg font-semibold text-[var(--foreground)]">{mode === "create" ? "Nuevo producto" : "Editar producto"}</p>
               <p className="text-sm text-[var(--text-muted)]">{mode === "create" ? "Agrega un producto al inventario." : `Editando ${selectedItem?.nombre ?? ""}`}</p>
@@ -354,6 +448,22 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
 
       <ConfirmationModal open={isConfirmOpen} title={mode === "create" ? "Confirmar nuevo producto" : "Confirmar cambios"} description={mode === "create" ? "Se creara un nuevo producto." : "Se guardaran los cambios."} confirmLabel={saving ? "Guardando..." : mode === "create" ? "Si, crear" : "Si, guardar"} onClose={() => setIsConfirmOpen(false)} onConfirm={saveItem} />
       <ConfirmationModal open={isDeleteOpen} title="Eliminar producto" description="Esta accion no se puede deshacer." confirmLabel="Si, eliminar" onClose={() => setIsDeleteOpen(false)} onConfirm={deleteItem} />
+
+      <ConfirmationModal
+        open={deactivateTarget !== null}
+        title="Desactivar producto"
+        description={`${deactivateTarget?.nombre ?? ""} pasara a estado inactivo. Podras restaurarlo desde la papelera.`}
+        confirmLabel="Si, desactivar"
+        onClose={() => setDeactivateTarget(null)}
+        onConfirm={handleDeactivateFromCard}
+      />
+
+      <Toast
+        message={toastMessage}
+        type={toastType}
+        open={toastOpen}
+        onClose={() => setToastOpen(false)}
+      />
     </>
   );
 }
