@@ -13,6 +13,7 @@ type Service = {
   precio: number;
   duracion_minutos: number;
   imagenUrl: string;
+  puntos: number;
 };
 
 type ProductItem = {
@@ -738,12 +739,11 @@ export default function LandingPage({
           style={{ background: "var(--hover)" }}
         >
           {services.map((service, index) => {
-            const isDark = index % 2 !== 0;
             return (
               <article
                 key={service.id}
-                className={`relative grid gap-[1px] transition group ${isDark ? "bg-neutral-900" : "bg-[var(--background-secondary)]"}`}
-                style={{ gridTemplateColumns: "1fr auto" }}
+                className="relative grid gap-[1px] transition group bg-[var(--background-secondary)]"
+                style={{ gridTemplateColumns: "auto 1fr auto" }}
               >
                 {/* Barra lateral izquierda animada al hover */}
                 <div
@@ -751,60 +751,54 @@ export default function LandingPage({
                   style={{ background: "var(--hover)" }}
                 />
 
-                {/* Contenido principal */}
-                <div className="px-8 py-7 pl-10">
+                {/* FOTO - columna 1 */}
+                <div className="flex items-center justify-center px-6 py-7">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[var(--background)]">
+                    {service.imagenUrl ? (
+                      <img
+                        src={service.imagenUrl}
+                        alt={service.nombre}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <Scissors size={28} className="text-[var(--text-muted)]" />
+                    )}
+                  </div>
+                </div>
+
+                {/* INFO - columna 2 */}
+                <div className="px-8 py-7">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[var(--background)]">
-                        {service.imagenUrl ? (
-                          <img
-                            src={service.imagenUrl}
-                            alt={service.nombre}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <Scissors size={16} className="text-[var(--text-muted)]" />
-                        )}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-black tabular-nums shrink-0" style={{ color: "var(--hover)" }}>
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+                        <h3 className="text-base font-black uppercase tracking-tight text-[var(--foreground)]">
+                          {service.nombre}
+                        </h3>
                       </div>
-                      {/* Número */}
-                      <span
-                        className="text-xs font-black tabular-nums shrink-0"
-                        style={{ color: isDark ? "var(--hover)" : "color-mix(in srgb, var(--hover) 50%, transparent)" }}
-                      >
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <h3
-                        className={`text-base font-black uppercase tracking-tight ${isDark ? "text-white" : "text-[var(--foreground)]"}`}
-                      >
-                        {service.nombre}
-                      </h3>
+                      <p className="text-sm leading-relaxed max-w-lg text-[var(--text-muted)]">
+                        {service.descripcion}
+                      </p>
+                      {service.puntos > 0 && (
+                        <span className="inline-block rounded-full px-3 py-0.5 text-[11px] font-semibold bg-[var(--hover)]/10 text-[var(--hover)]">
+                          +{service.puntos} pts
+                        </span>
+                      )}
                     </div>
-                    <span
-                      className={`shrink-0 text-xs font-semibold uppercase tracking-widest pt-0.5 ${isDark ? "text-white/30" : "text-[var(--text-muted)]"}`}
-                    >
+                    <span className="shrink-0 text-xs font-semibold uppercase tracking-widest pt-0.5 text-[var(--text-muted)]">
                       {service.duracion_minutos} min
                     </span>
                   </div>
-                  <p
-                    className={`mt-2 text-sm leading-relaxed max-w-lg ${isDark ? "text-white/50" : "text-[var(--text-muted)]"}`}
-                  >
-                    {service.descripcion}
-                  </p>
                 </div>
 
-                {/* Precio — bloque derecho separado por gap-px */}
-                <div
-                  className={`flex flex-col items-center justify-center px-7 py-7 min-w-[100px] ${isDark ? "bg-neutral-800" : "bg-[var(--background)]"}`}
-                >
-                  <span
-                    className={`text-xs font-semibold uppercase tracking-widest mb-1 ${isDark ? "text-white/30" : "text-[var(--text-muted)]"}`}
-                  >
+                {/* Precio — bloque derecho */}
+                <div className="flex flex-col items-center justify-center px-7 py-7 min-w-[100px] bg-[var(--background)]">
+                  <span className="text-xs font-semibold uppercase tracking-widest mb-1 text-[var(--text-muted)]">
                     Desde
                   </span>
-                  <span
-                    className="text-3xl font-black tracking-tight"
-                    style={{ color: isDark ? "white" : "var(--hover)" }}
-                  >
+                  <span className="text-3xl font-black tracking-tight" style={{ color: "var(--hover)" }}>
                     S/{service.precio}
                   </span>
                 </div>
