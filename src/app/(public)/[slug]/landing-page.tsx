@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useCallback } from "react";
-import { Globe } from "lucide-react";
+import { Globe, Scissors } from "lucide-react";
 import { StoreStatus } from "@/components/public/store-status";
 import { useCart } from "@/contexts/cart-context";
 
@@ -12,6 +12,7 @@ type Service = {
   descripcion: string;
   precio: number;
   duracion_minutos: number;
+  imagenUrl: string;
 };
 
 type ProductItem = {
@@ -754,6 +755,17 @@ export default function LandingPage({
                 <div className="px-8 py-7 pl-10">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[var(--background)]">
+                        {service.imagenUrl ? (
+                          <img
+                            src={service.imagenUrl}
+                            alt={service.nombre}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <Scissors size={16} className="text-[var(--text-muted)]" />
+                        )}
+                      </div>
                       {/* Número */}
                       <span
                         className="text-xs font-black tabular-nums shrink-0"

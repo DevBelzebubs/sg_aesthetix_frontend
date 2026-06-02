@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Clock3, DollarSign, Loader2, Plus, Scissors, Search, Trash2, X } from "lucide-react";
+import { CloudinaryUpload } from "@/components/dashboard/cloudinary-upload";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { createClient } from "@/lib/supabase/client";
@@ -15,9 +16,10 @@ type Service = {
   puntos_otorgados: number;
   esta_activo: boolean;
   categoria_servicio_id: number;
+  imagen_url: string | null;
 };
 
-type ServiceDraft = Omit<Service, "id">;
+type ServiceDraft = Omit<Service, "id"> & { imagen_url: string };
 
 const emptyDraft: ServiceDraft = {
   nombre: "",
@@ -27,6 +29,7 @@ const emptyDraft: ServiceDraft = {
   puntos_otorgados: 0,
   esta_activo: true,
   categoria_servicio_id: 1,
+  imagen_url: "",
 };
 
 const inputClassName =
@@ -223,51 +226,48 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
             paginatedServices.map((service) => (
               <article
                 key={service.id}
-                className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                className="flex h-full flex-col overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--background)] text-[var(--foreground)]">
-                    <Scissors size={20} />
+                {service.imagen_url ? (
+                  <div className="flex items-center justify-center bg-[var(--background)] px-4 pt-4">
+                    <img src={service.imagen_url} alt={service.nombre} className="h-48 w-auto max-w-full rounded-2xl object-contain" />
                   </div>
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                    service.esta_activo ? "bg-[var(--hover)]/15 text-[var(--hover)]" : "bg-[var(--background)] text-[var(--text-muted)]"
-                  }`}>
-                    {service.esta_activo ? "Activo" : "Inactivo"}
-                  </span>
-                </div>
-
-                <div className="mt-3">
-                  <p className="text-base font-semibold text-[var(--foreground)]">{service.nombre}</p>
-                  {service.descripcion && (
-                    <p className="mt-1 text-sm text-[var(--text-muted)] line-clamp-2">{service.descripcion}</p>
-                  )}
-                </div>
-
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-[var(--text-muted)]">
-                  <span className="inline-flex items-center gap-1">
-                    <Clock3 size={13} />
-                    {service.duracion_minutos} min
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <DollarSign size={13} />
-                    S/{service.precio}
-                  </span>
-                  {service.puntos_otorgados > 0 && (
-                    <span className="rounded-full bg-[var(--background)] px-2 py-0.5 text-xs font-medium">
-                      +{service.puntos_otorgados} pts
+                ) : (
+                  <div className="flex h-48 w-full items-center justify-center bg-[var(--foreground)]">
+                    <Scissors size={32} className="text-[var(--background)]" />
+                  </div>
+                )}
+                <div className="p-5 flex flex-1 flex-col">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-base font-semibold text-[var(--foreground)]">{service.nombre}</p>
+                    <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
+                      service.esta_activo ? "bg-[var(--hover)]/15 text-[var(--hover)]" : "bg-[var(--background)] text-[var(--text-muted)]"
+                    }`}>
+                      {service.esta_activo ? "Activo" : "Inactivo"}
                     </span>
+                  </div>
+                  {service.descripcion && (
+                    <p className="mt-2 text-sm text-[var(--text-muted)] line-clamp-2">{service.descripcion}</p>
                   )}
-                </div>
-
-                <div className="mt-4 flex items-center gap-2 border-t border-[var(--border)] pt-4">
-                  <button
-                    type="button"
-                    onClick={() => handleEdit(service)}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] py-2 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--background)]"
-                  >
-                    <Plus size={14} className="rotate-45" />
-                    Editar
-                  </button>
+                  <div className="mt-3 space-y-1.5 text-sm text-[var(--text-muted)]">
+                    <p className="flex items-center gap-2"><Clock3 size={14} />{service.duracion_minutos} min</p>
+                    <p className="flex items-center gap-2"><DollarSign size={14} />S/{service.precio}</p>
+                    {service.puntos_otorgados > 0 && (
+                      <p className="flex items-center gap-2 rounded-full bg-[var(--background)] px-2 py-0.5 text-xs font-medium w-fit">
+                        +{service.puntos_otorgados} pts
+                      </p>
+                    )}
+                  </div>
+                  <div className="mt-auto flex items-center gap-2 border-t border-[var(--border)] pt-4">
+                    <button
+                      type="button"
+                      onClick={() => handleEdit(service)}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] py-2 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--background)]"
+                    >
+                      <Plus size={14} className="rotate-45" />
+                      Editar
+                    </button>
+                  </div>
                 </div>
               </article>
             ))
@@ -296,39 +296,72 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="col-span-full">
-              <Field label="Nombre" required>
-                <input className={inputClassName} value={draft.nombre}
-                  onChange={(e) => setDraft((d) => ({ ...d, nombre: e.target.value }))}
-                  placeholder="Nombre del servicio" />
-              </Field>
+          <div className="grid gap-6 md:grid-cols-[200px_1fr] items-start">
+            {/* FOTO - izquierda */}
+            <div className="flex flex-col items-center">
+              <p className="mb-2 text-sm font-medium text-[var(--foreground)]">Foto de perfil</p>
+              <div className="flex flex-col items-center gap-3">
+                <div className={`flex h-40 w-40 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] ${!draft.imagen_url ? "bg-[var(--background)]" : ""}`}>
+                  {draft.imagen_url ? (
+                    <img src={draft.imagen_url} alt="Vista previa" className="h-full w-full object-cover" />
+                  ) : (
+                    <Scissors size={40} className="text-[var(--text-muted)]" />
+                  )}
+                </div>
+                <CloudinaryUpload
+                  cloudName={process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!}
+                  uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!}
+                  onUpload={(url) => setDraft((d) => ({ ...d, imagen_url: url }))}
+                />
+                {draft.imagen_url && (
+                  <button
+                    type="button"
+                    onClick={() => setDraft((d) => ({ ...d, imagen_url: "" }))}
+                    className="text-xs text-[var(--destructive)] underline transition hover:opacity-80"
+                  >
+                    Quitar foto
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="col-span-full">
-              <Field label="Descripcion">
-                <textarea className={`${inputClassName} min-h-24 resize-none`} value={draft.descripcion ?? ""}
-                  onChange={(e) => setDraft((d) => ({ ...d, descripcion: e.target.value }))} />
-              </Field>
+
+            {/* FORMULARIO - derecha */}
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="col-span-full">
+                  <Field label="Nombre" required>
+                    <input className={inputClassName} value={draft.nombre}
+                      onChange={(e) => setDraft((d) => ({ ...d, nombre: e.target.value }))}
+                      placeholder="Nombre del servicio" />
+                  </Field>
+                </div>
+                <div className="col-span-full">
+                  <Field label="Descripcion">
+                    <textarea className={`${inputClassName} min-h-24 resize-none`} value={draft.descripcion ?? ""}
+                      onChange={(e) => setDraft((d) => ({ ...d, descripcion: e.target.value }))} />
+                  </Field>
+                </div>
+                <Field label="Precio (S/)">
+                  <input type="number" className={inputClassName} value={draft.precio}
+                    onChange={(e) => setDraft((d) => ({ ...d, precio: Number(e.target.value) }))} />
+                </Field>
+                <Field label="Duracion (min)">
+                  <input type="number" className={inputClassName} value={draft.duracion_minutos}
+                    onChange={(e) => setDraft((d) => ({ ...d, duracion_minutos: Number(e.target.value) }))} />
+                </Field>
+                <Field label="Puntos otorgados">
+                  <input type="number" className={inputClassName} value={draft.puntos_otorgados}
+                    onChange={(e) => setDraft((d) => ({ ...d, puntos_otorgados: Number(e.target.value) }))} />
+                </Field>
+                <Field label="Estado">
+                  <select className={inputClassName} value={draft.esta_activo ? "activo" : "inactivo"}
+                    onChange={(e) => setDraft((d) => ({ ...d, esta_activo: e.target.value === "activo" }))}>
+                    <option value="activo">Activo</option>
+                    <option value="inactivo">Inactivo</option>
+                  </select>
+                </Field>
+              </div>
             </div>
-            <Field label="Precio (S/)">
-              <input type="number" className={inputClassName} value={draft.precio}
-                onChange={(e) => setDraft((d) => ({ ...d, precio: Number(e.target.value) }))} />
-            </Field>
-            <Field label="Duracion (min)">
-              <input type="number" className={inputClassName} value={draft.duracion_minutos}
-                onChange={(e) => setDraft((d) => ({ ...d, duracion_minutos: Number(e.target.value) }))} />
-            </Field>
-            <Field label="Puntos otorgados">
-              <input type="number" className={inputClassName} value={draft.puntos_otorgados}
-                onChange={(e) => setDraft((d) => ({ ...d, puntos_otorgados: Number(e.target.value) }))} />
-            </Field>
-            <Field label="Estado">
-              <select className={inputClassName} value={draft.esta_activo ? "activo" : "inactivo"}
-                onChange={(e) => setDraft((d) => ({ ...d, esta_activo: e.target.value === "activo" }))}>
-                <option value="activo">Activo</option>
-                <option value="inactivo">Inactivo</option>
-              </select>
-            </Field>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-6">
@@ -399,5 +432,6 @@ function toDraft(item: Service): ServiceDraft {
     puntos_otorgados: item.puntos_otorgados,
     esta_activo: item.esta_activo,
     categoria_servicio_id: item.categoria_servicio_id,
+    imagen_url: item.imagen_url ?? "",
   };
 }
