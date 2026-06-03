@@ -292,7 +292,7 @@ function ClientRightbar({
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative w-full max-w-sm bg-[var(--background-secondary)] h-full overflow-y-auto shadow-2xl animate-[slideIn_0.2s_ease-out]">
+      <div className="relative w-full max-w-lg bg-[var(--background-secondary)] h-full overflow-y-auto shadow-2xl animate-[slideIn_0.2s_ease-out]">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--border)] bg-[var(--background-secondary)] px-5 py-4">
           <p className="text-base font-semibold text-[var(--foreground)]">
             {showCreate ? "Nuevo cliente" : "Seleccionar cliente"}
@@ -304,26 +304,38 @@ function ClientRightbar({
 
         <div className="p-5">
           {showCreate ? (
-            <div className="space-y-6">
-              <Field label="Nombres" required>
-                <input className={inputClassName} value={newClient.nombres} onChange={(e) => setNewClient((c) => ({ ...c, nombres: e.target.value }))} placeholder="Ej. Juan" />
-              </Field>
-              <Field label="Apellidos" required>
-                <input className={inputClassName} value={newClient.apellidos} onChange={(e) => setNewClient((c) => ({ ...c, apellidos: e.target.value }))} placeholder="Ej. Pérez" />
-              </Field>
-              <Field label="DNI" required>
-                <input className={inputClassName} value={newClient.dni} onChange={(e) => setNewClient((c) => ({ ...c, dni: e.target.value.replace(/\D/g, "").slice(0, 8) }))} placeholder="12345678" inputMode="numeric" />
-              </Field>
-              <Field label="Teléfono" required>
-                <input className={inputClassName} value={newClient.telefono} onChange={(e) => setNewClient((c) => ({ ...c, telefono: e.target.value.replace(/\D/g, "").slice(0, 9) }))} placeholder="987654321" inputMode="numeric" />
-              </Field>
-              <Field label="Email" required>
-                <input className={inputClassName} value={newClient.email} onChange={(e) => setNewClient((c) => ({ ...c, email: e.target.value }))} placeholder="correo@gmail.com" type="email" />
-              </Field>
-              <Field label="Fecha de nacimiento" required>
-                <input type="date" className={inputClassName} value={newClient.fechaNacimiento} onChange={(e) => setNewClient((c) => ({ ...c, fechaNacimiento: e.target.value }))} />
-              </Field>
-              <div className="flex gap-3 pt-8">
+            <div className="space-y-5">
+              {/* Fila 1: Nombres + Apellidos */}
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Nombres" required>
+                  <input className={inputClassName} value={newClient.nombres} onChange={(e) => setNewClient((c) => ({ ...c, nombres: e.target.value }))} placeholder="Ej. Juan" />
+                </Field>
+                <Field label="Apellidos" required>
+                  <input className={inputClassName} value={newClient.apellidos} onChange={(e) => setNewClient((c) => ({ ...c, apellidos: e.target.value }))} placeholder="Ej. Pérez" />
+                </Field>
+              </div>
+
+              {/* Fila 2: DNI + Teléfono */}
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="DNI" required>
+                  <input className={inputClassName} value={newClient.dni} onChange={(e) => setNewClient((c) => ({ ...c, dni: e.target.value.replace(/\D/g, "").slice(0, 8) }))} placeholder="12345678" inputMode="numeric" />
+                </Field>
+                <Field label="Teléfono" required>
+                  <input className={inputClassName} value={newClient.telefono} onChange={(e) => setNewClient((c) => ({ ...c, telefono: e.target.value.replace(/\D/g, "").slice(0, 9) }))} placeholder="987654321" inputMode="numeric" />
+                </Field>
+              </div>
+
+              {/* Fila 3: Email + Fecha de nacimiento */}
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Email" required>
+                  <input className={inputClassName} value={newClient.email} onChange={(e) => setNewClient((c) => ({ ...c, email: e.target.value }))} placeholder="correo@gmail.com" type="email" />
+                </Field>
+                <Field label="Fecha de nacimiento" required>
+                  <input type="date" className={inputClassName} value={newClient.fechaNacimiento} onChange={(e) => setNewClient((c) => ({ ...c, fechaNacimiento: e.target.value }))} />
+                </Field>
+              </div>
+
+              <div className="flex gap-3 pt-4">
                 <button onClick={() => setShowCreate(false)} className="flex-1 rounded-full border border-[var(--border)] px-4 py-2.5 text-sm text-[var(--foreground)] transition hover:bg-[var(--background-secondary)]">Cancelar</button>
                 <button onClick={handleCreate} disabled={!newClient.nombres || !newClient.apellidos || !newClient.dni || !newClient.telefono || !newClient.email || !newClient.fechaNacimiento || saving} className="flex-1 rounded-full bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-50">
                   {saving ? <Loader2 size={16} className="animate-spin mx-auto" /> : "Crear cliente"}
@@ -828,7 +840,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
           const { error: txErr } = await supabase.from("transacciones_puntos").insert({
             cuenta_puntos_id: cuentaId,
             venta_id: ventaId,
-            tipo: "reserva",
+            tipo: "compra",
             puntos,
             saldo_anterior: disponibles,
             saldo_nuevo: disponibles + puntos,
@@ -849,6 +861,35 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
           if (updateErr) throw updateErr;
         } catch (ptsErr) {
           console.error("Error al asignar puntos:", ptsErr);
+        }
+      }
+
+      // Vincular citas pendientes del cliente a los servicios vendidos
+      if (draft.cliente_id) {
+        const todayStr = new Date().toISOString().split("T")[0];
+        for (const item of draft.items) {
+          if (item.type !== "servicio") continue;
+          try {
+            const { data: reservaMatch } = await supabase
+              .from("reservas")
+              .select("id")
+              .eq("cliente_id", draft.cliente_id)
+              .eq("servicio_id", item.id)
+              .eq("fecha_reserva", todayStr)
+              .in("estado", ["Pendiente", "Confirmada"])
+              .order("hora_inicio", { ascending: true })
+              .limit(1)
+              .maybeSingle();
+
+            if (reservaMatch) {
+              await supabase
+                .from("reservas")
+                .update({ estado: "Completada" })
+                .eq("id", (reservaMatch as Record<string, unknown>).id as string);
+            }
+          } catch {
+            // no interrumpir la venta si falla la vinculación
+          }
         }
       }
 

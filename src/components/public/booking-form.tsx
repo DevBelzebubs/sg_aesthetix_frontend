@@ -43,10 +43,12 @@ type BookingDraft = {
   barberId: string;
   date: string;
   time: string;
-  customerName: string;
+  nombres: string;
+  apellidos: string;
   phone: string;
   email: string;
   dni: string;
+  fechaNacimiento: string;
 };
 
 const initialDraft: BookingDraft = {
@@ -54,10 +56,12 @@ const initialDraft: BookingDraft = {
   barberId: "",
   date: "",
   time: "",
-  customerName: "",
+  nombres: "",
+  apellidos: "",
   phone: "",
   email: "",
   dni: "",
+  fechaNacimiento: "",
 };
 
 const inputClassName =
@@ -81,13 +85,7 @@ export function BookingForm({
   const [dni, setDni] = useState("");
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
-  const [formData, setFormData] = useState<BookingDraft>({
-    ...initialDraft,
-    serviceId: services[0]?.id ?? "",
-    barberId: barbers[0]?.id ?? "",
-    date: availableDates[0]?.value ?? "",
-    time: availableSlots[0] ?? "",
-  });
+  const [formData, setFormData] = useState<BookingDraft>(initialDraft);
 
   const { session: customerSession } = useCustomerAuth();
 
@@ -99,15 +97,14 @@ export function BookingForm({
         const all = await CustomersService.getAll();
         const found = all.find((c) => c.id === customerSession.id);
         if (found) {
-          const parts = found.nombres.trim().split(/\s+/);
-          const nombres = parts.slice(0, -1).join(" ") || parts[0] || "";
-          const apellidos = parts.slice(-1).join("") || parts[0] || "";
           setFormData((c) => ({
             ...c,
-            customerName: `${nombres} ${apellidos}`.trim(),
+            nombres: found.nombres,
+            apellidos: found.apellidos ?? "",
             phone: found.telefono ?? c.phone,
             email: found.correoElectronico ?? c.email,
             dni: found.dni ?? c.dni,
+            fechaNacimiento: found.fechaNacimiento ?? c.fechaNacimiento,
           }));
         }
       } catch {}
@@ -216,15 +213,14 @@ export function BookingForm({
       const customer = await CustomersService.findByDni(dni);
       if (customer) {
         setCustomerId(customer.id);
-        const nameParts = customer.nombres.trim().split(/\s+/);
-        const nombres = nameParts.slice(0, -1).join(" ") || nameParts[0] || "";
-        const apellidos = nameParts.slice(-1).join("") || nameParts[0] || "";
         setFormData((c) => ({
           ...c,
-          customerName: `${nombres} ${apellidos}`.trim(),
+          nombres: customer.nombres,
+          apellidos: customer.apellidos ?? "",
           phone: customer.telefono ?? c.phone,
           email: customer.correoElectronico ?? c.email,
           dni: customer.dni ?? dni,
+          fechaNacimiento: customer.fechaNacimiento ?? c.fechaNacimiento,
         }));
         setStage("booking");
       } else {
@@ -240,19 +236,17 @@ export function BookingForm({
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.customerName || !formData.phone) return;
+    if (!formData.nombres || !formData.apellidos || !formData.phone) return;
     setIsLoading(true);
     setError("");
     try {
-      const nameParts = formData.customerName.trim().split(/\s+/);
-      const nombres = nameParts.slice(0, -1).join(" ") || nameParts[0] || "";
-      const apellidos = nameParts.slice(-1).join("") || nameParts[0] || "";
       const newCustomer = await CustomersService.create({
-        nombres,
-        apellidos,
+        nombres: formData.nombres.trim(),
+        apellidos: formData.apellidos.trim(),
         dni: formData.dni || undefined,
         telefono: formData.phone,
         correoElectronico: formData.email,
+        fechaNacimiento: formData.fechaNacimiento || undefined,
       });
       setCustomerId(newCustomer.id);
       setStage("booking");
@@ -302,7 +296,7 @@ export function BookingForm({
   const prevStep = () => setCurrentStep((s) => Math.max(s - 1, 0));
 
   return stage === "dni" || stage === "register" ? (
-    <div className="mx-auto max-w-md px-4 py-12">
+    <div className="mx-auto max-w-3xl px-8 py-12">
       <div className="mb-8 text-center">
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
           {businessName}
@@ -332,8 +326,10 @@ export function BookingForm({
             <input
               required
               type="text"
+              inputMode="numeric"
+              maxLength={8}
               value={dni}
-              onChange={(e) => setDni(e.target.value)}
+              onChange={(e) => setDni(e.target.value.replace(/\D/g, ""))}
               placeholder="12345678"
               className={inputClassName}
             />
@@ -350,52 +346,106 @@ export function BookingForm({
 
       {stage === "register" && (
         <form onSubmit={handleRegister} className="space-y-4">
-          <label className="space-y-2">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-              Nombre completo
-            </span>
-            <input
-              required
-              type="text"
-              value={formData.customerName}
-              onChange={(e) => setFormData((c) => ({ ...c, customerName: e.target.value }))}
-              placeholder="Juan Pérez"
-              className={inputClassName}
-            />
-          </label>
-          <label className="space-y-2">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-              Teléfono
-            </span>
-            <input
-              required
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => setFormData((c) => ({ ...c, phone: e.target.value }))}
-              placeholder="999 999 999"
-              className={inputClassName}
-            />
-          </label>
-          <label className="space-y-2">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-              Email
-            </span>
-            <input
-              required
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData((c) => ({ ...c, email: e.target.value }))}
-              placeholder="nombre@correo.com"
-              className={inputClassName}
-            />
-          </label>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-black px-8 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-75 disabled:opacity-40"
-          >
-            {isLoading ? "Registrando..." : "Continuar"}
-          </button>
+          {/* Fila 1: Nombres + Apellidos */}
+          <div className="grid grid-cols-2 gap-4">
+            <label className="space-y-2">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                Nombres
+              </span>
+              <input
+                required
+                type="text"
+                value={formData.nombres}
+                onChange={(e) => setFormData((c) => ({ ...c, nombres: e.target.value }))}
+                placeholder="Juan"
+                className={inputClassName}
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                Apellidos
+              </span>
+              <input
+                required
+                type="text"
+                value={formData.apellidos}
+                onChange={(e) => setFormData((c) => ({ ...c, apellidos: e.target.value }))}
+                placeholder="Pérez"
+                className={inputClassName}
+              />
+            </label>
+          </div>
+
+          {/* Fila 2: DNI + Teléfono */}
+          <div className="grid grid-cols-2 gap-4">
+            <label className="space-y-2">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                DNI
+              </span>
+              <input
+                required
+                type="text"
+                inputMode="numeric"
+                maxLength={8}
+                value={formData.dni}
+                onChange={(e) => setFormData((c) => ({ ...c, dni: e.target.value.replace(/\D/g, "") }))}
+                placeholder="12345678"
+                className={inputClassName}
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                Teléfono
+              </span>
+              <input
+                required
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData((c) => ({ ...c, phone: e.target.value }))}
+                placeholder="999 999 999"
+                className={inputClassName}
+              />
+            </label>
+          </div>
+
+          {/* Fila 3: Email + Fecha de nacimiento */}
+          <div className="grid grid-cols-2 gap-4">
+            <label className="space-y-2">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                Email
+              </span>
+              <input
+                required
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData((c) => ({ ...c, email: e.target.value }))}
+                placeholder="nombre@correo.com"
+                className={inputClassName}
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                Fecha de nacimiento
+              </span>
+              <input
+                required
+                type="date"
+                value={formData.fechaNacimiento}
+                onChange={(e) => setFormData((c) => ({ ...c, fechaNacimiento: e.target.value }))}
+                className={inputClassName}
+              />
+            </label>
+          </div>
+
+          <div className="pt-6">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-black px-8 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-75 disabled:opacity-40"
+            >
+              {isLoading ? "Registrando..." : "Continuar"}
+            </button>
+          </div>
         </form>
       )}
     </div>
@@ -720,37 +770,73 @@ export function BookingForm({
                 </p>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="space-y-2 sm:col-span-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                    Nombre completo
-                  </span>
-                  <input
-                    required
-                    type="text"
-                    name="customerName"
-                    value={formData.customerName}
-                    onChange={handleChange}
-                    placeholder="Juan Pérez"
-                    className={inputClassName}
-                  />
-                </label>
+              <div className="space-y-4">
+                {/* Fila 1: Nombres + Apellidos */}
+                <div className="grid grid-cols-2 gap-4">
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                      Nombres
+                    </span>
+                    <input
+                      required
+                      type="text"
+                      name="nombres"
+                      value={formData.nombres}
+                      onChange={handleChange}
+                      placeholder="Juan"
+                      className={inputClassName}
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                      Apellidos
+                    </span>
+                    <input
+                      required
+                      type="text"
+                      name="apellidos"
+                      value={formData.apellidos}
+                      onChange={handleChange}
+                      placeholder="Pérez"
+                      className={inputClassName}
+                    />
+                  </label>
+                </div>
 
-                <label className="space-y-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                    Teléfono
-                  </span>
-                  <input
-                    required
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    placeholder="999 999 999"
-                    className={inputClassName}
-                  />
-                </label>
+                {/* Fila 2: DNI + Teléfono */}
+                <div className="grid grid-cols-2 gap-4">
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                      DNI <span className="text-[var(--text-muted)]">(opcional)</span>
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={8}
+                      name="dni"
+                      value={formData.dni}
+                      onChange={(e) => setFormData((c) => ({ ...c, dni: e.target.value.replace(/\D/g, "") }))}
+                      placeholder="12345678"
+                      className={inputClassName}
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                      Teléfono
+                    </span>
+                    <input
+                      required
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      placeholder="999 999 999"
+                      className={inputClassName}
+                    />
+                  </label>
+                </div>
 
+                {/* Fila 3: Email */}
                 <label className="space-y-2">
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
                     Email
@@ -762,20 +848,6 @@ export function BookingForm({
                     value={formData.email}
                     onChange={handleChange}
                     placeholder="nombre@correo.com"
-                    className={inputClassName}
-                  />
-                </label>
-
-                <label className="space-y-2 sm:col-span-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                    DNI <span className="text-[var(--text-muted)]">(opcional)</span>
-                  </span>
-                  <input
-                    type="text"
-                    name="dni"
-                    value={formData.dni}
-                    onChange={handleChange}
-                    placeholder="12345678"
                     className={inputClassName}
                   />
                 </label>
@@ -833,13 +905,13 @@ export function BookingForm({
           </div>
 
           <div className="divide-y divide-black/10 dark:divide-white/10">
-            <SummaryRow label="Servicio" value={selectedService?.name ?? "Pendiente"} />
+            <SummaryRow label="Servicio" value={selectedService?.name || "\u2014"} />
             <SummaryRow
               label="Profesional"
-              value={selectedBarber?.name ?? "Pendiente"}
+              value={selectedBarber?.name || "\u2014"}
             />
-            <SummaryRow label="Fecha" value={selectedDate?.label ?? "Pendiente"} />
-            <SummaryRow label="Hora" value={formData.time || "Pendiente"} />
+            <SummaryRow label="Fecha" value={selectedDate?.label || "\u2014"} />
+            <SummaryRow label="Hora" value={formData.time || "\u2014"} />
           </div>
 
           <div className="bg-black px-6 py-6 text-white">
@@ -847,10 +919,10 @@ export function BookingForm({
               Inversión
             </p>
             <p className="mt-2 text-4xl font-black tracking-tight">
-              {selectedService?.price ?? "--"}
+              {selectedService?.price || "\u2014"}
             </p>
             <p className="mt-1 text-[10px] uppercase tracking-widest text-white/40">
-              {selectedService?.duration ?? "Sin duración"}
+              {selectedService?.duration || "\u2014"}
             </p>
           </div>
         </div>
