@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, Boxes, Loader2, PackagePlus, Plus, Search, TrendingDown, TrendingUp, Trash2, X } from "lucide-react";
+import { AlertCircle, AlertTriangle, ArrowLeft, Boxes, Loader2, PackagePlus, Plus, Search, TrendingDown, TrendingUp, Trash2, X } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { CloudinaryUpload } from "@/components/dashboard/cloudinary-upload";
 import { createClient } from "@/lib/supabase/client";
+import { validatePositiveNumber, validateRequired } from "@/lib/validators";
 
 type Product = {
   id: string;
@@ -43,7 +44,7 @@ const emptyDraft: ProductDraft = {
 };
 
 const inputClassName =
-  "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+  "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
 
 type Props = {
   totalProductos: number;
@@ -63,6 +64,7 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
   const [draft, setDraft] = useState<ProductDraft>(emptyDraft);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const pageSize = 10;
   const [page, setPage] = useState(1);
@@ -97,7 +99,15 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
   const handleBack = () => { setMode("list"); setSelectedId(null); setDraft(emptyDraft); };
 
   async function saveItem() {
-    if (!draft.nombre) return;
+    const errors: Record<string, string> = {};
+    const nombreErr = validateRequired(draft.nombre, "El nombre");
+    if (nombreErr) errors.nombre = nombreErr;
+    const precioVentaErr = validatePositiveNumber(draft.precio_venta, "El precio de venta");
+    if (precioVentaErr) errors.precioVenta = precioVentaErr;
+    if (draft.precio_costo && draft.precio_costo < 0) errors.precioCosto = "El precio de costo no puede ser negativo";
+    if (draft.stock_actual < 0) errors.stockActual = "El stock actual no puede ser negativo";
+    if (draft.stock_minimo < 0) errors.stockMinimo = "El stock mínimo no puede ser negativo";
+    if (Object.keys(errors).length > 0) { setFieldErrors(errors); return; }
     setSaving(true);
     if (mode === "edit" && selectedId) {
       await supabase.from("productos").update({ ...draft, actualizado_en: new Date().toISOString() }).eq("id", selectedId);
@@ -241,8 +251,8 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Nombre" required><input className={inputClassName} value={draft.nombre} onChange={(e) => setDraft((d) => ({ ...d, nombre: e.target.value }))} /></Field>
-            <Field label="SKU"><input className={inputClassName} value={draft.sku ?? ""} onChange={(e) => setDraft((d) => ({ ...d, sku: e.target.value }))} /></Field>
+            <Field label="Nombre" required error={fieldErrors.nombre}><input className={inputClassName} value={draft.nombre} onChange={(e) => { setDraft((d) => ({ ...d, nombre: e.target.value })); setFieldErrors((prev) => ({ ...prev, nombre: "" })); }} /></Field>
+            <Field label="SKU"><input className={inputClassName} value={draft.sku ?? ""} onChange={(e) => { setDraft((d) => ({ ...d, sku: e.target.value })); setFieldErrors((prev) => ({ ...prev, sku: "" })); }} /></Field>
             <div className="col-span-full">
               <Field label="Descripcion"><textarea className={`${inputClassName} min-h-20 resize-none`} value={draft.descripcion ?? ""} onChange={(e) => setDraft((d) => ({ ...d, descripcion: e.target.value }))} /></Field>
             </div>
@@ -255,9 +265,9 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
               </Field>
               {draft.imagen_url && <img src={draft.imagen_url} alt="preview" className="mt-2 h-40 w-full rounded-2xl object-cover" />}
             </div>
-            <Field label="Precio costo"><input type="number" className={inputClassName} value={draft.precio_costo ?? 0} onChange={(e) => setDraft((d) => ({ ...d, precio_costo: Number(e.target.value) }))} /></Field>
-            <Field label="Precio venta"><input type="number" className={inputClassName} value={draft.precio_venta} onChange={(e) => setDraft((d) => ({ ...d, precio_venta: Number(e.target.value) }))} /></Field>
-            <Field label="Puntos otorgados"><input type="number" className={inputClassName} value={draft.puntos_otorgados} onChange={(e) => setDraft((d) => ({ ...d, puntos_otorgados: Number(e.target.value) }))} /></Field>
+            <Field label="Precio costo" error={fieldErrors.precioCosto}><input type="number" className={inputClassName} value={draft.precio_costo ?? 0} onChange={(e) => { setDraft((d) => ({ ...d, precio_costo: Number(e.target.value) })); setFieldErrors((prev) => ({ ...prev, precioCosto: "" })); }} /></Field>
+            <Field label="Precio venta" error={fieldErrors.precioVenta}><input type="number" className={inputClassName} value={draft.precio_venta} onChange={(e) => { setDraft((d) => ({ ...d, precio_venta: Number(e.target.value) })); setFieldErrors((prev) => ({ ...prev, precioVenta: "" })); }} /></Field>
+            <Field label="Puntos otorgados"><input type="number" className={inputClassName} value={draft.puntos_otorgados} onChange={(e) => { setDraft((d) => ({ ...d, puntos_otorgados: Number(e.target.value) })); setFieldErrors((prev) => ({ ...prev, puntosOtorgados: "" })); }} /></Field>
             <Field label="Estado">
               <select className={inputClassName} value={draft.esta_activo ? "activo" : "inactivo"} onChange={(e) => setDraft((d) => ({ ...d, esta_activo: e.target.value === "activo" }))}>
                 <option value="activo">Activo</option>
@@ -273,7 +283,7 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-6">
-            <button type="button" onClick={() => setIsConfirmOpen(true)} disabled={!draft.nombre || saving} className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50">
+            <button type="button" onClick={() => setIsConfirmOpen(true)} disabled={Object.keys(fieldErrors).length > 0 || saving} className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50">
               {saving && <Loader2 size={16} className="animate-spin" />}
               {mode === "create" ? "Crear producto" : "Guardar cambios"}
             </button>
@@ -295,8 +305,8 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
   );
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return <label className="space-y-2"><span className="text-sm font-medium text-[var(--foreground)]">{label}{required && <span className="ml-1 text-[var(--destructive)]">*</span>}</span>{children}</label>;
+function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
+  return <label className="space-y-2"><span className="text-sm font-medium text-[var(--foreground)]">{label}{required && <span className="ml-1 text-[var(--destructive)]">*</span>}</span>{children}{error && <p className="flex items-center gap-1 text-[11px] text-[var(--destructive)]"><AlertCircle size={11} />{error}</p>}</label>;
 }
 
 function toDraft(item: Product): ProductDraft {

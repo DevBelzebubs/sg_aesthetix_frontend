@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Filter, Globe, Loader2, PencilLine, Plus, Search, ShieldCheck, Trash2, Undo2, UserCog, UserRound, Users, X, AlertCircle } from "lucide-react";
+import { validateRequired, validateEmailOptional, validatePhoneOptional, validatePassword, validateUrl } from "@/lib/validators";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { CloudinaryUpload } from "@/components/dashboard/cloudinary-upload";
@@ -25,7 +26,7 @@ const emptyDraft: EmployeeDraft = {
 };
 
 const inputClassName =
-  "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+  "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
 
 type Props = {
   kpiActivos: number;
@@ -51,6 +52,7 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const pageSize = 10;
   const [page, setPage] = useState(1);
 
@@ -147,15 +149,33 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
   };
 
   const handleSave = async () => {
-    if (!draft.nombres || !draft.apellidos) return;
+    const errors: Record<string, string> = {};
+    const errNombres = validateRequired(draft.nombres, "Nombres");
+    if (errNombres) errors.nombres = errNombres;
+    const errApellidos = validateRequired(draft.apellidos, "Apellidos");
+    if (errApellidos) errors.apellidos = errApellidos;
+    const errTelefono = validatePhoneOptional(draft.telefono);
+    if (errTelefono) errors.telefono = errTelefono;
+    const errEmail = validateEmailOptional(draft.correo_electronico);
+    if (errEmail) errors.email = errEmail;
+    const errInstagram = draft.instagram ? validateUrl(draft.instagram, "Instagram") : null;
+    if (errInstagram) errors.instagram = errInstagram;
+    const errFacebook = draft.facebook ? validateUrl(draft.facebook, "Facebook") : null;
+    if (errFacebook) errors.facebook = errFacebook;
+    const errTiktok = draft.tiktok ? validateUrl(draft.tiktok, "TikTok") : null;
+    if (errTiktok) errors.tiktok = errTiktok;
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
 
     if (password && password !== confirmPassword) {
       setPasswordError("Las claves no coinciden.");
       return;
     }
-    if (mode === "create" && (!password || password.length < 6)) {
-      setPasswordError("La clave debe tener al menos 6 caracteres.");
-      return;
+    if (mode === "create") {
+      const passErr = validatePassword(password);
+      if (passErr) { setPasswordError(passErr); return; }
     }
     setPasswordError("");
 
@@ -535,72 +555,79 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
 
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Nombres" required>
+                <Field label="Nombres" required error={fieldErrors.nombres}>
                   <input
                     value={draft.nombres}
-                    onChange={(event) =>
-                      setDraft((current) => ({ ...current, nombres: event.target.value }))
-                    }
+                    onChange={(event) => {
+                      setDraft((current) => ({ ...current, nombres: event.target.value }));
+                      setFieldErrors((prev) => { const next = { ...prev }; delete next.nombres; return next; });
+                    }}
                     className={inputClassName}
                     placeholder="Nombres"
                   />
                 </Field>
-                <Field label="Apellidos" required>
+                <Field label="Apellidos" required error={fieldErrors.apellidos}>
                   <input
                     value={draft.apellidos}
-                    onChange={(event) =>
-                      setDraft((current) => ({ ...current, apellidos: event.target.value }))
-                    }
+                    onChange={(event) => {
+                      setDraft((current) => ({ ...current, apellidos: event.target.value }));
+                      setFieldErrors((prev) => { const next = { ...prev }; delete next.apellidos; return next; });
+                    }}
                     className={inputClassName}
                     placeholder="Apellidos"
                   />
                 </Field>
-                <Field label="Telefono">
+                <Field label="Telefono" error={fieldErrors.telefono}>
                   <input
                     value={draft.telefono}
-                    onChange={(event) =>
-                      setDraft((current) => ({ ...current, telefono: event.target.value }))
-                    }
+                    onChange={(event) => {
+                      setDraft((current) => ({ ...current, telefono: event.target.value }));
+                      setFieldErrors((prev) => { const next = { ...prev }; delete next.telefono; return next; });
+                    }}
                     className={inputClassName}
                     placeholder="999 999 999"
                   />
                 </Field>
-                <Field label="Email">
+                <Field label="Email" error={fieldErrors.email}>
                   <input
                     value={draft.correo_electronico}
-                    onChange={(event) =>
-                      setDraft((current) => ({ ...current, correo_electronico: event.target.value }))
-                    }
+                    onChange={(event) => {
+                      setDraft((current) => ({ ...current, correo_electronico: event.target.value }));
+                      setFieldErrors((prev) => { const next = { ...prev }; delete next.email; return next; });
+                    }}
                     className={inputClassName}
                     placeholder="correo@negocio.com"
                   />
                 </Field>
-                <Field label="Instagram">
+                <Field label="Instagram" error={fieldErrors.instagram}>
                   <input
                     value={draft.instagram}
-                    onChange={(event) =>
-                      setDraft((current) => ({ ...current, instagram: event.target.value }))
-                    }
+                    onChange={(event) => {
+                      setDraft((current) => ({ ...current, instagram: event.target.value }));
+                      setFieldErrors((prev) => { const next = { ...prev }; delete next.instagram; return next; });
+                    }}
                     className={inputClassName}
                     placeholder="@usuario o url"
                   />
                 </Field>
-                <Field label="Facebook">
+                <Field label="Facebook" error={fieldErrors.facebook}>
                   <input
                     value={draft.facebook}
-                    onChange={(event) =>
-                      setDraft((current) => ({ ...current, facebook: event.target.value }))
-                    }
+                    onChange={(event) => {
+                      setDraft((current) => ({ ...current, facebook: event.target.value }));
+                      setFieldErrors((prev) => { const next = { ...prev }; delete next.facebook; return next; });
+                    }}
                     className={inputClassName}
                     placeholder="url o usuario"
                   />
                 </Field>
-                <Field label="TikTok">
+                <Field label="TikTok" error={fieldErrors.tiktok}>
                   <input
                     value={draft.tiktok}
-                    onChange={(event) =>
-                      setDraft((current) => ({ ...current, tiktok: event.target.value }))
-                    }
+                    onChange={(event) => {
+                      setDraft((current) => ({ ...current, tiktok: event.target.value }));
+                      setFieldErrors((prev) => { const next = { ...prev }; delete next.tiktok; return next; });
+                    }}
                     className={inputClassName}
                     placeholder="@usuario o url"
                   />
@@ -652,7 +679,7 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
             <button
               type="button"
               onClick={() => setIsConfirmOpen(true)}
-              disabled={saving}
+              disabled={saving || Object.keys(fieldErrors).length > 0}
               className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50"
             >
               {saving && <Loader2 size={16} className="animate-spin" />}
@@ -711,7 +738,7 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
   return (
     <label className="space-y-2">
       <span className="text-sm font-medium text-[var(--foreground)]">
@@ -719,6 +746,12 @@ function Field({ label, required, children }: { label: string; required?: boolea
         {required && <span className="ml-1 text-[var(--destructive)]">*</span>}
       </span>
       {children}
+      {error && (
+        <div className="flex items-center gap-1.5 text-xs text-[var(--destructive)]">
+          <AlertCircle size={12} />
+          {error}
+        </div>
+      )}
     </label>
   );
 }

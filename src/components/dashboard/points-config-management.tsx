@@ -1,17 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Save, Settings } from "lucide-react";
+import { AlertCircle, Loader2, Save, Settings } from "lucide-react";
 import { ConfiguracionService, type ConfiguracionPuntos } from "@/services/configuracion.service";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 
-const inputClassName = "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+const inputClassName = "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <label className="space-y-2">
       <span className="text-sm font-medium text-[var(--foreground)]">{label}</span>
       {children}
+      {error && <p className="flex items-center gap-1 text-[11px] text-[var(--destructive)]"><AlertCircle size={11} />{error}</p>}
     </label>
   );
 }
@@ -20,6 +21,7 @@ export function PointsConfigManagement() {
   const [config, setConfig] = useState<ConfiguracionPuntos | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [draft, setDraft] = useState({ minimoCanje: 0, estaActivo: false, promocionActiva: false });
 
@@ -40,6 +42,9 @@ export function PointsConfigManagement() {
   }, []);
 
   const handleSave = async () => {
+    const errors: Record<string, string> = {};
+    if (draft.minimoCanje < 0) errors.minimoCanje = "El mínimo de canje no puede ser negativo";
+    if (Object.keys(errors).length > 0) { setFieldErrors(errors); return; }
     setSaving(true);
     try {
       const updated = await ConfiguracionService.update(draft);
@@ -74,13 +79,13 @@ export function PointsConfigManagement() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Puntos mínimos para canje">
+          <Field label="Puntos mínimos para canje" error={fieldErrors.minimoCanje}>
             <input
               type="number"
               min={0}
               className={inputClassName}
               value={draft.minimoCanje}
-              onChange={(e) => setDraft((prev) => ({ ...prev, minimoCanje: Number(e.target.value) }))}
+              onChange={(e) => { setFieldErrors((prev) => ({ ...prev, minimoCanje: "" })); setDraft((prev) => ({ ...prev, minimoCanje: Number(e.target.value) })); }}
             />
           </Field>
           <Field label="Sistema de puntos activo">
@@ -109,7 +114,7 @@ export function PointsConfigManagement() {
           <button
             type="button"
             onClick={() => setIsConfirmOpen(true)}
-            disabled={saving}
+            disabled={Object.keys(fieldErrors).length > 0 || saving}
             className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50"
           >
             <Save size={16} />

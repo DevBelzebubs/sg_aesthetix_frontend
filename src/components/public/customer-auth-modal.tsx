@@ -1,14 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { AlertCircle, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
 import { CustomersService } from "@/services/customers.service";
 import { RewardsService } from "@/services/rewards.service";
-import { X } from "lucide-react";
+import { validateDni, validateEmail, validateEmailOptional, validatePhoneOptional, validateRequired, validatePassword } from "@/lib/validators";
 
 type Tab = "cliente" | "registro" | "admin";
+
+const fieldClass =
+  "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--foreground)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
 
 export function CustomerAuthModal() {
   const { session, modalOpen, closeModal, login, logout, refreshPoints } = useCustomerAuth();
@@ -21,6 +25,7 @@ export function CustomerAuthModal() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const [regNombres, setRegNombres] = useState("");
   const [regApellidos, setRegApellidos] = useState("");
@@ -34,7 +39,19 @@ export function CustomerAuthModal() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regNombres || !regDni) return;
+    const errors: Record<string, string> = {};
+    const nameErr = validateRequired(regNombres, "Los nombres");
+    const dniErr = validateDni(regDni);
+    const emailErr = validateEmailOptional(regEmail);
+    const phoneErr = validatePhoneOptional(regTelefono);
+    if (nameErr) errors.nombres = nameErr;
+    if (dniErr) errors.regDni = dniErr;
+    if (emailErr) errors.regEmail = emailErr;
+    if (phoneErr) errors.regTelefono = phoneErr;
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -76,7 +93,15 @@ export function CustomerAuthModal() {
 
   const handleCustomerLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !dni) return;
+    const errors: Record<string, string> = {};
+    const emailErr = validateEmail(email);
+    const dniErr = validateDni(dni);
+    if (emailErr) errors.email = emailErr;
+    if (dniErr) errors.dni = dniErr;
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -92,7 +117,6 @@ export function CustomerAuthModal() {
         const yaTieneBienvenida = cuenta
           ? (await RewardsService.getTransacciones(cuenta.id)).some((t) => t.tipo === "bienvenida")
           : false;
-
         if (!yaTieneBienvenida) {
           await RewardsService.claimWelcomeReward(customer.id);
         }
@@ -108,14 +132,20 @@ export function CustomerAuthModal() {
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
+    const errors: Record<string, string> = {};
+    const emailErr = validateEmail(email);
+    const passErr = validatePassword(password);
+    if (emailErr) errors.adminEmail = emailErr;
+    if (passErr) errors.adminPassword = passErr;
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
     setLoading(true);
     setError("");
     try {
-      // 1. Intentar signIn directo
       let { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
-      // 2. Si falla, sincronizar via API y reintentar
       if (authError || !authData.session) {
         const res = await fetch("/api/auth/login", {
           method: "POST",
@@ -135,7 +165,6 @@ export function CustomerAuthModal() {
         return;
       }
 
-      // Determinar rol y redirigir
       const { data: usuario } = await supabase
         .from("usuarios")
         .select("rol")
@@ -151,26 +180,23 @@ export function CustomerAuthModal() {
     }
   };
 
-  const inputClassName =
-    "w-full border border-transparent/10/10 bg-[var(--background-secondary)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-transparent/10";
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={closeModal} />
-      <div className="relative w-full max-w-sm border border-transparent/10/10 bg-[var(--background-secondary)] shadow-2xl">
+      <div className="relative w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] shadow-2xl">
         <button
           type="button"
           onClick={closeModal}
-          className="absolute right-3 top-3 flex items-center justify-center border border-transparent/10/10 p-1.5 text-[var(--text-muted)] hover:text-[var(--foreground)] transition"
+          className="absolute right-3 top-3 z-10 flex items-center justify-center rounded-lg border border-[var(--border)] p-1.5 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]"
         >
           <X size="14" />
         </button>
 
         {/* Tabs */}
-        <div className="flex border-b border-transparent/10/10">
+        <div className="flex overflow-hidden rounded-t-2xl border-b border-[var(--border)]">
           <button
             type="button"
-            onClick={() => { setTab("cliente"); setError(""); }}
+            onClick={() => { setTab("cliente"); setError(""); setFieldErrors({}); }}
             className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-[0.15em] transition ${
               tab === "cliente" ? "bg-black text-white" : "bg-[var(--background)] text-neutral-500 hover:text-[var(--foreground)]"
             }`}
@@ -179,7 +205,7 @@ export function CustomerAuthModal() {
           </button>
           <button
             type="button"
-            onClick={() => { setTab("admin"); setError(""); }}
+            onClick={() => { setTab("admin"); setError(""); setFieldErrors({}); }}
             className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-[0.15em] transition ${
               tab === "admin" ? "bg-black text-white" : "bg-[var(--background)] text-neutral-500 hover:text-[var(--foreground)]"
             }`}
@@ -200,14 +226,14 @@ export function CustomerAuthModal() {
               <button
                 type="button"
                 onClick={() => { refreshPoints(); }}
-                className="flex-1 border border-transparent/10/15 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] transition hover:bg-[var(--background)]"
+                className="flex-1 rounded-xl border border-[var(--border)] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] transition hover:bg-[var(--background)]"
               >
                 Actualizar
               </button>
               <button
                 type="button"
                 onClick={() => { logout(); closeModal(); }}
-                className="flex-1 border border-red-200 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] text-red-600 transition hover:bg-red-50"
+                className="flex-1 rounded-xl border border-[var(--destructive-border)] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]"
               >
                 Cerrar
               </button>
@@ -218,36 +244,58 @@ export function CustomerAuthModal() {
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center mb-4">
               Ingresa con tu DNI y email
             </p>
+
+            {error && (
+              <div className="flex items-center gap-2 rounded-xl border border-[var(--destructive-border)] bg-[var(--destructive-hover)] px-4 py-3 text-xs text-[var(--destructive)]">
+                <AlertCircle size="14" className="shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
             <label className="space-y-1.5 block">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Email</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                Email <span className="text-[var(--destructive)]">*</span>
+              </span>
               <input
-                required
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, email: "" })); }}
                 placeholder="nombre@correo.com"
-                className={inputClassName}
+                className={fieldClass}
               />
+              {fieldErrors.email && (
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                  <AlertCircle size={11} />
+                  {fieldErrors.email}
+                </p>
+              )}
             </label>
             <label className="space-y-1.5 block">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">DNI</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                DNI <span className="text-[var(--destructive)]">*</span>
+              </span>
               <input
-                required
                 type="text"
                 value={dni}
-                onChange={(e) => setDni(e.target.value)}
+                onChange={(e) => { setDni(e.target.value); setFieldErrors((prev) => ({ ...prev, dni: "" })); }}
                 placeholder="12345678"
-                className={inputClassName}
+                maxLength={8}
+                className={fieldClass}
               />
+              {fieldErrors.dni && (
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                  <AlertCircle size={11} />
+                  {fieldErrors.dni}
+                </p>
+              )}
             </label>
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-black px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-80 disabled:opacity-40"
+              className="w-full rounded-xl bg-black px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {loading ? "Ingresando..." : "Ingresar"}
             </button>
-            {error && <p className="text-[10px] font-semibold text-red-600 text-center">{error}</p>}
           </form>
         ) : tab === "registro" ? (
           <form onSubmit={handleRegister} className="px-6 py-8 space-y-3">
@@ -261,38 +309,109 @@ export function CustomerAuthModal() {
                 <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center mb-2">
                   Crea tu cuenta de cliente
                 </p>
+
+                {error && (
+                  <div className="flex items-center gap-2 rounded-xl border border-[var(--destructive-border)] bg-[var(--destructive-hover)] px-4 py-3 text-xs text-[var(--destructive)]">
+                    <AlertCircle size="14" className="shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
                 <label className="space-y-1 block">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Nombres</span>
-                  <input required type="text" value={regNombres} onChange={(e) => setRegNombres(e.target.value)} placeholder="Tus nombres" className={inputClassName} />
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                    Nombres <span className="text-[var(--destructive)]">*</span>
+                  </span>
+                  <input
+                    type="text"
+                    value={regNombres}
+                    onChange={(e) => { setRegNombres(e.target.value); setFieldErrors((prev) => ({ ...prev, nombres: "" })); }}
+                    placeholder="Tus nombres"
+                    className={fieldClass}
+                  />
+                  {fieldErrors.nombres && (
+                    <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                      <AlertCircle size={11} />
+                      {fieldErrors.nombres}
+                    </p>
+                  )}
                 </label>
                 <label className="space-y-1 block">
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Apellidos</span>
-                  <input type="text" value={regApellidos} onChange={(e) => setRegApellidos(e.target.value)} placeholder="Tus apellidos" className={inputClassName} />
+                  <input
+                    type="text"
+                    value={regApellidos}
+                    onChange={(e) => setRegApellidos(e.target.value)}
+                    placeholder="Tus apellidos"
+                    className={fieldClass}
+                  />
                 </label>
                 <label className="space-y-1 block">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">DNI</span>
-                  <input required type="text" value={regDni} onChange={(e) => setRegDni(e.target.value)} placeholder="12345678" className={inputClassName} />
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                    DNI <span className="text-[var(--destructive)]">*</span>
+                  </span>
+                  <input
+                    type="text"
+                    value={regDni}
+                    onChange={(e) => { setRegDni(e.target.value); setFieldErrors((prev) => ({ ...prev, regDni: "" })); }}
+                    placeholder="12345678"
+                    maxLength={8}
+                    className={fieldClass}
+                  />
+                  {fieldErrors.regDni && (
+                    <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                      <AlertCircle size={11} />
+                      {fieldErrors.regDni}
+                    </p>
+                  )}
                 </label>
                 <label className="space-y-1 block">
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Email (opcional)</span>
-                  <input type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="correo@ejemplo.com" className={inputClassName} />
+                  <input
+                    type="email"
+                    value={regEmail}
+                    onChange={(e) => { setRegEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, regEmail: "" })); }}
+                    placeholder="correo@ejemplo.com"
+                    className={fieldClass}
+                  />
+                  {fieldErrors.regEmail && (
+                    <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                      <AlertCircle size={11} />
+                      {fieldErrors.regEmail}
+                    </p>
+                  )}
                 </label>
                 <label className="space-y-1 block">
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Teléfono (opcional)</span>
-                  <input type="text" value={regTelefono} onChange={(e) => setRegTelefono(e.target.value)} placeholder="999 999 999" className={inputClassName} />
+                  <input
+                    type="text"
+                    value={regTelefono}
+                    onChange={(e) => { setRegTelefono(e.target.value); setFieldErrors((prev) => ({ ...prev, regTelefono: "" })); }}
+                    placeholder="999 999 999"
+                    className={fieldClass}
+                  />
+                  {fieldErrors.regTelefono && (
+                    <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                      <AlertCircle size={11} />
+                      {fieldErrors.regTelefono}
+                    </p>
+                  )}
                 </label>
                 <label className="space-y-1 block">
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Fecha de nacimiento (opcional)</span>
-                  <input type="date" value={regFechaNacimiento} onChange={(e) => setRegFechaNacimiento(e.target.value)} className={inputClassName} />
+                  <input
+                    type="date"
+                    value={regFechaNacimiento}
+                    onChange={(e) => setRegFechaNacimiento(e.target.value)}
+                    className={fieldClass}
+                  />
                 </label>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-black px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-80 disabled:opacity-40"
+                  className="w-full rounded-xl bg-black px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {loading ? "Registrando..." : "Registrarme"}
                 </button>
-                {error && <p className="text-[10px] font-semibold text-red-600 text-center">{error}</p>}
               </>
             )}
           </form>
@@ -301,45 +420,66 @@ export function CustomerAuthModal() {
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center mb-4">
               Acceso administrativo
             </p>
+
+            {error && (
+              <div className="flex items-center gap-2 rounded-xl border border-[var(--destructive-border)] bg-[var(--destructive-hover)] px-4 py-3 text-xs text-[var(--destructive)]">
+                <AlertCircle size="14" className="shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
             <label className="space-y-1.5 block">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Email</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                Email <span className="text-[var(--destructive)]">*</span>
+              </span>
               <input
-                required
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, adminEmail: "" })); }}
                 placeholder="admin@correo.com"
-                className={inputClassName}
+                className={fieldClass}
               />
+              {fieldErrors.adminEmail && (
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                  <AlertCircle size={11} />
+                  {fieldErrors.adminEmail}
+                </p>
+              )}
             </label>
             <label className="space-y-1.5 block">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Contraseña</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                Contraseña <span className="text-[var(--destructive)]">*</span>
+              </span>
               <input
-                required
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, adminPassword: "" })); }}
                 placeholder="••••••••"
-                className={inputClassName}
+                className={fieldClass}
               />
+              {fieldErrors.adminPassword && (
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                  <AlertCircle size={11} />
+                  {fieldErrors.adminPassword}
+                </p>
+              )}
             </label>
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-black px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-80 disabled:opacity-40"
+              className="w-full rounded-xl bg-black px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {loading ? "Ingresando..." : "Ingresar"}
             </button>
-            {error && <p className="text-[10px] font-semibold text-red-600 text-center">{error}</p>}
           </form>
         )}
 
         {/* Pie */}
         {tab === "cliente" && (
-          <div className="border-t border-transparent/10/10 px-6 py-3 text-center">
+          <div className="border-t border-[var(--border)] px-6 py-3 text-center">
             <button
               type="button"
-              onClick={() => { setTab("registro"); setError(""); }}
+              onClick={() => { setTab("registro"); setError(""); setFieldErrors({}); }}
               className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--foreground)] transition"
             >
               ¿No tienes cuenta? Regístrate aquí
@@ -347,10 +487,10 @@ export function CustomerAuthModal() {
           </div>
         )}
         {tab === "registro" && (
-          <div className="border-t border-transparent/10/10 px-6 py-3 text-center">
+          <div className="border-t border-[var(--border)] px-6 py-3 text-center">
             <button
               type="button"
-              onClick={() => { setTab("cliente"); setError(""); }}
+              onClick={() => { setTab("cliente"); setError(""); setFieldErrors({}); }}
               className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--foreground)] transition"
             >
               ¿Ya tienes cuenta? Ingresa aquí

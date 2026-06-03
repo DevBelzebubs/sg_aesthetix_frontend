@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Calendar, PencilLine, Phone, Search, Trash2, Undo2, UserRound, Users, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, Calendar, PencilLine, Phone, Search, Trash2, Undo2, UserRound, Users, X } from "lucide-react";
+import { validateRequired, validateEmailOptional, validatePhoneOptional, validateDniOptional } from "@/lib/validators";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { CustomersService } from "@/services/customers.service";
@@ -33,7 +34,7 @@ const emptyDraft: CustomerRecord = {
 };
 
 const inputClassName =
-  "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+  "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
 
 type Props = {
   totalClientes: number;
@@ -54,6 +55,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const pageSize = 10;
   const [page, setPage] = useState(1);
@@ -156,7 +158,22 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
   };
 
   const handleSave = async () => {
-    if (!selectedId || !draft.nombres) return;
+    const errors: Record<string, string> = {};
+    const errNombres = validateRequired(draft.nombres, "Nombres");
+    if (errNombres) errors.nombres = errNombres;
+    const errApellidos = validateRequired(draft.apellidos, "Apellidos");
+    if (errApellidos) errors.apellidos = errApellidos;
+    const errPhone = validatePhoneOptional(draft.phone);
+    if (errPhone) errors.phone = errPhone;
+    const errEmail = validateEmailOptional(draft.email);
+    if (errEmail) errors.email = errEmail;
+    const errDni = validateDniOptional(draft.dni);
+    if (errDni) errors.dni = errDni;
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+    if (!selectedId) return;
     setSaving(true);
     try {
       await CustomersService.update(selectedId, {
@@ -455,52 +472,70 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Nombres" required>
+            <Field label="Nombres" required error={fieldErrors.nombres}>
               <input
                 className={inputClassName}
                 value={draft.nombres}
-                onChange={(event) => setDraft((current) => ({ ...current, nombres: event.target.value }))}
+                onChange={(event) => {
+                  setDraft((current) => ({ ...current, nombres: event.target.value }));
+                  setFieldErrors((prev) => { const next = { ...prev }; delete next.nombres; return next; });
+                }}
                 placeholder="Nombres"
               />
             </Field>
-            <Field label="Apellidos">
+            <Field label="Apellidos" error={fieldErrors.apellidos}>
               <input
                 className={inputClassName}
                 value={draft.apellidos}
-                onChange={(event) => setDraft((current) => ({ ...current, apellidos: event.target.value }))}
+                onChange={(event) => {
+                  setDraft((current) => ({ ...current, apellidos: event.target.value }));
+                  setFieldErrors((prev) => { const next = { ...prev }; delete next.apellidos; return next; });
+                }}
                 placeholder="Apellidos"
               />
             </Field>
-            <Field label="Telefono">
+            <Field label="Telefono" error={fieldErrors.phone}>
               <input
                 className={inputClassName}
                 value={draft.phone}
-                onChange={(event) => setDraft((current) => ({ ...current, phone: event.target.value }))}
+                onChange={(event) => {
+                  setDraft((current) => ({ ...current, phone: event.target.value }));
+                  setFieldErrors((prev) => { const next = { ...prev }; delete next.phone; return next; });
+                }}
                 placeholder="999 999 999"
               />
             </Field>
-            <Field label="Email">
+            <Field label="Email" error={fieldErrors.email}>
               <input
                 className={inputClassName}
                 value={draft.email}
-                onChange={(event) => setDraft((current) => ({ ...current, email: event.target.value }))}
+                onChange={(event) => {
+                  setDraft((current) => ({ ...current, email: event.target.value }));
+                  setFieldErrors((prev) => { const next = { ...prev }; delete next.email; return next; });
+                }}
                 placeholder="correo@ejemplo.com"
               />
             </Field>
-            <Field label="DNI">
+            <Field label="DNI" error={fieldErrors.dni}>
               <input
                 className={inputClassName}
                 value={draft.dni}
-                onChange={(event) => setDraft((current) => ({ ...current, dni: event.target.value }))}
+                onChange={(event) => {
+                  setDraft((current) => ({ ...current, dni: event.target.value }));
+                  setFieldErrors((prev) => { const next = { ...prev }; delete next.dni; return next; });
+                }}
                 placeholder="12345678"
               />
             </Field>
-            <Field label="Fecha de nacimiento">
+            <Field label="Fecha de nacimiento" error={fieldErrors.fechaNacimiento}>
               <input
                 type="date"
                 className={inputClassName}
                 value={draft.fechaNacimiento ? draft.fechaNacimiento.slice(0, 10) : ""}
-                onChange={(event) => setDraft((current) => ({ ...current, fechaNacimiento: event.target.value }))}
+                onChange={(event) => {
+                  setDraft((current) => ({ ...current, fechaNacimiento: event.target.value }));
+                  setFieldErrors((prev) => { const next = { ...prev }; delete next.fechaNacimiento; return next; });
+                }}
               />
             </Field>
           </div>
@@ -509,7 +544,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
             <button
               type="button"
               onClick={() => setIsConfirmOpen(true)}
-              disabled={!draft.nombres || saving}
+              disabled={Object.keys(fieldErrors).length > 0 || saving}
               className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50"
             >
               <PencilLine size={16} />
@@ -556,7 +591,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
   );
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
   return (
     <label className="space-y-2">
       <span className="text-sm font-medium text-[var(--foreground)]">
@@ -564,6 +599,12 @@ function Field({ label, required, children }: { label: string; required?: boolea
         {required && <span className="ml-1 text-[var(--destructive)]">*</span>}
       </span>
       {children}
+      {error && (
+        <div className="flex items-center gap-1.5 text-xs text-[var(--destructive)]">
+          <AlertCircle size={12} />
+          {error}
+        </div>
+      )}
     </label>
   );
 }
