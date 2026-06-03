@@ -32,22 +32,22 @@ const CustomerAuthContext = createContext<CustomerAuthContextValue>({
   refreshPoints: async () => {},
 });
 
-function loadSession(): CustomerSession | null {
-  if (typeof window === "undefined") return null;
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (!stored) return null;
-  try {
-    return JSON.parse(stored) as CustomerSession;
-  } catch {
-    localStorage.removeItem(STORAGE_KEY);
-    return null;
-  }
-}
-
 export function CustomerAuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<CustomerSession | null>(loadSession);
+  const [session, setSession] = useState<CustomerSession | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const sessionRef = useRef<CustomerSession | null>(session);
+  const sessionRef = useRef<CustomerSession | null>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored) as CustomerSession;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSession(parsed);
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }, []);
 
   const refreshPoints = async () => {
     const current = sessionRef.current;
