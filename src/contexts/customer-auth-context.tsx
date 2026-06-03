@@ -1,8 +1,8 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { RewardsService } from "@/services/rewards.service";
-import type { CuentaPuntos } from "@/types/reward";
+import { getRealtimeClient } from "@/lib/supabase/realtime";
 
 type CustomerSession = {
   id: string;
@@ -32,28 +32,30 @@ const CustomerAuthContext = createContext<CustomerAuthContextValue>({
   refreshPoints: async () => {},
 });
 
-export function CustomerAuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<CustomerSession | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
+function loadSession(): CustomerSession | null {
+  if (typeof window === "undefined") return null;
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (!stored) return null;
+  try {
+    return JSON.parse(stored) as CustomerSession;
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+    return null;
+  }
+}
 
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as CustomerSession;
-        setSession(parsed);
-      } catch {
-        localStorage.removeItem(STORAGE_KEY);
-      }
-    }
-  }, []);
+export function CustomerAuthProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<CustomerSession | null>(loadSession);
+  const [modalOpen, setModalOpen] = useState(false);
+  const sessionRef = useRef<CustomerSession | null>(session);
 
   const refreshPoints = async () => {
-    if (!session) return;
+    const current = sessionRef.current;
+    if (!current) return;
     try {
-      const cuenta = await RewardsService.getCuentaPuntosByClienteId(session.id);
+      const cuenta = await RewardsService.getCuentaPuntosByClienteId(current.id);
       if (cuenta) {
-        const updated = { ...session, puntosDisponibles: cuenta.puntosDisponibles };
+        const updated = { ...current, puntosDisponibles: cuenta.puntosDisponibles };
         setSession(updated);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       }
@@ -75,6 +77,44 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     localStorage.removeItem(STORAGE_KEY);
   };
+
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+
+  useEffect(() => {
+    const clienteId = session?.id;
+    if (!clienteId) return;
+
+    const supabase = getRealtimeClient();
+
+    const channel = supabase
+      .channel(`cuenta_puntos:cliente_id=eq.${clienteId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "cuenta_puntos",
+          filter: `cliente_id=eq.${clienteId}`,
+        },
+        () => {
+          refreshPoints();
+        }
+      )
+      .subscribe((status: string, err?: Error) => {
+        if (status === "SUBSCRIBED") {
+          console.log(`[Realtime] Suscrito a cuenta_puntos del cliente ${clienteId}`);
+        }
+        if (err) {
+          console.warn("[Realtime] Error de suscripción:", err);
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session?.id]);
 
   return (
     <CustomerAuthContext.Provider

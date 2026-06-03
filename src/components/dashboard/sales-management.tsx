@@ -600,7 +600,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
             type: "producto",
             nombre: prod.nombre,
             precio: prod.precio_venta,
-            puntos_otorgados: prod.puntos_otorgados,
+            puntos_otorgados: prod.puntos_otorgados || Math.max(1, Math.floor(prod.precio_venta)),
             cantidad: qty,
             stockDisponible: prod.stock_actual,
           },
@@ -638,7 +638,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
             type: "servicio",
             nombre: serv.nombre,
             precio: serv.precio,
-            puntos_otorgados: serv.puntos_otorgados,
+            puntos_otorgados: serv.puntos_otorgados || Math.max(1, Math.floor(serv.precio)),
             cantidad: 1,
           },
         ],
@@ -789,57 +789,67 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
       }
 
       if (draft.cliente_id && puntos > 0) {
-        const { data: cuenta } = await supabase
-          .from("cuenta_puntos")
-          .select("id, puntos_disponibles, puntos_acumulados")
-          .eq("cliente_id", draft.cliente_id)
-          .maybeSingle();
-
-        let cuentaId: string;
-        let disponibles: number;
-        let acumulados: number;
-
-        const record = cuenta as Record<string, unknown> | null;
-        if (record) {
-          cuentaId = record.id as string;
-          disponibles = record.puntos_disponibles as number;
-          acumulados = record.puntos_acumulados as number;
-        } else {
-          const { data: nueva } = await supabase
+        try {
+          const { data: cuenta } = await supabase
             .from("cuenta_puntos")
-            .insert({
-              cliente_id: draft.cliente_id,
-              puntos_disponibles: 0,
-              puntos_acumulados: 0,
-              puntos_canjeados: 0,
+            .select("id, puntos_disponibles, puntos_acumulados")
+            .eq("cliente_id", draft.cliente_id)
+            .maybeSingle();
+
+          let cuentaId: string;
+          let disponibles: number;
+          let acumulados: number;
+
+          const record = cuenta as Record<string, unknown> | null;
+          if (record) {
+            cuentaId = record.id as string;
+            disponibles = record.puntos_disponibles as number;
+            acumulados = record.puntos_acumulados as number;
+          } else {
+            const { data: nueva, error: createErr } = await supabase
+              .from("cuenta_puntos")
+              .insert({
+                cliente_id: draft.cliente_id,
+                puntos_disponibles: 0,
+                puntos_acumulados: 0,
+                puntos_canjeados: 0,
+              })
+              .select()
+              .single();
+
+            if (createErr) throw createErr;
+
+            const nr = nueva as Record<string, unknown>;
+            cuentaId = nr.id as string;
+            disponibles = 0;
+            acumulados = 0;
+          }
+
+          const { error: txErr } = await supabase.from("transacciones_puntos").insert({
+            cuenta_puntos_id: cuentaId,
+            venta_id: ventaId,
+            tipo: "reserva",
+            puntos,
+            saldo_anterior: disponibles,
+            saldo_nuevo: disponibles + puntos,
+            descripcion: `Puntos por compra (S/${formatCurrency(total)})`,
+          });
+
+          if (txErr) throw txErr;
+
+          const { error: updateErr } = await supabase
+            .from("cuenta_puntos")
+            .update({
+              puntos_disponibles: disponibles + puntos,
+              puntos_acumulados: acumulados + puntos,
+              actualizado_en: new Date().toISOString(),
             })
-            .select()
-            .single();
+            .eq("id", cuentaId);
 
-          const nr = nueva as Record<string, unknown>;
-          cuentaId = nr.id as string;
-          disponibles = 0;
-          acumulados = 0;
+          if (updateErr) throw updateErr;
+        } catch (ptsErr) {
+          console.error("Error al asignar puntos:", ptsErr);
         }
-
-        await supabase.from("transacciones_puntos").insert({
-          cuenta_puntos_id: cuentaId,
-          venta_id: ventaId,
-          tipo: "reserva",
-          puntos,
-          saldo_anterior: disponibles,
-          saldo_nuevo: disponibles + puntos,
-          descripcion: `Puntos por compra (S/${formatCurrency(total)})`,
-        });
-
-        await supabase
-          .from("cuenta_puntos")
-          .update({
-            puntos_disponibles: disponibles + puntos,
-            puntos_acumulados: acumulados + puntos,
-            actualizado_en: new Date().toISOString(),
-          })
-          .eq("id", cuentaId);
       }
 
       await fetchSales();
