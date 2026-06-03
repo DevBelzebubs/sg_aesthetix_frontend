@@ -28,7 +28,7 @@ export function PublicLayoutShell({ children, slug, basePath, brandName, footer 
       <div
         className="hidden sm:flex h-[42px] items-center justify-center px-4 sm:px-6"
         style={{
-          background: "linear-gradient(135deg, #0B5D2A, #1E7A3B)",
+          background: "linear-gradient(135deg, #3a5a36, #3a5a36)",
           boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
         }}
       >

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useCallback } from "react";
-import { ArrowLeft, CalendarClock, Clock3, Loader2, PencilLine, RefreshCw, Search, Trash2, UserRound, X, AlertCircle } from "lucide-react";
+import { ArrowLeft, CalendarClock, CheckCircle2, Clock3, Loader2, PencilLine, PlayCircle, RefreshCw, Search, Trash2, UserRound, X, AlertCircle } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { AppointmentsService, type AppointmentWithDetails } from "@/services/appointments.service";
@@ -62,7 +62,7 @@ export function AgendaManagement({ totalCitas, totalPendientes, totalCompletadas
     try {
       const estadoAnterior = selectedAppointment?.estado;
       await AppointmentsService.update(selectedId, { hora_inicio: draft.hora_inicio, estado: draft.estado, observaciones: draft.observaciones || null });
-      if (draft.estado === "Completada" && estadoAnterior !== "Completada") {
+      if (draft.estado.toLowerCase() === "completada" && estadoAnterior?.toLowerCase() !== "completada") {
         await RewardsService.addPointsForCompletedAppointment(selectedId);
       }
       await fetchAppointments();
@@ -77,7 +77,17 @@ export function AgendaManagement({ totalCitas, totalPendientes, totalCompletadas
     setIsDeleteConfirmOpen(false);
   };
 
-  const enCurso = appointments.filter((a) => a.estado === "En curso").length;
+  const handleQuickStatus = async (appointment: AppointmentWithDetails, nuevoEstado: string) => {
+    try {
+      await AppointmentsService.update(appointment.id, { estado: nuevoEstado });
+      if (nuevoEstado.toLowerCase() === "completada" && appointment.estado.toLowerCase() !== "completada") {
+        await RewardsService.addPointsForCompletedAppointment(appointment.id);
+      }
+      await fetchAppointments();
+    } catch (err) { setError(err instanceof Error ? err.message : "Error al actualizar"); }
+  };
+
+  const enCurso = appointments.filter((a) => a.estado.toLowerCase() === "en curso").length;
 
   if (loading && appointments.length === 0) return <div className="flex items-center justify-center py-20 text-sm text-[var(--text-muted)]">Cargando citas...</div>;
 
@@ -142,8 +152,11 @@ export function AgendaManagement({ totalCitas, totalPendientes, totalCompletadas
                         <p className="mt-1 text-sm text-[var(--text-muted)]">{appointment.servicio_nombre}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusClassName(appointment.estado)}`}>{appointment.estado}</span>
+                    <div className="flex items-center gap-1.5">
+                      {["Pendiente", "pendiente"].includes(appointment.estado) && (
+                        <button type="button" onClick={() => handleQuickStatus(appointment, "completada")} className="inline-flex items-center gap-1 rounded-xl bg-[var(--hover)]/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-[var(--hover)] transition hover:bg-[var(--hover)]/20" title="Marcar como completada"><CheckCircle2 size={14} /> Completar</button>
+                      )}
+                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusClassName(appointment.estado)}`}>{appointment.estado.charAt(0).toUpperCase() + appointment.estado.slice(1)}</span>
                       <button type="button" onClick={() => handleEdit(appointment)} className="rounded-xl p-2 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]"><PencilLine size={16} /></button>
                     </div>
                   </div>
@@ -168,7 +181,7 @@ export function AgendaManagement({ totalCitas, totalPendientes, totalCompletadas
             <Field label="Cliente"><div className={inputClassName + " bg-[var(--background)] text-[var(--text-muted)]"}>{selectedAppointment.cliente_nombre}</div></Field>
             <Field label="Servicio"><div className={inputClassName + " bg-[var(--background)] text-[var(--text-muted)]"}>{selectedAppointment.servicio_nombre}</div></Field>
             <Field label="Profesional"><div className={inputClassName + " bg-[var(--background)] text-[var(--text-muted)]"}>{selectedAppointment.empleado_nombre}</div></Field>
-            <Field label="Estado"><select className={inputClassName} value={draft.estado} onChange={(e) => setDraft((c) => ({ ...c, estado: e.target.value }))}><option>Pendiente</option><option>Confirmada</option><option>En curso</option><option>Completada</option></select></Field>
+            <Field label="Estado"><select className={inputClassName} value={draft.estado} onChange={(e) => setDraft((c) => ({ ...c, estado: e.target.value }))}><option>Pendiente</option><option>Confirmada</option><option>Completada</option></select></Field>
           </div>
           <div className="mt-4">
             <Field label="Nota operativa"><textarea className={`${inputClassName} min-h-28 resize-none`} value={draft.observaciones} onChange={(e) => setDraft((c) => ({ ...c, observaciones: e.target.value }))} /></Field>
@@ -192,8 +205,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
 }
 
 function getStatusClassName(status: string) {
-  if (status === "Completada") return "bg-[var(--hover)]/15 text-[var(--hover)]";
-  if (status === "En curso") return "bg-[var(--hover)]/15 text-[var(--hover)]";
-  if (status === "Confirmada") return "bg-[var(--hover)]/15 text-[var(--hover)]";
+  const s = status.toLowerCase();
+  if (s === "completada" || s === "en curso" || s === "confirmada") return "bg-[var(--hover)]/15 text-[var(--hover)]";
   return "bg-[var(--warning)]/15 text-[var(--warning)]";
 }
