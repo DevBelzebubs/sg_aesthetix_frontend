@@ -82,7 +82,7 @@ export default function PromocionPage() {
           <p className="text-base text-[var(--text-muted)]">No hay recompensas disponibles por ahora.</p>
         </div>
       ) : (
-        <div className="grid gap-[1px] sm:grid-cols-2" style={{ background: "var(--hover)" }}>
+        <div className="grid gap-[1px] sm:grid-cols-2" style={{ background: "var(--background)" }}>
           {recompensas.map((r) => (
             <div
               key={r.id}
@@ -122,7 +122,7 @@ export default function PromocionPage() {
       >
         <div className="absolute top-0 left-0 right-0 h-[1px]" style={{ background: "var(--hover)" }} />
         <div className="absolute bottom-0 left-0 right-0 h-[1px]" style={{ background: "var(--hover)" }} />
-        <div className="grid md:grid-cols-[1fr_auto] gap-[1px]" style={{ background: "var(--hover)" }}>
+        <div className="grid md:grid-cols-[1fr_auto] gap-[1px]" style={{ background: "var(--background)" }}>
           <div className="flex flex-col justify-center px-8 py-10 md:px-14 md:py-12 bg-neutral-950">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--hover)" }}>
               {session ? "Sigue así" : "Únete al programa"}

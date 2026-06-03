@@ -250,10 +250,10 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
             <button
               type="button"
               onClick={() => { setShowInactive((v) => !v); setQuery(""); setPage(1); }}
-              className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+              className={`inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-4 py-2 text-sm font-semibold text-[var(--destructive)] transition ${
                 showInactive
-                  ? "border-[var(--destructive-border)] bg-[var(--destructive-hover)] text-[var(--destructive)]"
-                  : "border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--background)] hover:text-[var(--foreground)]"
+                  ? "bg-[var(--destructive-hover)]"
+                  : "hover:bg-[var(--destructive-hover)]"
               }`}
             >
               <Trash2 size={16} />
@@ -288,7 +288,6 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
       {/* Listado */}
       {mode === "list" && !showInactive && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {paginatedCustomers.length === 0 ? (
             <div className="col-span-full flex flex-col items-center gap-3 py-16">
               <UserRound size={32} className="text-[var(--text-muted)]" />
@@ -297,77 +296,63 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
               </p>
             </div>
           ) : (
-            paginatedCustomers.map((customer) => (
-              <article
-                key={customer.id}
-                className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
-                <div className="flex items-start gap-5">
-                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[var(--background)]">
-                    <UserRound size={28} className="text-[var(--text-muted)]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="truncate text-base font-semibold text-[var(--foreground)]">{customer.nombres} {customer.apellidos}</p>
-                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                        customer.estaActivo
-                          ? "bg-[var(--hover)]/15 text-[var(--hover)]"
-                          : "bg-[var(--warning)]/15 text-[var(--warning)]"
-                      }`}>
-                        {customer.estaActivo ? "Activo" : "Inactivo"}
-                      </span>
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      {customer.email && (
-                        <span className="rounded-full bg-[var(--background)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">
-                          {customer.email}
-                        </span>
-                      )}
-                      {customer.fechaNacimiento && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--background)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">
-                          <Calendar size={10} />
-                          {new Date(customer.fechaNacimiento).toLocaleDateString("es-PE")}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      {customer.dni && (
-                        <span className="rounded-full bg-[var(--background)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">
-                          DNI: {customer.dni}
-                        </span>
-                      )}
-                      {customer.phone && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--hover)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--hover)]">
-                          <Phone size={10} />
-                          {customer.phone}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex items-center gap-2 border-t border-[var(--border)] pt-4">
-                  <button
-                    type="button"
-                    onClick={() => handleEdit(customer)}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] py-2 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--background)]"
-                  >
-                    <PencilLine size={14} />
-                    Editar
-                  </button>
-                </div>
-              </article>
-            ))
+            <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)]">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border)] text-left">
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">#</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden md:table-cell">Teléfono</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">Correo</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">DNI</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden xl:table-cell">Nacimiento</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {paginatedCustomers.map((customer, i) => (
+                    <tr key={customer.id} className="transition hover:bg-[var(--background)]">
+                      <td className="px-6 py-4 text-[var(--text-muted)] tabular-nums">{(page - 1) * pageSize + i + 1}</td>
+                      <td className="px-6 py-4 font-medium text-[var(--foreground)]">{customer.nombres} {customer.apellidos}</td>
+                      <td className="px-6 py-4 text-[var(--text-muted)] hidden md:table-cell">{customer.phone || "—"}</td>
+                      <td className="px-6 py-4 text-[var(--text-muted)] hidden lg:table-cell truncate max-w-[180px]">{customer.email || "—"}</td>
+                      <td className="px-6 py-4 text-[var(--text-muted)] hidden lg:table-cell tabular-nums">{customer.dni || "—"}</td>
+                      <td className="px-6 py-4 text-[var(--text-muted)] hidden xl:table-cell">
+                        {customer.fechaNacimiento ? new Date(customer.fechaNacimiento).toLocaleDateString("es-PE") : "—"}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(customer)}
+                            className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]"
+                            title="Editar"
+                          >
+                            <PencilLine size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setSelectedId(customer.id); setIsDeleteConfirmOpen(true); }}
+                            className="rounded-lg p-2 text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]"
+                            title="Desactivar"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-        </div>
-        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </>
       )}
 
       {/* Papelera */}
       {mode === "list" && showInactive && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {paginatedInactive.length === 0 ? (
             <div className="col-span-full flex flex-col items-center gap-3 py-16">
               <Trash2 size={32} className="text-[var(--text-muted)]" />
@@ -376,66 +361,43 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
               </p>
             </div>
           ) : (
-            paginatedInactive.map((customer) => (
-              <article
-                key={customer.id}
-                className="rounded-3xl border border-[var(--warning)]/20 bg-[var(--background-secondary)] p-6 shadow-sm"
-              >
-                <div className="flex items-start gap-5">
-                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[var(--warning)]/10">
-                    <UserRound size={28} className="text-[var(--warning)]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="truncate text-base font-semibold text-[var(--foreground)]">{customer.nombres} {customer.apellidos}</p>
-                      <span className="shrink-0 rounded-full bg-[var(--warning)]/15 px-2 py-0.5 text-[10px] font-semibold text-[var(--warning)]">
-                        Inactivo
-                      </span>
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      {customer.email && (
-                        <span className="rounded-full bg-[var(--background)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">
-                          {customer.email}
-                        </span>
-                      )}
-                      {customer.fechaNacimiento && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--background)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">
-                          <Calendar size={10} />
-                          {new Date(customer.fechaNacimiento).toLocaleDateString("es-PE")}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      {customer.dni && (
-                        <span className="rounded-full bg-[var(--background)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">
-                          DNI: {customer.dni}
-                        </span>
-                      )}
-                      {customer.phone && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--hover)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--hover)]">
-                          <Phone size={10} />
-                          {customer.phone}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex items-center gap-2 border-t border-[var(--border)] pt-4">
-                  <button
-                    type="button"
-                    onClick={() => handleRestore(customer.id)}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--hover)] py-2 text-sm font-semibold text-[var(--hover)] transition hover:bg-[var(--hover)]/10"
-                  >
-                    <Undo2 size={14} />
-                    Restaurar
-                  </button>
-                </div>
-              </article>
-            ))
+            <div className="overflow-hidden rounded-3xl border border-[var(--destructive-border)] bg-[var(--background-secondary)]">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border)] text-left">
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">#</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden md:table-cell">Teléfono</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">Correo</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">DNI</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {paginatedInactive.map((customer, i) => (
+                    <tr key={customer.id} className="transition hover:bg-[var(--destructive-hover)]">
+                      <td className="px-6 py-4 text-[var(--text-muted)] tabular-nums">{(page - 1) * pageSize + i + 1}</td>
+                      <td className="px-6 py-4 font-medium text-[var(--foreground)]">{customer.nombres} {customer.apellidos}</td>
+                      <td className="px-6 py-4 text-[var(--text-muted)] hidden md:table-cell">{customer.phone || "—"}</td>
+                      <td className="px-6 py-4 text-[var(--text-muted)] hidden lg:table-cell truncate max-w-[180px]">{customer.email || "—"}</td>
+                      <td className="px-6 py-4 text-[var(--text-muted)] hidden lg:table-cell tabular-nums">{customer.dni || "—"}</td>
+                      <td className="px-6 py-4">
+                        <button
+                          type="button"
+                          onClick={() => handleRestore(customer.id)}
+                          className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--hover)]/10 hover:text-[var(--hover)]"
+                          title="Restaurar"
+                        >
+                          <Undo2 size={15} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-        </div>
-        <Pagination page={page} totalPages={totalPagesInactive} onPageChange={setPage} />
+          <Pagination page={page} totalPages={totalPagesInactive} onPageChange={setPage} />
         </>
       )}
 

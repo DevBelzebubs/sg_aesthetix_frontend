@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { ProductCard } from "@/components/public/product-card";
 
+export const dynamic = "force-dynamic";
+
 type ProductosPageProps = {
   params: Promise<{ slug: string }>;
 };
@@ -38,7 +40,7 @@ export default async function ProductosPage({ params }: ProductosPageProps) {
         </div>
       </div>
 
-      <div className="grid gap-[2px] sm:grid-cols-2 lg:grid-cols-3" style={{ background: "var(--border, #e0e0e0)" }}>
+      <div className="grid gap-[2px] sm:grid-cols-2 lg:grid-cols-3" style={{ background: "var(--background)" }}>
         {(products ?? []).map((product, index) => {
           const catArray = product.categoria_producto as { nombre: string }[] | null;
           const categoryName = catArray?.[0]?.nombre ?? "";

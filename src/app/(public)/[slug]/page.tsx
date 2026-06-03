@@ -1,6 +1,8 @@
 import LandingPage from "./landing-page";
 import { createClient } from "@/lib/supabase/client";
 
+export const dynamic = "force-dynamic";
+
 type BarberRow = {
   id: string;
   nombres: string;
@@ -86,7 +88,7 @@ export default async function Page({
   const [serviciosRes, productosRes, galeriaRes, barbers, locales] = await Promise.all([
     supabase
       .from("servicios")
-      .select("id, nombre, descripcion, precio, duracion_minutos")
+      .select("id, nombre, descripcion, precio, duracion_minutos, imagen_url, puntos_otorgados")
       .eq("esta_activo", true)
       .order("precio", { ascending: true }),
     supabase
@@ -113,6 +115,8 @@ export default async function Page({
     descripcion: s.descripcion ?? "",
     precio: s.precio,
     duracion_minutos: s.duracion_minutos,
+    imagenUrl: s.imagen_url ?? "",
+    puntos: s.puntos_otorgados ?? 0,
   }));
 
   const products = (productosRes.data ?? []).map((p) => ({

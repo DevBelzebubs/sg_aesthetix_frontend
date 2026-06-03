@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type CajaRow = {
@@ -8,33 +8,16 @@ type CajaRow = {
   esta_abierta: boolean;
 };
 
-let channelCounter = 0;
-
 export function StoreStatus() {
   const [abierta, setAbierta] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
-    supabaseRef.current = supabase;
-
     supabase.from("caja").select("esta_abierta").maybeSingle().then(({ data }) => {
       if (data) setAbierta((data as CajaRow).esta_abierta);
       setLoaded(true);
     });
-
-    const channelId = ++channelCounter;
-    const channel = supabase.channel(`caja_public_${channelId}`);
-    channel.on("postgres_changes", { event: "*", schema: "public", table: "caja" }, (payload) => {
-      setAbierta((payload.new as CajaRow).esta_abierta);
-    });
-    channel.subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-      supabaseRef.current = null;
-    };
   }, []);
 
   if (!loaded) return null;

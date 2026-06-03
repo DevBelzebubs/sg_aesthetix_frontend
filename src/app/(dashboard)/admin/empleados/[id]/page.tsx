@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Calendar, Clock, Globe, Mail, Phone, UserRound } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Globe, Mail, Phone, UserRound, Star, TrendingUp, Briefcase } from "lucide-react";
 import { EmployeesService } from "@/services/employees.service";
 import { EmployeePasswordSection } from "@/components/dashboard/employee-password-section";
 import { ModulePageShell } from "@/components/dashboard/module-page-shell";
@@ -87,152 +87,128 @@ export default async function EmpleadoDetailPage({ params }: EmpleadoDetailPageP
       }
     >
       <div className="space-y-6">
-        {/* Hero */}
-        <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-            <div
-              className={`flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl ${!employee.imagenUrl ? "" : ""}`}
-              style={{ background: employee.imagenUrl ? "transparent" : "color-mix(in srgb, var(--hover) 15%, var(--background))" }}
-            >
-              {employee.imagenUrl ? (
-                <img src={employee.imagenUrl} alt={employee.name} className="h-full w-full object-cover" />
-              ) : (
-                <UserRound size={28} style={{ color: "var(--hover)" }} />
-              )}
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
+        {/* Header card */}
+        <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] shadow-sm">
+          <div className="grid gap-0 md:grid-cols-[280px_1fr]">
+            {/* Left - Avatar & basic info */}
+            <div className="flex flex-col items-center border-r border-[var(--border)] p-8">
+              <div className={`flex h-32 w-32 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] ${!employee.imagenUrl ? "bg-[var(--background)]" : ""}`}>
+                {employee.imagenUrl ? (
+                  <img src={employee.imagenUrl} alt={employee.name} className="h-full w-full object-cover" />
+                ) : (
+                  <UserRound size={48} className="text-[var(--text-muted)]" />
+                )}
+              </div>
+              <h2 className="mt-4 text-xl font-bold text-[var(--foreground)]">{employee.name}</h2>
+              <div className="mt-2 flex flex-wrap justify-center gap-1.5">
                 <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
                   employee.role === "admin"
-                    ? "bg-[var(--foreground)]/10 text-[var(--foreground)]"
+                    ? "bg-purple-500/10 text-purple-500"
                     : "bg-[var(--hover)]/15 text-[var(--hover)]"
                 }`}>
-                  {employee.role}
+                  {employee.role === "admin" ? "Administrador" : "Empleado"}
                 </span>
                 <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
                   employee.status === "Activo"
-                    ? "bg-[var(--hover)]/15 text-[var(--hover)]"
-                    : "bg-[var(--warning)]/15 text-[var(--warning)]"
+                    ? "bg-emerald-500/10 text-emerald-500"
+                    : "bg-[var(--destructive)]/10 text-[var(--destructive)]"
                 }`}>
                   {employee.status}
                 </span>
               </div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-[var(--text-muted)]">
-                <span className="inline-flex items-center gap-1.5">
-                  <Mail size={14} />
-                  {employee.email}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Phone size={14} />
-                  {employee.phone || "Sin telefono"}
-                </span>
+              {(employee.specialties.length > 0 || employee.weeklyLoad || employee.commission) && (
+                <div className="mt-5 w-full space-y-2 border-t border-[var(--border)] pt-4">
+                  {employee.specialties.length > 0 && (
+                    <div className="flex flex-wrap justify-center gap-1">
+                      {employee.specialties.map((s) => (
+                        <span key={s} className="rounded-full bg-[var(--hover)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--hover)]">{s}</span>
+                      ))}
+                    </div>
+                  )}
+                  {employee.weeklyLoad && (
+                    <p className="text-center text-xs text-[var(--text-muted)]">
+                      <Briefcase size={12} className="inline mr-1" />
+                      Carga semanal: {employee.weeklyLoad}
+                    </p>
+                  )}
+                  {employee.commission && (
+                    <p className="text-center text-xs text-[var(--text-muted)]">
+                      <TrendingUp size={12} className="inline mr-1" />
+                      Comisión: {employee.commission}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Right - Details */}
+            <div className="space-y-4 p-8">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Correo electrónico</p>
+                  <p className="mt-1 text-sm font-medium text-[var(--foreground)] truncate">{employee.email}</p>
+                </div>
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Teléfono</p>
+                  <p className="mt-1 text-sm font-medium text-[var(--foreground)]">{employee.phone || "Sin registrar"}</p>
+                </div>
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Creado</p>
+                  <p className="mt-1 text-sm font-medium text-[var(--foreground)]">{creado}</p>
+                </div>
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Último cambio</p>
+                  <p className="mt-1 text-sm font-medium text-[var(--foreground)]">{actualizado}</p>
+                </div>
               </div>
+
               {(employee.instagram || employee.facebook || employee.tiktok) && (
-                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-[var(--text-muted)]">
-                  {employee.instagram && (
-                    <a
-                      href={employee.instagram.startsWith("http") ? employee.instagram : `https://instagram.com/${employee.instagram.replace("@", "")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 transition hover:text-[var(--hover)]"
-                    >
-                      <Globe size={14} />
-                      Instagram
-                    </a>
-                  )}
-                  {employee.facebook && (
-                    <a
-                      href={employee.facebook.startsWith("http") ? employee.facebook : `https://facebook.com/${employee.facebook}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 transition hover:text-[var(--hover)]"
-                    >
-                      <Globe size={14} />
-                      Facebook
-                    </a>
-                  )}
-                  {employee.tiktok && (
-                    <a
-                      href={employee.tiktok.startsWith("http") ? employee.tiktok : `https://tiktok.com/@${employee.tiktok.replace("@", "")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 transition hover:text-[var(--hover)]"
-                    >
-                      <Globe size={14} />
-                      TikTok
-                    </a>
-                  )}
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Redes sociales</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-4">
+                    {employee.instagram && (
+                      <a
+                        href={employee.instagram.startsWith("http") ? employee.instagram : `https://instagram.com/${employee.instagram.replace("@", "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] transition hover:text-[var(--hover)]"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><line x1="18" y1="5.5" x2="18.01" y2="5.5"/></svg>
+                        Instagram
+                      </a>
+                    )}
+                    {employee.facebook && (
+                      <a
+                        href={employee.facebook.startsWith("http") ? employee.facebook : `https://facebook.com/${employee.facebook}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] transition hover:text-[var(--hover)]"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                        Facebook
+                      </a>
+                    )}
+                    {employee.tiktok && (
+                      <a
+                        href={employee.tiktok.startsWith("http") ? employee.tiktok : `https://tiktok.com/@${employee.tiktok.replace("@", "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] transition hover:text-[var(--hover)]"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>
+                        TikTok
+                      </a>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Info cards */}
-        <div className="grid gap-4 md:grid-cols-2">
-          <article className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-[var(--background)] p-2.5">
-                <Mail size={18} className="text-[var(--foreground)]" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Correo</p>
-                <p className="text-sm font-medium text-[var(--foreground)]">{employee.email}</p>
-              </div>
-            </div>
-          </article>
-
-          <article className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-[var(--background)] p-2.5">
-                <Phone size={18} className="text-[var(--foreground)]" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Telefono</p>
-                <p className="text-sm font-medium text-[var(--foreground)]">{employee.phone || "Sin registrar"}</p>
-              </div>
-            </div>
-          </article>
-        </div>
-
-        {/* Clave y actividad */}
-        <div className="grid gap-4 xl:grid-cols-2">
-          <EmployeePasswordSection userId={id} />
-
-          <div
-            className="rounded-3xl border border-[var(--border)] p-6 shadow-sm"
-            style={{ background: "color-mix(in srgb, var(--hover) 4%, var(--background-secondary))" }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="rounded-2xl p-3" style={{ background: "color-mix(in srgb, var(--hover) 12%, var(--background-secondary))" }}>
-                <Calendar size={20} style={{ color: "var(--hover)" }} />
-              </div>
-              <div>
-                <p className="text-lg font-semibold text-[var(--foreground)]">Registro de actividad</p>
-                <p className="text-sm text-[var(--text-muted)]">Fechas clave de la cuenta.</p>
-              </div>
-            </div>
-
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] px-5 py-4">
-                <div className="flex items-center gap-2 text-[var(--text-muted)]">
-                  <Calendar size={15} />
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em]">Creado</p>
-                </div>
-                <p className="mt-2 text-base font-semibold text-[var(--foreground)]">{creado}</p>
-              </div>
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] px-5 py-4">
-                <div className="flex items-center gap-2 text-[var(--text-muted)]">
-                  <Clock size={15} />
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em]">Ultimo cambio</p>
-                </div>
-                <p className="mt-2 text-base font-semibold text-[var(--foreground)]">{actualizado}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Password section */}
+        <EmployeePasswordSection userId={id} />
       </div>
     </ModulePageShell>
   );
