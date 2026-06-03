@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Globe, Loader2, MapPin, PencilLine, Plus, Search, Trash2, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, Globe, Loader2, MapPin, PencilLine, Plus, Search, Trash2, X } from "lucide-react";
+import { validateRequired, validatePhoneOptional, validateUrl } from "@/lib/validators";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { LocalesService, type Locale } from "@/services/locales.service";
@@ -29,7 +30,7 @@ const emptyDraft: LocaleDraft = {
 };
 
 const inputClassName =
-  "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+  "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
 
 export default function LocalesManagement() {
   const [items, setItems] = useState<Locale[]>([]);
@@ -42,6 +43,7 @@ export default function LocalesManagement() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const pageSize = 10;
   const [page, setPage] = useState(1);
@@ -101,7 +103,22 @@ export default function LocalesManagement() {
   };
 
   const handleSave = async () => {
-    if (!draft.nombre || !draft.direccion || !draft.lat || !draft.lng) return;
+    const errors: Record<string, string> = {};
+    const nombreErr = validateRequired(draft.nombre, "El nombre");
+    const direccionErr = validateRequired(draft.direccion, "La dirección");
+    const latErr = validateRequired(draft.lat, "La latitud");
+    const lngErr = validateRequired(draft.lng, "La longitud");
+    const horarioErr = draft.horario ? validateRequired(draft.horario, "El horario") : null;
+    const telErr = validatePhoneOptional(draft.telefono);
+    const mapsErr = draft.maps_url ? validateUrl(draft.maps_url, "La URL de Google Maps") : null;
+    if (nombreErr) errors.nombre = nombreErr;
+    if (direccionErr) errors.direccion = direccionErr;
+    if (latErr) errors.lat = latErr;
+    if (lngErr) errors.lng = lngErr;
+    if (horarioErr) errors.horario = horarioErr;
+    if (telErr) errors.telefono = telErr;
+    if (mapsErr) errors.maps_url = mapsErr;
+    if (Object.keys(errors).length > 0) { setFieldErrors(errors); return; }
     const lat = parseFloat(draft.lat);
     const lng = parseFloat(draft.lng);
     if (isNaN(lat) || isNaN(lng)) {
@@ -293,34 +310,34 @@ export default function LocalesManagement() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="col-span-full">
-              <Field label="Nombre" required>
-                <input className={inputClassName} value={draft.nombre} onChange={(e) => setDraft((c) => ({ ...c, nombre: e.target.value }))} placeholder="San Borja" />
+              <Field label="Nombre" required error={fieldErrors.nombre}>
+                <input className={inputClassName} value={draft.nombre} onChange={(e) => { setDraft((c) => ({ ...c, nombre: e.target.value })); setFieldErrors((prev) => ({ ...prev, nombre: "" })); }} placeholder="San Borja" />
               </Field>
             </div>
             <div className="col-span-full">
-              <Field label="Direccion" required>
-                <input className={inputClassName} value={draft.direccion} onChange={(e) => setDraft((c) => ({ ...c, direccion: e.target.value }))} placeholder="Av. Aviacion 3464 · San Borja" />
+              <Field label="Direccion" required error={fieldErrors.direccion}>
+                <input className={inputClassName} value={draft.direccion} onChange={(e) => { setDraft((c) => ({ ...c, direccion: e.target.value })); setFieldErrors((prev) => ({ ...prev, direccion: "" })); }} placeholder="Av. Aviacion 3464 · San Borja" />
               </Field>
             </div>
-            <Field label="Horario">
-              <input className={inputClassName} value={draft.horario} onChange={(e) => setDraft((c) => ({ ...c, horario: e.target.value }))} placeholder="Lun – Sab · 8:00 AM – 8:00 PM" />
+            <Field label="Horario" error={fieldErrors.horario}>
+              <input className={inputClassName} value={draft.horario} onChange={(e) => { setDraft((c) => ({ ...c, horario: e.target.value })); setFieldErrors((prev) => ({ ...prev, horario: "" })); }} placeholder="Lun – Sab · 8:00 AM – 8:00 PM" />
             </Field>
-            <Field label="Telefono">
-              <input className={inputClassName} value={draft.telefono} onChange={(e) => setDraft((c) => ({ ...c, telefono: e.target.value }))} placeholder="+51 999 999 999" />
+            <Field label="Telefono" error={fieldErrors.telefono}>
+              <input className={inputClassName} value={draft.telefono} onChange={(e) => { setDraft((c) => ({ ...c, telefono: e.target.value })); setFieldErrors((prev) => ({ ...prev, telefono: "" })); }} placeholder="+51 999 999 999" />
             </Field>
-            <Field label="URL Google Maps">
-              <input className={inputClassName} value={draft.maps_url} onChange={(e) => setDraft((c) => ({ ...c, maps_url: e.target.value }))} placeholder="https://maps.google.com/?q=..." />
+            <Field label="URL Google Maps" error={fieldErrors.maps_url}>
+              <input className={inputClassName} value={draft.maps_url} onChange={(e) => { setDraft((c) => ({ ...c, maps_url: e.target.value })); setFieldErrors((prev) => ({ ...prev, maps_url: "" })); }} placeholder="https://maps.google.com/?q=..." />
             </Field>
             <div className="grid gap-4 md:grid-cols-2 col-span-full">
-              <Field label="Latitud" required>
-                <input className={inputClassName} value={draft.lat} onChange={(e) => setDraft((c) => ({ ...c, lat: e.target.value }))} placeholder="-12.0943" type="number" step="any" />
+              <Field label="Latitud" required error={fieldErrors.lat}>
+                <input className={inputClassName} value={draft.lat} onChange={(e) => { setDraft((c) => ({ ...c, lat: e.target.value })); setFieldErrors((prev) => ({ ...prev, lat: "" })); }} placeholder="-12.0943" type="number" step="any" />
               </Field>
-              <Field label="Longitud" required>
-                <input className={inputClassName} value={draft.lng} onChange={(e) => setDraft((c) => ({ ...c, lng: e.target.value }))} placeholder="-77.0073" type="number" step="any" />
+              <Field label="Longitud" required error={fieldErrors.lng}>
+                <input className={inputClassName} value={draft.lng} onChange={(e) => { setDraft((c) => ({ ...c, lng: e.target.value })); setFieldErrors((prev) => ({ ...prev, lng: "" })); }} placeholder="-77.0073" type="number" step="any" />
               </Field>
             </div>
-            <Field label="Orden">
-              <input className={inputClassName} value={draft.orden} onChange={(e) => setDraft((c) => ({ ...c, orden: Number(e.target.value) }))} type="number" min={1} />
+            <Field label="Orden" error={fieldErrors.orden}>
+              <input className={inputClassName} value={draft.orden} onChange={(e) => { setDraft((c) => ({ ...c, orden: Number(e.target.value) })); setFieldErrors((prev) => ({ ...prev, orden: "" })); }} type="number" min={1} />
             </Field>
           </div>
 
@@ -328,7 +345,7 @@ export default function LocalesManagement() {
             <button
               type="button"
               onClick={() => setIsConfirmOpen(true)}
-              disabled={saving || !draft.nombre || !draft.direccion || !draft.lat || !draft.lng}
+              disabled={Object.keys(fieldErrors).length > 0 || saving}
               className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50"
             >
               {saving && <Loader2 size={16} className="animate-spin" />}
@@ -377,7 +394,7 @@ export default function LocalesManagement() {
   );
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
   return (
     <label className="space-y-2">
       <span className="text-sm font-medium text-[var(--foreground)]">
@@ -385,6 +402,12 @@ function Field({ label, required, children }: { label: string; required?: boolea
         {required && <span className="ml-1 text-[var(--destructive)]">*</span>}
       </span>
       {children}
+      {error && (
+        <p className="flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+          <AlertCircle size={11} />
+          {error}
+        </p>
+      )}
     </label>
   );
 }

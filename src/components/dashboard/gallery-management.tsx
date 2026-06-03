@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ChevronDown, ChevronUp, Image, Images, Loader2, PencilLine, Plus, Search, Star, Trash2, Undo2, X } from "lucide-react";
+import { validateRequired, validatePositiveNumber } from "@/lib/validators";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { CloudinaryUpload } from "@/components/dashboard/cloudinary-upload";
@@ -19,8 +20,8 @@ type GalleryDraft = {
   orden: number; esta_activo: boolean; destacado: boolean;
 };
 
-const emptyDraft: GalleryDraft = { titulo: "", descripcion: "", imagen_url: "", orden: 1, esta_activo: true, destacado: false };
-const inputClassName = "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+const emptyDraft: GalleryDraft = { titulo: "", descripcion: "", imagen_url: "", orden: 1, esta_activo: false, destacado: false };
+const inputClassName = "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
 
 type Props = { totalEstilos: number; totalPublicados: number; totalDestacados: number; };
 
@@ -35,6 +36,7 @@ export function GalleryManagement({ totalEstilos, totalPublicados, totalDestacad
   const [mode, setMode] = useState<"list" | "create" | "edit">("list");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<GalleryDraft>(emptyDraft);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deactivateTarget, setDeactivateTarget] = useState<GalleryItem | null>(null);
@@ -80,7 +82,12 @@ export function GalleryManagement({ totalEstilos, totalPublicados, totalDestacad
   const handleBack = () => { setMode("list"); setSelectedId(null); setDraft(emptyDraft); setShowInactive(false); };
 
   async function saveItem() {
-    if (!draft.titulo) return;
+    const errors: Record<string, string> = {};
+    const tituloErr = validateRequired(draft.titulo, "El título");
+    if (tituloErr) errors.titulo = tituloErr;
+    const ordenErr = validatePositiveNumber(draft.orden, "El orden");
+    if (ordenErr) errors.orden = ordenErr;
+    if (Object.keys(errors).length > 0) { setFieldErrors(errors); return; }
     setSaving(true);
     if (mode === "edit" && selectedId) {
       await supabase.from("galeria_cortes").update({ ...draft, actualizado_en: new Date().toISOString() }).eq("id", selectedId);
@@ -292,8 +299,8 @@ export function GalleryManagement({ totalEstilos, totalPublicados, totalDestacad
             </div>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Titulo" required><input className={inputClassName} value={draft.titulo} onChange={(e) => setDraft((d) => ({ ...d, titulo: e.target.value }))} /></Field>
-            <Field label="Orden"><input type="number" className={inputClassName} value={draft.orden} onChange={(e) => setDraft((d) => ({ ...d, orden: Number(e.target.value) }))} /></Field>
+            <Field label="Titulo" required error={fieldErrors.titulo}><input className={inputClassName} value={draft.titulo} onChange={(e) => { setFieldErrors((prev) => ({ ...prev, titulo: "" })); setDraft((d) => ({ ...d, titulo: e.target.value })); }} /></Field>
+            <Field label="Orden" error={fieldErrors.orden}><input type="number" className={inputClassName} value={draft.orden} onChange={(e) => { setFieldErrors((prev) => ({ ...prev, orden: "" })); setDraft((d) => ({ ...d, orden: Number(e.target.value) })); }} /></Field>
             <div className="col-span-full"><Field label="Descripcion"><textarea className={`${inputClassName} min-h-24 resize-none`} value={draft.descripcion} onChange={(e) => setDraft((d) => ({ ...d, descripcion: e.target.value }))} /></Field></div>
             <div className="col-span-full">
               <Field label="Imagen"><div className="flex gap-2"><input className={inputClassName} value={draft.imagen_url} onChange={(e) => setDraft((d) => ({ ...d, imagen_url: e.target.value }))} placeholder="https://..." /><CloudinaryUpload cloudName={process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!} uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!} onUpload={(url) => setDraft((d) => ({ ...d, imagen_url: url }))} /></div></Field>
@@ -303,7 +310,7 @@ export function GalleryManagement({ totalEstilos, totalPublicados, totalDestacad
             <Field label="Destacar"><select className={inputClassName} value={draft.destacado ? "si" : "no"} onChange={(e) => setDraft((d) => ({ ...d, destacado: e.target.value === "si" }))}><option value="si">Si</option><option value="no">No</option></select></Field>
           </div>
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-6">
-            <button type="button" onClick={() => setIsConfirmOpen(true)} disabled={!draft.titulo || saving} className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50">{saving && <Loader2 size={16} className="animate-spin" />}{mode === "create" ? "Crear estilo" : "Guardar cambios"}</button>
+            <button type="button" onClick={() => setIsConfirmOpen(true)} disabled={!draft.titulo || saving || Object.keys(fieldErrors).length > 0} className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50">{saving && <Loader2 size={16} className="animate-spin" />}{mode === "create" ? "Crear estilo" : "Guardar cambios"}</button>
             {mode === "edit" && <button type="button" onClick={() => setIsDeleteOpen(true)} className="inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-5 py-2.5 text-sm font-semibold text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]"><Trash2 size={16} /> Eliminar</button>}
             <button type="button" onClick={handleBack} className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--background)]"><X size={16} /> Cancelar</button>
           </div>
@@ -327,8 +334,8 @@ export function GalleryManagement({ totalEstilos, totalPublicados, totalDestacad
   );
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return <label className="space-y-2"><span className="text-sm font-medium text-[var(--foreground)]">{label}{required && <span className="ml-1 text-[var(--destructive)]">*</span>}</span>{children}</label>;
+function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
+  return <label className="space-y-2"><span className="text-sm font-medium text-[var(--foreground)]">{label}{required && <span className="ml-1 text-[var(--destructive)]">*</span>}</span>{children}{error && <p className="flex items-center gap-1 text-[11px] text-[var(--destructive)]"><AlertCircle size={11} />{error}</p>}</label>;
 }
 
 function toDraft(item: GalleryItem): GalleryDraft {

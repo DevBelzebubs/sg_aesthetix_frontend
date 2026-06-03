@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2 } from "lucide-react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { AppointmentsService } from "@/services/appointments.service";
 import { CustomersService } from "@/services/customers.service";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
+import { validateDni, validateDniOptional, validateEmail, validateEmailOptional, validateName, validateRequired } from "@/lib/validators";
 
 type BookingOption = {
   id: string;
@@ -58,10 +59,21 @@ const initialDraft: BookingDraft = {
   dni: "",
 };
 
-const inputClassName =
-  "w-full border border-transparent/10 bg-[var(--background-secondary)] px-4 py-3.5 text-base text-[var(--foreground)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-black focus:ring-0";
+const fieldClass =
+  "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-base text-[var(--foreground)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
 
 const calendarWeekdays = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+function validatePhone9(v: string): string | null {
+  const digits = v.replace(/\D/g, "");
+  if (!digits) return "El teléfono es obligatorio";
+  if (digits.length !== 9) return "El teléfono debe tener 9 dígitos";
+  return null;
+}
+
+function onlyDigits(v: string): string {
+  return v.replace(/\D/g, "").slice(0, 9);
+}
 
 export function BookingForm({
   businessName,
@@ -110,6 +122,8 @@ export function BookingForm({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const monthOptions = useMemo(() => {
     const groupedMonths = new Map
@@ -193,10 +207,16 @@ export function BookingForm({
     setFormData((current) => ({ ...current, [name]: value }));
     setIsSubmitted(false);
     setError("");
+    setFieldErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const handleDniLookup = async (e: React.FormEvent) => {
     e.preventDefault();
+    const err = validateDni(dni);
+    if (err) {
+      setFieldErrors({ dni: err });
+      return;
+    }
     setIsLoading(true);
     setError("");
     try {
@@ -227,7 +247,17 @@ export function BookingForm({
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.customerName || !formData.phone) return;
+    const errors: Record<string, string> = {};
+    const nameErr = validateName(formData.customerName);
+    const phoneErr = validatePhone9(formData.phone);
+    const emailErr = validateEmailOptional(formData.email);
+    if (nameErr) errors.customerName = nameErr;
+    if (phoneErr) errors.phone = phoneErr;
+    if (emailErr) errors.email = emailErr;
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
     setIsLoading(true);
     setError("");
     try {
@@ -252,6 +282,25 @@ export function BookingForm({
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const errors: Record<string, string> = {};
+    const nameErr = validateName(formData.customerName);
+    const phoneErr = validatePhone9(formData.phone);
+    const emailErr = validateEmail(formData.email);
+    const dniErr = validateDniOptional(formData.dni);
+    const serviceErr = validateRequired(formData.serviceId, "El servicio");
+    const dateErr = validateRequired(formData.date, "La fecha");
+    const timeErr = validateRequired(formData.time, "La hora");
+    if (nameErr) errors.customerName = nameErr;
+    if (phoneErr) errors.phone = phoneErr;
+    if (emailErr) errors.email = emailErr;
+    if (dniErr) errors.dni = dniErr;
+    if (serviceErr) errors.serviceId = serviceErr;
+    if (dateErr) errors.date = dateErr;
+    if (timeErr) errors.time = timeErr;
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
     setIsLoading(true);
     setError("");
 
@@ -260,14 +309,15 @@ export function BookingForm({
       const exactService = services.find((s) => s.id === formData.serviceId);
       const exactBarber = barbers.find((b) => b.id === formData.barberId);
 
-      const servicioId = exactService?.id ?? "";
+      if (!exactService) throw new Error("El servicio seleccionado no está disponible");
       const empleadoId = exactBarber?.id ?? "";
-      const duration = exactService?.duration ?? "30 min";
+
+      const duration = exactService.duration;
       const endTimeHHMM = calculateEndTime(formData.time, duration);
 
       const payload = {
         clienteId: customerId,
-        servicioId,
+        servicioId: exactService.id,
         empleadoId,
         fechaReserva: formData.date,
         horaInicio: `${formData.time}:00`,
@@ -302,30 +352,40 @@ export function BookingForm({
       </div>
 
       {error && (
-        <div className="mb-6 border border-red-500/20 bg-red-50 px-4 py-3">
-          <p className="text-xs font-semibold text-red-600">{error}</p>
+        <div className="mb-6 flex items-center gap-2.5 rounded-2xl border border-[var(--destructive-border)] bg-[var(--destructive-hover)] px-5 py-3.5 text-sm text-[var(--destructive)]">
+          <AlertCircle size={16} className="shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
       {stage === "dni" && (
         <form onSubmit={handleDniLookup} className="space-y-4">
-          <label className="space-y-2">
+          <label className="space-y-1.5">
             <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-              Número de DNI
+              Número de DNI <span className="text-[var(--destructive)]">*</span>
             </span>
             <input
-              required
               type="text"
               value={dni}
-              onChange={(e) => setDni(e.target.value)}
+              onChange={(e) => {
+                setDni(e.target.value);
+                setFieldErrors((prev) => ({ ...prev, dni: "" }));
+              }}
               placeholder="12345678"
-              className={inputClassName}
+              maxLength={8}
+              className={fieldClass}
             />
+            {fieldErrors.dni && (
+              <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                <AlertCircle size={11} />
+                {fieldErrors.dni}
+              </p>
+            )}
           </label>
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-black px-8 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-75 disabled:opacity-40"
+            className="w-full rounded-xl bg-black px-8 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
           >
             {isLoading ? "Buscando..." : "Buscar"}
           </button>
@@ -334,49 +394,74 @@ export function BookingForm({
 
       {stage === "register" && (
         <form onSubmit={handleRegister} className="space-y-4">
-          <label className="space-y-2">
+          <label className="space-y-1.5">
             <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-              Nombre completo
+              Nombre completo <span className="text-[var(--destructive)]">*</span>
             </span>
             <input
-              required
               type="text"
               value={formData.customerName}
-              onChange={(e) => setFormData((c) => ({ ...c, customerName: e.target.value }))}
+              onChange={(e) => {
+                setFormData((c) => ({ ...c, customerName: e.target.value }));
+                setFieldErrors((prev) => ({ ...prev, customerName: "" }));
+              }}
               placeholder="Juan Pérez"
-              className={inputClassName}
+              className={fieldClass}
             />
+            {fieldErrors.customerName && (
+              <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                <AlertCircle size={11} />
+                {fieldErrors.customerName}
+              </p>
+            )}
           </label>
-          <label className="space-y-2">
+          <label className="space-y-1.5">
             <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-              Teléfono
+              Teléfono <span className="text-[var(--destructive)]">*</span>
             </span>
             <input
-              required
               type="tel"
               value={formData.phone}
-              onChange={(e) => setFormData((c) => ({ ...c, phone: e.target.value }))}
+              onChange={(e) => {
+                setFormData((c) => ({ ...c, phone: onlyDigits(e.target.value) }));
+                setFieldErrors((prev) => ({ ...prev, phone: "" }));
+              }}
               placeholder="999 999 999"
-              className={inputClassName}
+              maxLength={9}
+              className={fieldClass}
             />
+            {fieldErrors.phone && (
+              <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                <AlertCircle size={11} />
+                {fieldErrors.phone}
+              </p>
+            )}
           </label>
-          <label className="space-y-2">
+          <label className="space-y-1.5">
             <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
               Email
             </span>
             <input
-              required
               type="email"
               value={formData.email}
-              onChange={(e) => setFormData((c) => ({ ...c, email: e.target.value }))}
+              onChange={(e) => {
+                setFormData((c) => ({ ...c, email: e.target.value }));
+                setFieldErrors((prev) => ({ ...prev, email: "" }));
+              }}
               placeholder="nombre@correo.com"
-              className={inputClassName}
+              className={fieldClass}
             />
+            {fieldErrors.email && (
+              <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                <AlertCircle size={11} />
+                {fieldErrors.email}
+              </p>
+            )}
           </label>
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-black px-8 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-75 disabled:opacity-40"
+            className="w-full rounded-xl bg-black px-8 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
           >
             {isLoading ? "Registrando..." : "Continuar"}
           </button>
@@ -387,7 +472,7 @@ export function BookingForm({
     <div className="grid gap-px bg-[var(--background)] xl:grid-cols-[1.2fr_0.72fr]">
       <form onSubmit={handleSubmit} className="space-y-0 bg-[var(--background-secondary)]">
 
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-transparent/10 px-8 py-8">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--border)] px-8 py-8">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
               Reserva online
@@ -397,7 +482,7 @@ export function BookingForm({
               Confirmación rápida, sin esperas ni llamadas.
             </p>
           </div>
-          <div className="border border-transparent/10 bg-[var(--background-secondary)] px-4 py-3">
+          <div className="border border-[var(--border)] bg-[var(--background-secondary)] px-4 py-3">
             <p className="text-sm font-bold uppercase tracking-tight">{businessName}</p>
             <p className="mt-0.5 text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
               Agenda visual
@@ -406,7 +491,7 @@ export function BookingForm({
         </div>
 
         {isSubmitted && (
-          <div className="flex items-start gap-3 border-b border-transparent/10 bg-[var(--background)] px-8 py-5 text-white">
+          <div className="flex items-start gap-3 border-b border-[var(--border)] bg-[var(--background)] px-8 py-5 text-white">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
               <p className="text-sm font-bold uppercase tracking-tight">¡Turno confirmado!</p>
@@ -418,7 +503,14 @@ export function BookingForm({
           </div>
         )}
 
-        <div className="border-b border-transparent/10 px-8 py-8">
+        {error && (
+          <div className="mx-8 mt-6 flex items-center gap-2.5 rounded-2xl border border-[var(--destructive-border)] bg-[var(--destructive-hover)] px-5 py-3.5 text-sm text-[var(--destructive)]">
+            <AlertCircle size={16} className="shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="border-b border-[var(--border)] px-8 py-8">
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-black text-[10px] font-bold text-white">
               1
@@ -444,7 +536,7 @@ export function BookingForm({
                   <div className="flex items-center gap-3">
                     <div
                       className={`h-2 w-2 shrink-0 ${
-                        isActive ? "bg-[var(--background-secondary)]" : "border border-transparent/20 bg-transparent"
+                        isActive ? "bg-[var(--background-secondary)]" : "border border-[var(--border)] bg-transparent"
                       }`}
                     />
                     <div>
@@ -469,9 +561,15 @@ export function BookingForm({
               );
             })}
           </div>
+          {fieldErrors.serviceId && (
+            <p className="mt-2 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+              <AlertCircle size={11} />
+              {fieldErrors.serviceId}
+            </p>
+          )}
         </div>
 
-        <div className="border-b border-transparent/10 px-8 py-8">
+        <div className="border-b border-[var(--border)] px-8 py-8">
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-black text-[10px] font-bold text-white">
               2
@@ -479,7 +577,7 @@ export function BookingForm({
             <p className="text-sm font-bold uppercase tracking-tight">Fecha</p>
           </div>
 
-          <div className="mb-4 flex items-center justify-between border-b border-transparent/10 pb-4">
+          <div className="mb-4 flex items-center justify-between border-b border-[var(--border)] pb-4">
             <p className="text-sm font-bold uppercase tracking-tight">
               {activeMonth?.label ?? ""}
             </p>
@@ -553,9 +651,15 @@ export function BookingForm({
             {availableSlots.length} horarios disponibles ·{" "}
             {selectedDate?.label ?? "Selecciona un día"}
           </p>
+          {fieldErrors.date && (
+            <p className="mt-2 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+              <AlertCircle size={11} />
+              {fieldErrors.date}
+            </p>
+          )}
         </div>
 
-        <div className="border-b border-transparent/10 px-8 py-8">
+        <div className="border-b border-[var(--border)] px-8 py-8">
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-black text-[10px] font-bold text-white">
               3
@@ -585,6 +689,12 @@ export function BookingForm({
               );
             })}
           </div>
+          {fieldErrors.time && (
+            <p className="mt-2 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+              <AlertCircle size={11} />
+              {fieldErrors.time}
+            </p>
+          )}
         </div>
 
         <div className="px-8 py-8">
@@ -596,52 +706,71 @@ export function BookingForm({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="space-y-2 sm:col-span-2">
+            <label className="space-y-1.5 sm:col-span-2">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                Nombre completo
+                Nombre completo <span className="text-[var(--destructive)]">*</span>
               </span>
               <input
-                required
                 type="text"
                 name="customerName"
                 value={formData.customerName}
                 onChange={handleChange}
                 placeholder="Juan Pérez"
-                className={inputClassName}
+                className={fieldClass}
               />
+              {fieldErrors.customerName && (
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                  <AlertCircle size={11} />
+                  {fieldErrors.customerName}
+                </p>
+              )}
             </label>
 
-            <label className="space-y-2">
+            <label className="space-y-1.5">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                Teléfono
+                Teléfono <span className="text-[var(--destructive)]">*</span>
               </span>
               <input
-                required
                 type="tel"
                 name="phone"
                 value={formData.phone}
-                onChange={handleChange}
+                onChange={(e) => {
+                  setFormData((c) => ({ ...c, phone: onlyDigits(e.target.value) }));
+                  setFieldErrors((prev) => ({ ...prev, phone: "" }));
+                }}
                 placeholder="999 999 999"
-                className={inputClassName}
+                maxLength={9}
+                className={fieldClass}
               />
+              {fieldErrors.phone && (
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                  <AlertCircle size={11} />
+                  {fieldErrors.phone}
+                </p>
+              )}
             </label>
 
-            <label className="space-y-2">
+            <label className="space-y-1.5">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                Email
+                Email <span className="text-[var(--destructive)]">*</span>
               </span>
               <input
-                required
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="nombre@correo.com"
-                className={inputClassName}
+                className={fieldClass}
               />
+              {fieldErrors.email && (
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                  <AlertCircle size={11} />
+                  {fieldErrors.email}
+                </p>
+              )}
             </label>
 
-            <label className="space-y-2 sm:col-span-2">
+            <label className="space-y-1.5 sm:col-span-2">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
                 DNI <span className="text-[var(--text-muted)]">(opcional)</span>
               </span>
@@ -651,12 +780,19 @@ export function BookingForm({
                 value={formData.dni}
                 onChange={handleChange}
                 placeholder="12345678"
-                className={inputClassName}
+                maxLength={8}
+                className={fieldClass}
               />
+              {fieldErrors.dni && (
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                  <AlertCircle size={11} />
+                  {fieldErrors.dni}
+                </p>
+              )}
             </label>
           </div>
 
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-transparent/10 pt-6">
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--border)] pt-6">
             <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
               Al confirmar, tu turno se agendará en nuestro sistema.
             </p>
@@ -664,15 +800,10 @@ export function BookingForm({
               <button
                 type="submit"
                 disabled={isLoading || isSubmitted}
-                className="bg-black px-8 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-75 disabled:opacity-40"
+                className="rounded-xl bg-black px-8 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {isLoading ? "Procesando..." : isSubmitted ? "¡Confirmado!" : "Confirmar turno"}
               </button>
-              {error && (
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-red-500">
-                  {error}
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -681,14 +812,14 @@ export function BookingForm({
       <aside className="bg-[var(--background-secondary)]">
         <div className="xl:sticky xl:top-6">
 
-          <div className="border-b border-transparent/10 px-6 py-8">
+          <div className="border-b border-[var(--border)] px-6 py-8">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
               Resumen
             </p>
             <h2 className="mt-2 text-xl font-bold uppercase tracking-tight">Tu cita</h2>
           </div>
 
-          <div className="divide-y divide-black/10">
+          <div className="divide-y divide-[var(--border)]/50">
             <SummaryRow label="Servicio" value={selectedService?.name ?? "Pendiente"} />
             <SummaryRow
               label="Profesional"

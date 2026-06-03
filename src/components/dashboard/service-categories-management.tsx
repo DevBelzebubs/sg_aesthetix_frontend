@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowLeft, ArrowUp, Folder, Loader2, PencilLine, Plus, Search, Trash2, X } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowLeft, ArrowUp, Folder, Loader2, PencilLine, Plus, Search, Trash2, X } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { createClient } from "@/lib/supabase/client";
+import { validatePositiveNumber, validateRequired } from "@/lib/validators";
 import type { Category } from "@/types/category";
 
 type CategoryDraft = Omit<Category, "id">;
@@ -18,7 +19,7 @@ const emptyDraft: CategoryDraft = {
 };
 
 const inputClassName =
-  "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+  "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
 
 async function reorderBeforeInsert(supabase: ReturnType<typeof createClient>, table: string, newOrder: number) {
   const { data } = await supabase.from(table).select("id, orden").gte("orden", newOrder).order("orden", { ascending: true });
@@ -38,6 +39,7 @@ export default function ServiceCategoriesManagement() {
   const [mode, setMode] = useState<"list" | "create" | "edit">("list");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [draft, setDraft] = useState<CategoryDraft>(emptyDraft);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [error, setError] = useState("");
@@ -89,7 +91,12 @@ export default function ServiceCategoriesManagement() {
   };
 
   async function saveItem() {
-    if (!draft.nombre) return;
+    const errors: Record<string, string> = {};
+    const nombreError = validateRequired(draft.nombre, "El nombre");
+    if (nombreError) errors.nombre = nombreError;
+    const ordenError = validatePositiveNumber(draft.orden, "El orden");
+    if (ordenError) errors.orden = ordenError;
+    if (Object.keys(errors).length > 0) { setFieldErrors(errors); return; }
     setError("");
     setSaving(true);
     try {
@@ -259,8 +266,8 @@ export default function ServiceCategoriesManagement() {
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="col-span-full">
-              <Field label="Nombre" required>
-                <input className={inputClassName} value={draft.nombre} onChange={(e) => setDraft((d) => ({ ...d, nombre: e.target.value }))} placeholder="Nombre de la categoría" />
+              <Field label="Nombre" required error={fieldErrors.nombre}>
+                <input className={inputClassName} value={draft.nombre} onChange={(e) => { setDraft((d) => ({ ...d, nombre: e.target.value })); setFieldErrors((prev) => ({ ...prev, nombre: "" })); }} placeholder="Nombre de la categoría" />
               </Field>
             </div>
             <div className="col-span-full">
@@ -268,8 +275,8 @@ export default function ServiceCategoriesManagement() {
                 <textarea className={`${inputClassName} min-h-20 resize-none`} value={draft.descripcion ?? ""} onChange={(e) => setDraft((d) => ({ ...d, descripcion: e.target.value }))} placeholder="Descripción opcional" />
               </Field>
             </div>
-            <Field label="Orden">
-              <input type="number" className={inputClassName} value={draft.orden} onChange={(e) => setDraft((d) => ({ ...d, orden: Number(e.target.value) }))} min={1} />
+            <Field label="Orden" error={fieldErrors.orden}>
+              <input type="number" className={inputClassName} value={draft.orden} onChange={(e) => { setDraft((d) => ({ ...d, orden: Number(e.target.value) })); setFieldErrors((prev) => ({ ...prev, orden: "" })); }} min={1} />
             </Field>
             <Field label="Visible en tienda">
               <select className={inputClassName} value={draft.publico ? "si" : "no"} onChange={(e) => setDraft((d) => ({ ...d, publico: e.target.value === "si" }))}>
@@ -285,7 +292,7 @@ export default function ServiceCategoriesManagement() {
             </Field>
           </div>
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-6">
-            <button type="button" onClick={() => setIsConfirmOpen(true)} disabled={!draft.nombre || saving} className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50">
+            <button type="button" onClick={() => setIsConfirmOpen(true)} disabled={Object.keys(fieldErrors).length > 0 || saving} className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50">
               {saving && <Loader2 size={16} className="animate-spin" />}
               {mode === "create" ? "Crear categoría" : "Guardar cambios"}
             </button>
@@ -302,8 +309,8 @@ export default function ServiceCategoriesManagement() {
   );
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return <label className="space-y-2"><span className="text-sm font-medium text-[var(--foreground)]">{label}{required && <span className="ml-1 text-[var(--destructive)]">*</span>}</span>{children}</label>;
+function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
+  return <label className="space-y-2"><span className="text-sm font-medium text-[var(--foreground)]">{label}{required && <span className="ml-1 text-[var(--destructive)]">*</span>}</span>{children}{error && <p className="flex items-center gap-1 text-[11px] text-[var(--destructive)]"><AlertCircle size={11} />{error}</p>}</label>;
 }
 
 function toDraft(item: Category): CategoryDraft {

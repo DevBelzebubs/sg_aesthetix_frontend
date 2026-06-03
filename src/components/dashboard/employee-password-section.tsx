@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { KeyRound, Loader2, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { validatePassword } from "@/lib/validators";
 import bcrypt from "bcryptjs";
 
 const inputClassName =
@@ -20,10 +21,8 @@ export function EmployeePasswordSection({ userId }: Props) {
   const [error, setError] = useState("");
 
   const handleChange = async () => {
-    if (!password || password.length < 6) {
-      setError("La clave debe tener al menos 6 caracteres.");
-      return;
-    }
+    const passErr = validatePassword(password);
+    if (passErr) { setError(passErr); return; }
     setSaving(true);
     setError("");
     setSuccess(false);

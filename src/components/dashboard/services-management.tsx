@@ -8,6 +8,7 @@ import { Pagination } from "@/components/dashboard/pagination";
 import { Toast } from "@/components/dashboard/toast";
 import type { ToastType } from "@/components/dashboard/toast";
 import { createClient } from "@/lib/supabase/client";
+import { validateRequired, validatePositiveNumber } from "@/lib/validators";
 
 type Service = {
   id: string;
@@ -35,7 +36,7 @@ const emptyDraft: ServiceDraft = {
 };
 
 const inputClassName =
-  "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+  "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
 
 type Props = {
   totalServicios: number;
@@ -55,6 +56,7 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
   const [mode, setMode] = useState<"list" | "create" | "edit">("list");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<ServiceDraft>(emptyDraft);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deactivateTarget, setDeactivateTarget] = useState<Service | null>(null);
@@ -125,7 +127,18 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
   };
 
   async function saveService() {
-    if (!draft.nombre) return;
+    const errors: Record<string, string> = {};
+    const nombreErr = validateRequired(draft.nombre, "El nombre");
+    const precioErr = validatePositiveNumber(draft.precio, "El precio");
+    const duracionErr = validatePositiveNumber(draft.duracion_minutos, "La duración");
+    if (nombreErr) errors.nombre = nombreErr;
+    if (precioErr) errors.precio = precioErr;
+    if (duracionErr) errors.duracion = duracionErr;
+    if (draft.puntos_otorgados < 0) errors.puntos = "Los puntos no pueden ser negativos";
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
     setSaving(true);
     if (mode === "edit" && selectedId) {
       await supabase.from("servicios").update({
@@ -458,7 +471,7 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
 
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-6">
             <button type="button" onClick={() => setIsConfirmOpen(true)}
-              disabled={!draft.nombre || saving}
+              disabled={Object.keys(fieldErrors).length > 0 || saving}
               className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50">
               {saving && <Loader2 size={16} className="animate-spin" />}
               {mode === "create" ? "Crear servicio" : "Guardar cambios"}
@@ -519,7 +532,7 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
   );
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
   return (
     <label className="space-y-2">
       <span className="text-sm font-medium text-[var(--foreground)]">
@@ -527,6 +540,12 @@ function Field({ label, required, children }: { label: string; required?: boolea
         {required && <span className="ml-1 text-[var(--destructive)]">*</span>}
       </span>
       {children}
+      {error && (
+        <p className="flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+          <AlertCircle size={11} />
+          {error}
+        </p>
+      )}
     </label>
   );
 }
