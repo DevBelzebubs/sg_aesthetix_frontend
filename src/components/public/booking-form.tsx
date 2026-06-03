@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { AppointmentsService } from "@/services/appointments.service";
 import { CustomersService } from "@/services/customers.service";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
@@ -11,12 +11,14 @@ type BookingOption = {
   name: string;
   duration: string;
   price: string;
+  imageUrl: string | null;
 };
 
 type TeamMember = {
   id: string;
   name: string;
   role: string;
+  imageUrl: string | null;
 };
 
 type CalendarDate = {
@@ -61,7 +63,12 @@ const initialDraft: BookingDraft = {
 const inputClassName =
   "w-full border border-transparent/10 bg-[var(--background-secondary)] px-4 py-3.5 text-base text-[var(--foreground)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-black focus:ring-0";
 
+const selectClassName =
+  "w-full border border-[var(--foreground)]/20 bg-[var(--background-secondary)] px-4 py-3.5 text-base text-[var(--foreground)] outline-none transition focus:border-black focus:ring-0 appearance-none cursor-pointer pr-10";
+
 const calendarWeekdays = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+const STEPS = ["Servicio", "Profesional", "Fecha", "Horario", "Datos"] as const;
 
 export function BookingForm({
   businessName,
@@ -73,6 +80,7 @@ export function BookingForm({
   const [stage, setStage] = useState<"dni" | "register" | "booking">("dni");
   const [dni, setDni] = useState("");
   const [customerId, setCustomerId] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<BookingDraft>({
     ...initialDraft,
     serviceId: services[0]?.id ?? "",
@@ -155,6 +163,11 @@ export function BookingForm({
   const selectedService = useMemo(
     () => services.find((service) => service.id === formData.serviceId),
     [formData.serviceId, services],
+  );
+
+  const selectedBarber = useMemo(
+    () => barbers.find((b) => b.id === formData.barberId),
+    [barbers, formData.barberId],
   );
 
   const selectedDate = useMemo(
@@ -285,6 +298,9 @@ export function BookingForm({
     }
   };
 
+  const nextStep = () => setCurrentStep((s) => Math.min(s + 1, STEPS.length - 1));
+  const prevStep = () => setCurrentStep((s) => Math.max(s - 1, 0));
+
   return stage === "dni" || stage === "register" ? (
     <div className="mx-auto max-w-md px-4 py-12">
       <div className="mb-8 text-center">
@@ -385,28 +401,27 @@ export function BookingForm({
     </div>
   ) : (
     <div className="grid gap-px bg-[var(--background)] xl:grid-cols-[1.2fr_0.72fr]">
-      <form onSubmit={handleSubmit} className="space-y-0 bg-[var(--background-secondary)]">
-
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-transparent/10 px-8 py-8">
+      <div className="bg-[var(--background-secondary)]">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 bg-black px-8 py-10">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">
               Reserva online
             </p>
-            <h1 className="mt-2 text-4xl font-bold tracking-tight">Elige tu fecha y hora</h1>
-            <p className="mt-2 text-base leading-relaxed text-[var(--text-muted)]">
+            <h1 className="mt-2 text-4xl font-bold tracking-tight text-white">Elige tu fecha y hora</h1>
+            <p className="mt-2 text-base leading-relaxed text-white/50">
               Confirmación rápida, sin esperas ni llamadas.
             </p>
           </div>
-          <div className="border border-transparent/10 bg-[var(--background-secondary)] px-4 py-3">
-            <p className="text-sm font-bold uppercase tracking-tight">{businessName}</p>
-            <p className="mt-0.5 text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
+          <div className="border border-white/10 bg-white/5 px-4 py-3">
+            <p className="text-sm font-bold uppercase tracking-tight text-white">{businessName}</p>
+            <p className="mt-0.5 text-[10px] uppercase tracking-widest text-white/30">
               Agenda visual
             </p>
           </div>
         </div>
 
         {isSubmitted && (
-          <div className="flex items-start gap-3 border-b border-transparent/10 bg-[var(--background)] px-8 py-5 text-white">
+          <div className="flex items-start gap-3 border-b border-transparent/10 bg-black px-8 py-5 text-white">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
               <p className="text-sm font-bold uppercase tracking-tight">¡Turno confirmado!</p>
@@ -418,265 +433,394 @@ export function BookingForm({
           </div>
         )}
 
-        <div className="border-b border-transparent/10 px-8 py-8">
-          <div className="mb-5 flex items-center gap-3">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-black text-[10px] font-bold text-white">
-              1
-            </div>
-            <p className="text-sm font-bold uppercase tracking-tight">Servicio</p>
-          </div>
-
-          <div className="grid gap-px bg-[var(--background)]">
-            {services.map((service) => {
-              const isActive = formData.serviceId === service.id;
-              return (
+        <div className="border-b border-transparent/10 px-8 pb-6 pt-8">
+          <div className="flex items-center justify-between">
+            {STEPS.map((label, idx) => (
+              <div key={label} className="flex items-center gap-2">
                 <button
-                  key={service.id}
                   type="button"
-                  onClick={() => {
-                    setFormData((c) => ({ ...c, serviceId: service.id }));
-                    setIsSubmitted(false);
-                  }}
-                  className={`flex items-center justify-between px-5 py-4 text-left transition ${
-                    isActive ? "bg-[var(--background)] text-white" : "bg-[var(--background-secondary)] hover:opacity-75"
+                  onClick={() => setCurrentStep(idx)}
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center text-[10px] font-bold transition ${
+                    idx === currentStep
+                      ? "bg-black text-white"
+                      : idx < currentStep
+                        ? "bg-black/20 text-white"
+                        : "bg-[var(--background)] text-[var(--text-muted)]"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`h-2 w-2 shrink-0 ${
-                        isActive ? "bg-[var(--background-secondary)]" : "border border-transparent/20 bg-transparent"
-                      }`}
-                    />
-                    <div>
-                      <p className="text-sm font-bold uppercase tracking-tight">{service.name}</p>
-                      <p
-                        className={`mt-0.5 text-[10px] uppercase tracking-widest ${
-                          isActive ? "text-white/40" : "text-[var(--text-muted)]"
-                        }`}
-                      >
-                        {service.duration}
-                      </p>
-                    </div>
-                  </div>
-                  <span
-                    className={`text-base font-black tracking-tight ${
-                      isActive ? "text-white" : "text-[var(--tenant-primary)]"
-                    }`}
-                  >
-                    {service.price}
-                  </span>
+                  {idx < currentStep ? <CheckCircle2 size={12} /> : idx + 1}
                 </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="border-b border-transparent/10 px-8 py-8">
-          <div className="mb-5 flex items-center gap-3">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-black text-[10px] font-bold text-white">
-              2
-            </div>
-            <p className="text-sm font-bold uppercase tracking-tight">Fecha</p>
-          </div>
-
-          <div className="mb-4 flex items-center justify-between border-b border-transparent/10 pb-4">
-            <p className="text-sm font-bold uppercase tracking-tight">
-              {activeMonth?.label ?? ""}
-            </p>
-            <div className="flex gap-px">
-              {monthOptions.map((month) => {
-                const isActive = month.key === activeMonth?.key;
-                return (
-                  <button
-                    key={month.key}
-                    type="button"
-                    onClick={() => setActiveMonthKey(month.key)}
-                    className={`px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest transition ${
-                      isActive
-                        ? "bg-black text-white"
-                        : "bg-[var(--background)] text-[var(--text-muted)] hover:opacity-75"
+                <span
+                  className={`hidden text-[10px] font-semibold uppercase tracking-widest sm:inline ${
+                    idx === currentStep ? "text-[var(--foreground)]" : "text-[var(--text-muted)]"
+                  }`}
+                >
+                  {label}
+                </span>
+                {idx < STEPS.length - 1 && (
+                  <div
+                    className={`mx-1 hidden h-px w-6 sm:block ${
+                      idx < currentStep ? "bg-black/20" : "bg-[var(--background)]"
                     }`}
-                  >
-                    {month.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-7 gap-px bg-[var(--background)]">
-            {calendarWeekdays.map((wd) => (
-              <div
-                key={wd}
-                className="bg-[var(--background-secondary)] py-2 text-center text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]"
-              >
-                {wd}
+                  />
+                )}
               </div>
             ))}
-
-            {calendarCells.map((cell, index) => {
-              if (!cell) {
-                return <div key={`empty-${index}`} className="bg-[var(--background-secondary)]" />;
-              }
-
-              const isActive = formData.date === cell.availableDate?.value;
-              const isAvailable = Boolean(cell.availableDate);
-
-              return (
-                <button
-                  key={cell.availableDate?.value ?? `day-${cell.dayNumber}`}
-                  type="button"
-                  disabled={!isAvailable}
-                  onClick={() => {
-                    if (!cell.availableDate) return;
-                    setFormData((c) => ({
-                      ...c,
-                      date: cell.availableDate?.value ?? c.date,
-                    }));
-                    setIsSubmitted(false);
-                  }}
-                  className={`flex aspect-square items-center justify-center text-xs font-bold transition ${
-                    isActive
-                      ? "bg-black text-white"
-                      : isAvailable
-                        ? "bg-[var(--background-secondary)] text-[var(--foreground)] hover:opacity-75"
-                        : "bg-[var(--background-secondary)] text-[var(--text-muted)] cursor-default"
-                  }`}
-                >
-                  {String(cell.dayNumber).padStart(2, "0")}
-                </button>
-              );
-            })}
-          </div>
-
-          <p className="mt-3 text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
-            {availableSlots.length} horarios disponibles ·{" "}
-            {selectedDate?.label ?? "Selecciona un día"}
-          </p>
-        </div>
-
-        <div className="border-b border-transparent/10 px-8 py-8">
-          <div className="mb-5 flex items-center gap-3">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-black text-[10px] font-bold text-white">
-              3
-            </div>
-            <p className="text-sm font-bold uppercase tracking-tight">Horario</p>
-          </div>
-
-          <div className="grid grid-cols-3 gap-px bg-[var(--background)] sm:grid-cols-4 lg:grid-cols-6">
-            {availableSlots.map((slot) => {
-              const isActive = formData.time === slot;
-              return (
-                <button
-                  key={slot}
-                  type="button"
-                  onClick={() => {
-                    setFormData((c) => ({ ...c, time: slot }));
-                    setIsSubmitted(false);
-                  }}
-                  className={`py-3 text-center text-xs font-bold uppercase tracking-wide transition ${
-                    isActive
-                      ? "bg-[var(--background)] text-white"
-                      : "bg-[var(--background-secondary)] text-[var(--foreground)] hover:opacity-75"
-                  }`}
-                >
-                  {slot}
-                </button>
-              );
-            })}
           </div>
         </div>
 
-        <div className="px-8 py-8">
-          <div className="mb-5 flex items-center gap-3">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-black text-[10px] font-bold text-white">
-              4
+        <form onSubmit={handleSubmit}>
+          {currentStep === 0 && (
+            <div className="border-b border-transparent/10 px-8 py-8">
+              <div className="mb-5">
+                <p className="text-sm font-bold uppercase tracking-tight">Servicio</p>
+                <p className="mt-1 text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
+                  Selecciona el servicio que deseas reservar.
+                </p>
+              </div>
+
+              <div className="grid gap-px bg-[var(--background)]">
+                {services.map((service) => {
+                  const isActive = formData.serviceId === service.id;
+                  return (
+                    <button
+                      key={service.id}
+                      type="button"
+                      onClick={() => {
+                        setFormData((c) => ({ ...c, serviceId: service.id }));
+                        setIsSubmitted(false);
+                      }}
+                      className={`flex items-center justify-between px-5 py-4 text-left transition ${
+                        isActive
+                          ? "bg-black text-white"
+                          : "bg-[var(--background-secondary)] hover:opacity-75"
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        {service.imageUrl ? (
+                          <img
+                            src={service.imageUrl}
+                            alt={service.name}
+                            className="h-10 w-10 shrink-0 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div
+                            className={`h-10 w-10 shrink-0 rounded-full ${
+                              isActive ? "bg-white/20" : "bg-[var(--background)]"
+                            }`}
+                          />
+                        )}
+                        <div>
+                          <p className={`text-sm font-bold uppercase tracking-tight ${isActive ? "text-white" : ""}`}>
+                            {service.name}
+                          </p>
+                          <p
+                            className={`mt-0.5 text-[10px] uppercase tracking-widest ${
+                              isActive ? "text-white/50" : "text-[var(--text-muted)]"
+                            }`}
+                          >
+                            {service.duration}
+                          </p>
+                        </div>
+                      </div>
+                      <span
+                        className={`text-base font-black tracking-tight ${
+                          isActive ? "text-white" : "text-[var(--tenant-primary)]"
+                        }`}
+                      >
+                        {service.price}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <p className="text-sm font-bold uppercase tracking-tight">Datos de contacto</p>
-          </div>
+          )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="space-y-2 sm:col-span-2">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                Nombre completo
-              </span>
-              <input
-                required
-                type="text"
-                name="customerName"
-                value={formData.customerName}
-                onChange={handleChange}
-                placeholder="Juan Pérez"
-                className={inputClassName}
-              />
-            </label>
+          {currentStep === 1 && (
+            <div className="border-b border-transparent/10 px-8 py-8">
+              <div className="mb-5">
+                <p className="text-sm font-bold uppercase tracking-tight">Profesional</p>
+                <p className="mt-1 text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
+                  Elige con quién quieres atenderte.
+                </p>
+              </div>
 
-            <label className="space-y-2">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                Teléfono
-              </span>
-              <input
-                required
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                placeholder="999 999 999"
-                className={inputClassName}
-              />
-            </label>
+              <div className="grid gap-px bg-[var(--background)]">
+                {barbers.map((barber) => {
+                  const isActive = formData.barberId === barber.id;
+                  return (
+                    <button
+                      key={barber.id}
+                      type="button"
+                      onClick={() => {
+                        setFormData((c) => ({ ...c, barberId: barber.id }));
+                        setIsSubmitted(false);
+                      }}
+                      className={`flex items-center gap-4 px-5 py-4 text-left transition ${
+                        isActive
+                          ? "bg-black text-white"
+                          : "bg-[var(--background-secondary)] hover:opacity-75"
+                      }`}
+                    >
+                      {barber.imageUrl ? (
+                        <img
+                          src={barber.imageUrl}
+                          alt={barber.name}
+                          className="h-10 w-10 shrink-0 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div
+                          className={`h-10 w-10 shrink-0 rounded-full ${
+                            isActive ? "bg-white/20" : "bg-[var(--background)]"
+                          }`}
+                        />
+                      )}
+                      <div>
+                        <p className="text-sm font-bold uppercase tracking-tight">{barber.name}</p>
+                        <p
+                          className={`mt-0.5 text-[10px] uppercase tracking-widest ${
+                            isActive ? "text-white/50" : "text-[var(--text-muted)]"
+                          }`}
+                        >
+                          {barber.role}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
-            <label className="space-y-2">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                Email
-              </span>
-              <input
-                required
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="nombre@correo.com"
-                className={inputClassName}
-              />
-            </label>
+          {currentStep === 2 && (
+            <div className="border-b border-transparent/10 px-8 py-8">
+              <div className="mb-5">
+                <p className="text-sm font-bold uppercase tracking-tight">Fecha</p>
+                <p className="mt-1 text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
+                  Elige el día que más te convenga.
+                </p>
+              </div>
 
-            <label className="space-y-2 sm:col-span-2">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                DNI <span className="text-[var(--text-muted)]">(opcional)</span>
-              </span>
-              <input
-                type="text"
-                name="dni"
-                value={formData.dni}
-                onChange={handleChange}
-                placeholder="12345678"
-                className={inputClassName}
-              />
-            </label>
-          </div>
+              <div className="mb-4 flex items-center justify-between border-b border-transparent/10 pb-4">
+                <p className="text-sm font-bold uppercase tracking-tight">
+                  {activeMonth?.label ?? ""}
+                </p>
+                <div className="flex gap-px">
+                  {monthOptions.map((month) => {
+                    const isActive = month.key === activeMonth?.key;
+                    return (
+                      <button
+                        key={month.key}
+                        type="button"
+                        onClick={() => setActiveMonthKey(month.key)}
+                        className={`px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest transition ${
+                          isActive
+                            ? "bg-black text-white"
+                            : "bg-[var(--background)] text-[var(--text-muted)] hover:opacity-75"
+                        }`}
+                      >
+                        {month.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-transparent/10 pt-6">
-            <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
-              Al confirmar, tu turno se agendará en nuestro sistema.
-            </p>
-            <div className="flex flex-col items-end gap-2">
+              <div className="grid grid-cols-7 gap-px bg-[var(--background)]">
+                {calendarWeekdays.map((wd) => (
+                  <div
+                    key={wd}
+                    className="bg-[var(--background-secondary)] py-2 text-center text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]"
+                  >
+                    {wd}
+                  </div>
+                ))}
+
+                {calendarCells.map((cell, index) => {
+                  if (!cell) {
+                    return <div key={`empty-${index}`} className="bg-[var(--background-secondary)]" />;
+                  }
+
+                  const isActive = formData.date === cell.availableDate?.value;
+                  const isAvailable = Boolean(cell.availableDate);
+
+                  return (
+                    <button
+                      key={cell.availableDate?.value ?? `day-${cell.dayNumber}`}
+                      type="button"
+                      disabled={!isAvailable}
+                      onClick={() => {
+                        if (!cell.availableDate) return;
+                        setFormData((c) => ({
+                          ...c,
+                          date: cell.availableDate?.value ?? c.date,
+                        }));
+                        setIsSubmitted(false);
+                      }}
+                      className={`flex aspect-square items-center justify-center text-xs font-bold transition ${
+                        isActive
+                          ? "bg-black text-white"
+                          : isAvailable
+                            ? "bg-[var(--background-secondary)] text-[var(--foreground)] hover:opacity-75"
+                            : "bg-[var(--background-secondary)] text-[var(--text-muted)] cursor-default"
+                      }`}
+                    >
+                      {String(cell.dayNumber).padStart(2, "0")}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <p className="mt-3 text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
+                {availableSlots.length} horarios disponibles ·{" "}
+                {selectedDate?.label ?? "Selecciona un día"}
+              </p>
+            </div>
+          )}
+
+          {currentStep === 3 && (
+            <div className="border-b border-transparent/10 px-8 py-8">
+              <div className="mb-5">
+                <p className="text-sm font-bold uppercase tracking-tight">Horario</p>
+                <p className="mt-1 text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
+                  Selecciona la hora que prefieras para tu cita.
+                </p>
+              </div>
+
+              <div className="relative">
+                <select
+                  value={formData.time}
+                  onChange={(e) => {
+                    setFormData((c) => ({ ...c, time: e.target.value }));
+                    setIsSubmitted(false);
+                  }}
+                  className={selectClassName}
+                >
+                  {availableSlots.map((slot) => (
+                    <option key={slot} value={slot}>
+                      {slot}
+                    </option>
+                  ))}
+                </select>
+                <ChevronRight
+                  size={16}
+                  className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-[var(--text-muted)]"
+                />
+              </div>
+            </div>
+          )}
+
+          {currentStep === 4 && (
+            <div className="px-8 py-8">
+              <div className="mb-5">
+                <p className="text-sm font-bold uppercase tracking-tight">Datos de contacto</p>
+                <p className="mt-1 text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
+                  Confírmanos tus datos para agendar el turno.
+                </p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="space-y-2 sm:col-span-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                    Nombre completo
+                  </span>
+                  <input
+                    required
+                    type="text"
+                    name="customerName"
+                    value={formData.customerName}
+                    onChange={handleChange}
+                    placeholder="Juan Pérez"
+                    className={inputClassName}
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                    Teléfono
+                  </span>
+                  <input
+                    required
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    placeholder="999 999 999"
+                    className={inputClassName}
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                    Email
+                  </span>
+                  <input
+                    required
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="nombre@correo.com"
+                    className={inputClassName}
+                  />
+                </label>
+
+                <label className="space-y-2 sm:col-span-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                    DNI <span className="text-[var(--text-muted)]">(opcional)</span>
+                  </span>
+                  <input
+                    type="text"
+                    name="dni"
+                    value={formData.dni}
+                    onChange={handleChange}
+                    placeholder="12345678"
+                    className={inputClassName}
+                  />
+                </label>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="mx-8 mb-4 border border-red-500/20 bg-red-50 px-4 py-3">
+              <p className="text-xs font-semibold text-red-600">{error}</p>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between border-t border-transparent/10 px-8 py-6">
+            <button
+              type="button"
+              onClick={prevStep}
+              disabled={currentStep === 0}
+              className="inline-flex items-center gap-1.5 border border-transparent/10 px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)] transition hover:border-[var(--hover)] disabled:opacity-30"
+            >
+              <ChevronLeft size={14} />
+              Anterior
+            </button>
+
+            {currentStep < STEPS.length - 1 ? (
+              <button
+                type="button"
+                onClick={nextStep}
+                className="inline-flex items-center gap-1.5 bg-black px-6 py-2.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white transition hover:opacity-75"
+              >
+                Siguiente
+                <ChevronRight size={14} />
+              </button>
+            ) : (
               <button
                 type="submit"
                 disabled={isLoading || isSubmitted}
-                className="bg-black px-8 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-75 disabled:opacity-40"
+                className="bg-black px-8 py-2.5 text-[10px] font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-75 disabled:opacity-40"
               >
                 {isLoading ? "Procesando..." : isSubmitted ? "¡Confirmado!" : "Confirmar turno"}
               </button>
-              {error && (
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-red-500">
-                  {error}
-                </span>
-              )}
-            </div>
+            )}
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
 
       <aside className="bg-[var(--background-secondary)]">
         <div className="xl:sticky xl:top-6">
@@ -688,17 +832,17 @@ export function BookingForm({
             <h2 className="mt-2 text-xl font-bold uppercase tracking-tight">Tu cita</h2>
           </div>
 
-          <div className="divide-y divide-black/10">
+          <div className="divide-y divide-black/10 dark:divide-white/10">
             <SummaryRow label="Servicio" value={selectedService?.name ?? "Pendiente"} />
             <SummaryRow
               label="Profesional"
-              value={barbers.find((b) => b.id === formData.barberId)?.name ?? "Pendiente"}
+              value={selectedBarber?.name ?? "Pendiente"}
             />
             <SummaryRow label="Fecha" value={selectedDate?.label ?? "Pendiente"} />
             <SummaryRow label="Hora" value={formData.time || "Pendiente"} />
           </div>
 
-          <div className="bg-[var(--background)] px-6 py-6 text-white">
+          <div className="bg-black px-6 py-6 text-white">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-white/40">
               Inversión
             </p>
@@ -708,39 +852,6 @@ export function BookingForm({
             <p className="mt-1 text-[10px] uppercase tracking-widest text-white/40">
               {selectedService?.duration ?? "Sin duración"}
             </p>
-          </div>
-
-          <div className="px-6 py-6">
-            <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-              Profesional
-            </p>
-            <div className="grid gap-px bg-[var(--background)]">
-              {barbers.map((barber) => {
-                const isActive = formData.barberId === barber.id;
-                return (
-                  <button
-                    key={barber.id}
-                    type="button"
-                    onClick={() => {
-                      setFormData((c) => ({ ...c, barberId: barber.id }));
-                      setIsSubmitted(false);
-                    }}
-                    className={`px-4 py-3 text-left transition ${
-                      isActive ? "bg-[var(--background)] text-white" : "bg-[var(--background-secondary)] hover:opacity-75"
-                    }`}
-                  >
-                    <p className="text-sm font-bold uppercase tracking-tight">{barber.name}</p>
-                    <p
-                      className={`mt-0.5 text-[10px] uppercase tracking-widest ${
-                        isActive ? "text-white/40" : "text-[var(--text-muted)]"
-                      }`}
-                    >
-                      {barber.role}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
           </div>
         </div>
       </aside>
