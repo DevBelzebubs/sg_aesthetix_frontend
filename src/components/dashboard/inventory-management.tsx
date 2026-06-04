@@ -58,6 +58,7 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
 
   const [inventory, setInventory] = useState<Product[]>([]);
   const [inactiveInventory, setInactiveInventory] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<{ id: number; nombre: string }[]>([]);
   const [showInactive, setShowInactive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -75,7 +76,16 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
   const pageSize = 10;
   const [page, setPage] = useState(1);
 
-  useEffect(() => { fetchActiveInventory(); }, []);
+  useEffect(() => { fetchActiveInventory(); fetchCategories(); }, []);
+
+  async function fetchCategories() {
+    const { data } = await supabase
+      .from("categoria_producto")
+      .select("id, nombre")
+      .eq("esta_activo", true)
+      .order("orden", { ascending: true });
+    setCategories(data ?? []);
+  }
 
   async function fetchActiveInventory() {
     setLoading(true);
@@ -279,10 +289,13 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
                       <span className={`rounded-full px-3 py-1 text-xs font-semibold ${item.esta_activo ? "bg-[var(--hover)]/15 text-[var(--hover)]" : "bg-[var(--background)] text-[var(--text-muted)]"}`}>{item.esta_activo ? "Activo" : "Inactivo"}</span>
                     </div>
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {item.publico && <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-blue-500">Público</span>}
-                    {item.destacado && <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-amber-500">Destacado</span>}
-                  </div>
+                   <div className="mt-2 flex flex-wrap gap-1">
+                     {item.publico && <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-blue-500">Público</span>}
+                     {item.destacado && <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-amber-500">Destacado</span>}
+                     <span className="rounded-full bg-purple-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-purple-500">
+                       {categories.find((c) => c.id === item.categoria_producto_id)?.nombre ?? "Sin categoría"}
+                     </span>
+                   </div>
                   <div className="mt-3 space-y-1.5 text-sm text-[var(--text-muted)]">
                     <p className="flex items-center gap-2"><Boxes size={14} />Stock: {item.stock_actual} / mín {item.stock_minimo}</p>
                     <p className="flex items-center gap-2">{lowStock ? <TrendingDown size={14} className="text-[var(--warning)]" /> : <TrendingUp size={14} className="text-[var(--hover)]" />}Venta: S/{item.precio_venta}</p>
@@ -379,7 +392,18 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
               <Field label="Precio costo"><input type="number" className={inputClassName} value={draft.precio_costo ?? 0} onChange={(e) => setDraft((d) => ({ ...d, precio_costo: Number(e.target.value) }))} /></Field>
               <Field label="Precio venta"><input type="number" className={inputClassName} value={draft.precio_venta} onChange={(e) => setDraft((d) => ({ ...d, precio_venta: Number(e.target.value) }))} /></Field>
               <Field label="Puntos otorgados"><input type="number" className={inputClassName} value={draft.puntos_otorgados} onChange={(e) => setDraft((d) => ({ ...d, puntos_otorgados: Number(e.target.value) }))} /></Field>
-              <Field label="Stock mínimo"><input type="number" className={inputClassName} value={draft.stock_minimo} onChange={(e) => setDraft((d) => ({ ...d, stock_minimo: Number(e.target.value) }))} /></Field>
+               <Field label="Stock mínimo"><input type="number" className={inputClassName} value={draft.stock_minimo} onChange={(e) => setDraft((d) => ({ ...d, stock_minimo: Number(e.target.value) }))} /></Field>
+               <Field label="Categoría">
+                 <select
+                   className={inputClassName}
+                   value={draft.categoria_producto_id}
+                   onChange={(e) => setDraft((d) => ({ ...d, categoria_producto_id: Number(e.target.value) }))}
+                 >
+                   {categories.map((cat) => (
+                     <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+                   ))}
+                 </select>
+               </Field>
               <div className="col-span-full">
                 <div className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
                   <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Estado</span>
