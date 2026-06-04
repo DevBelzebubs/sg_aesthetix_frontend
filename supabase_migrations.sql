@@ -152,59 +152,10 @@ BEGIN
   END IF;
 END $$;
 
--- 7. POLITICAS RLS PARA categoria_producto (si no existen)
-ALTER TABLE public.categoria_producto ENABLE ROW LEVEL SECURITY;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'categoria_producto_select' AND tablename = 'categoria_producto') THEN
-    CREATE POLICY "categoria_producto_select" ON public.categoria_producto
-      FOR SELECT TO authenticated, anon USING (true);
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'categoria_producto_insert' AND tablename = 'categoria_producto') THEN
-    CREATE POLICY "categoria_producto_insert" ON public.categoria_producto
-      FOR INSERT TO authenticated WITH CHECK (true);
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'categoria_producto_update' AND tablename = 'categoria_producto') THEN
-    CREATE POLICY "categoria_producto_update" ON public.categoria_producto
-      FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'categoria_producto_delete' AND tablename = 'categoria_producto') THEN
-    CREATE POLICY "categoria_producto_delete" ON public.categoria_producto
-      FOR DELETE TO authenticated USING (true);
-  END IF;
-END $$;
-
--- 8. POLITICAS RLS PARA productos (si no existen)
-ALTER TABLE public.productos ENABLE ROW LEVEL SECURITY;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'productos_select_public' AND tablename = 'productos') THEN
-    CREATE POLICY "productos_select_public" ON public.productos
-      FOR SELECT TO anon USING (esta_activo = true AND publico = true);
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'productos_select_auth' AND tablename = 'productos') THEN
-    CREATE POLICY "productos_select_auth" ON public.productos
-      FOR SELECT TO authenticated USING (true);
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'productos_insert' AND tablename = 'productos') THEN
-    CREATE POLICY "productos_insert" ON public.productos
-      FOR INSERT TO authenticated WITH CHECK (true);
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'productos_update' AND tablename = 'productos') THEN
-    CREATE POLICY "productos_update" ON public.productos
-      FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'productos_delete' AND tablename = 'productos') THEN
-    CREATE POLICY "productos_delete" ON public.productos
-      FOR DELETE TO authenticated USING (true);
-  END IF;
-END $$;
+-- 7. COLUMNAS DE SEGURIDAD PARA clientes (PIN + verificaciones)
+ALTER TABLE public.clientes
+ADD COLUMN IF NOT EXISTS pin_hash TEXT,
+ADD COLUMN IF NOT EXISTS pin_salt TEXT,
+ADD COLUMN IF NOT EXISTS intentos_fallidos INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS bloqueado_hasta TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS email_confirmado BOOLEAN NOT NULL DEFAULT false;

@@ -9,6 +9,8 @@ import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { Toast } from "@/components/dashboard/toast";
 import { createClient } from "@/lib/supabase/client";
+import { hashPin } from "@/lib/pin";
+import { sendNewClientPinEmail } from "@/lib/email-client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -244,10 +246,10 @@ function ClientRightbar({
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [newClient, setNewClient] = useState({ nombres: "", apellidos: "", dni: "", telefono: "", email: "", fechaNacimiento: "" });
+  const [newClient, setNewClient] = useState({ nombres: "", apellidos: "", dni: "", telefono: "", email: "", fechaNacimiento: "", pin: "" });
 
   useEffect(() => {
-    if (open) { setSearch(""); setShowCreate(false); setSaving(false); setNewClient({ nombres: "", apellidos: "", dni: "", telefono: "", email: "", fechaNacimiento: "" }); }
+    if (open) { setSearch(""); setShowCreate(false); setSaving(false); setNewClient({ nombres: "", apellidos: "", dni: "", telefono: "", email: "", fechaNacimiento: "", pin: "" }); }
   }, [open]);
 
   const filtered = useMemo(() => {
@@ -265,6 +267,8 @@ function ClientRightbar({
   async function handleCreate() {
     if (!newClient.nombres) return;
     setSaving(true);
+    const generatedPin = newClient.pin || String(Math.floor(1000 + Math.random() * 9000));
+    const { hash, salt } = await hashPin(generatedPin);
     const payload: Record<string, unknown> = {
       nombres: newClient.nombres,
       apellidos: newClient.apellidos,
@@ -273,11 +277,16 @@ function ClientRightbar({
       correo_electronico: newClient.email || null,
       fecha_nacimiento: newClient.fechaNacimiento || null,
       esta_activo: true,
+      pin_hash: hash,
+      pin_salt: salt,
     };
     const { data, error } = await supabase.from("clientes").insert(payload).select().single();
     setSaving(false);
     if (error) return;
     const c = data as Record<string, unknown>;
+    if (newClient.email) {
+      await sendNewClientPinEmail(newClient.email, newClient.nombres, generatedPin);
+    }
     onCreate({
       id: c.id as string,
       nombres: c.nombres as string,
@@ -326,14 +335,19 @@ function ClientRightbar({
               </div>
 
               {/* Fila 3: Email + Fecha de nacimiento */}
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Email" required>
-                  <input className={inputClassName} value={newClient.email} onChange={(e) => setNewClient((c) => ({ ...c, email: e.target.value }))} placeholder="correo@gmail.com" type="email" />
-                </Field>
-                <Field label="Fecha de nacimiento" required>
-                  <input type="date" className={inputClassName} value={newClient.fechaNacimiento} onChange={(e) => setNewClient((c) => ({ ...c, fechaNacimiento: e.target.value }))} />
-                </Field>
-              </div>
+               <div className="grid grid-cols-2 gap-4">
+                 <Field label="Email" required>
+                   <input className={inputClassName} value={newClient.email} onChange={(e) => setNewClient((c) => ({ ...c, email: e.target.value }))} placeholder="correo@gmail.com" type="email" />
+                 </Field>
+                 <Field label="Fecha de nacimiento" required>
+                   <input type="date" className={inputClassName} value={newClient.fechaNacimiento} onChange={(e) => setNewClient((c) => ({ ...c, fechaNacimiento: e.target.value }))} />
+                 </Field>
+               </div>
+
+               {/* Fila 4: PIN */}
+               <Field label="PIN (4 dígitos, opcional - se genera automático)">
+                 <input className={inputClassName} value={newClient.pin} onChange={(e) => setNewClient((c) => ({ ...c, pin: e.target.value.replace(/\D/g, "").slice(0, 6) }))} placeholder="Dejar vacío para auto-generar" inputMode="numeric" />
+               </Field>
 
               <div className="flex gap-3 pt-4">
                 <button onClick={() => setShowCreate(false)} className="flex-1 rounded-full border border-[var(--border)] px-4 py-2.5 text-sm text-[var(--foreground)] transition hover:bg-[var(--background-secondary)]">Cancelar</button>

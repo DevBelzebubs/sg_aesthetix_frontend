@@ -11,6 +11,11 @@ export interface Customer {
   promocionEstado?: string;
   promocionCreadoEn?: string;
   fechaNacimiento?: string;
+  pinHash?: string;
+  pinSalt?: string;
+  intentosFallidos: number;
+  bloqueadoHasta?: string;
+  emailConfirmado: boolean;
 }
 
 export interface CreateCustomerPayload {
@@ -22,6 +27,9 @@ export interface CreateCustomerPayload {
   authUserId?: string;
   promocionEstado?: string;
   fechaNacimiento?: string;
+  pinHash?: string;
+  pinSalt?: string;
+  emailConfirmado?: boolean;
 }
 
 export interface UpdateCustomerPayload {
@@ -33,4 +41,9 @@ export interface UpdateCustomerPayload {
   correoElectronico?: string;
   promocionEstado?: string;
   fechaNacimiento?: string;
+  pinHash?: string;
+  pinSalt?: string;
+  intentosFallidos?: number;
+  bloqueadoHasta?: string;
+  emailConfirmado?: boolean;
 }
