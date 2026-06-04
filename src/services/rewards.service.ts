@@ -248,7 +248,7 @@ export const RewardsService = {
     const precio = (servicio ? (servicio as Record<string, unknown>).precio : 30) as number;
     const puntos = Math.max(1, Math.floor(precio));
 
-    await this.addPoints(clienteId, puntos, "reserva", `Puntos por corte completado (S/${precio})`);
+    await this.addPoints(clienteId, puntos, "cita", `Puntos por corte completado (S/${precio})`);
   },
 
   async getCuentaPuntosByClienteId(clienteId: string): Promise<CuentaPuntos | null> {

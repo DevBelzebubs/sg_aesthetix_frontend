@@ -93,3 +93,69 @@ END $$;
 INSERT INTO public.caja (id, esta_abierta, saldo_inicial)
 SELECT 1, false, 0
 WHERE NOT EXISTS (SELECT 1 FROM public.caja WHERE id = 1);
+
+-- ============================================================
+-- 5. CREAR TABLA venta_detalles
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.venta_detalles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  venta_id UUID NOT NULL REFERENCES public.ventas(id) ON DELETE CASCADE,
+  tipo_item TEXT NOT NULL CHECK (tipo_item IN ('producto', 'servicio')),
+  item_id UUID NOT NULL,
+  nombre TEXT NOT NULL,
+  precio_unitario DECIMAL(10,2) NOT NULL,
+  cantidad INTEGER NOT NULL DEFAULT 1,
+  subtotal DECIMAL(10,2) NOT NULL,
+  creado_en TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.venta_detalles ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'venta_detalles_select' AND tablename = 'venta_detalles') THEN
+    CREATE POLICY "venta_detalles_select" ON public.venta_detalles
+      FOR SELECT TO authenticated USING (true);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'venta_detalles_insert' AND tablename = 'venta_detalles') THEN
+    CREATE POLICY "venta_detalles_insert" ON public.venta_detalles
+      FOR INSERT TO authenticated WITH CHECK (true);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'venta_detalles_delete' AND tablename = 'venta_detalles') THEN
+    CREATE POLICY "venta_detalles_delete" ON public.venta_detalles
+      FOR DELETE TO authenticated USING (true);
+  END IF;
+END $$;
+
+-- ============================================================
+-- 6. POLITICAS RLS PARA ventas (si no existen)
+-- ============================================================
+ALTER TABLE public.ventas ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'ventas_select' AND tablename = 'ventas') THEN
+    CREATE POLICY "ventas_select" ON public.ventas
+      FOR SELECT TO authenticated USING (true);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'ventas_insert' AND tablename = 'ventas') THEN
+    CREATE POLICY "ventas_insert" ON public.ventas
+      FOR INSERT TO authenticated WITH CHECK (true);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'ventas_update' AND tablename = 'ventas') THEN
+    CREATE POLICY "ventas_update" ON public.ventas
+      FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+-- 7. COLUMNAS DE SEGURIDAD PARA clientes (PIN + verificaciones)
+ALTER TABLE public.clientes
+ADD COLUMN IF NOT EXISTS pin_hash TEXT,
+ADD COLUMN IF NOT EXISTS pin_salt TEXT,
+ADD COLUMN IF NOT EXISTS intentos_fallidos INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS bloqueado_hasta TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS email_confirmado BOOLEAN NOT NULL DEFAULT false;

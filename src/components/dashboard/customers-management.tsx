@@ -7,6 +7,8 @@ import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { CustomersService } from "@/services/customers.service";
 import { createClient } from "@/lib/supabase/client";
+import { hashPin } from "@/lib/pin";
+import { sendNewClientPinEmail } from "@/lib/email-client";
 import type { Customer } from "@/types/customer";
 
 type CustomerRecord = {
@@ -19,6 +21,8 @@ type CustomerRecord = {
   dni: string;
   fechaNacimiento: string;
   estaActivo: boolean;
+  pin: string;
+  pinConfirm: string;
 };
 
 const emptyDraft: CustomerRecord = {
@@ -31,6 +35,8 @@ const emptyDraft: CustomerRecord = {
   dni: "",
   fechaNacimiento: "",
   estaActivo: true,
+  pin: "",
+  pinConfirm: "",
 };
 
 const inputClassName =
@@ -56,6 +62,9 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const [pinResetTarget, setPinResetTarget] = useState<CustomerRecord | null>(null);
+  const [resettingPin, setResettingPin] = useState(false);
 
   const pageSize = 10;
   const [page, setPage] = useState(1);
@@ -184,8 +193,14 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
         dni: draft.dni || undefined,
         fechaNacimiento: draft.fechaNacimiento || undefined,
       });
+
+      if (draft.pin && draft.pin === draft.pinConfirm) {
+        const { hash, salt } = await hashPin(draft.pin);
+        await CustomersService.updatePin(selectedId, hash, salt);
+      }
+
       setCustomers((prev) =>
-        prev.map((c) => (c.id === selectedId ? { ...draft, name: `${draft.nombres} ${draft.apellidos}`.trim() } : c)),
+        prev.map((c) => (c.id === selectedId ? { ...draft, pin: "", pinConfirm: "", name: `${draft.nombres} ${draft.apellidos}`.trim() } : c)),
       );
       setMode("list");
       setSelectedId(null);
@@ -211,6 +226,21 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
       /* error silencioso */
     }
     setIsDeleteConfirmOpen(false);
+  };
+
+  const handleResetPin = async () => {
+    if (!pinResetTarget) return;
+    setResettingPin(true);
+    try {
+      const newPin = String(Math.floor(1000 + Math.random() * 9000));
+      const { hash, salt } = await hashPin(newPin);
+      await CustomersService.updatePin(pinResetTarget.id, hash, salt);
+      if (pinResetTarget.email) {
+        await sendNewClientPinEmail(pinResetTarget.email, pinResetTarget.nombres, newPin);
+      }
+    } catch { /* error silencioso */ }
+    setResettingPin(false);
+    setPinResetTarget(null);
   };
 
   if (loading) {
@@ -315,48 +345,54 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
           ) : (
             <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)]">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border)] text-left">
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">#</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden md:table-cell">Teléfono</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">Correo</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">DNI</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden xl:table-cell">Nacimiento</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {paginatedCustomers.map((customer, i) => (
-                    <tr key={customer.id} className="transition hover:bg-[var(--background)]">
-                      <td className="px-6 py-4 text-[var(--text-muted)] tabular-nums">{(page - 1) * pageSize + i + 1}</td>
-                      <td className="px-6 py-4 font-medium text-[var(--foreground)]">{customer.nombres} {customer.apellidos}</td>
+                 <thead>
+                   <tr className="border-b border-[var(--border)] text-left">
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden md:table-cell">Teléfono</th>
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">Correo</th>
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">DNI</th>
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden xl:table-cell">Nacimiento</th>
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
+                   </tr>
+                 </thead>
+                 <tbody className="divide-y divide-[var(--border)]">
+                   {paginatedCustomers.map((customer, i) => (
+                     <tr key={customer.id} className="transition hover:bg-[var(--background)]">
+                       <td className="px-6 py-4 font-medium text-[var(--foreground)]">{customer.nombres} {customer.apellidos}</td>
                       <td className="px-6 py-4 text-[var(--text-muted)] hidden md:table-cell">{customer.phone || "—"}</td>
                       <td className="px-6 py-4 text-[var(--text-muted)] hidden lg:table-cell truncate max-w-[180px]">{customer.email || "—"}</td>
                       <td className="px-6 py-4 text-[var(--text-muted)] hidden lg:table-cell tabular-nums">{customer.dni || "—"}</td>
                       <td className="px-6 py-4 text-[var(--text-muted)] hidden xl:table-cell">
                         {customer.fechaNacimiento ? new Date(customer.fechaNacimiento).toLocaleDateString("es-PE") : "—"}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(customer)}
-                            className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]"
-                            title="Editar"
-                          >
-                            <PencilLine size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setSelectedId(customer.id); setIsDeleteConfirmOpen(true); }}
-                            className="rounded-lg p-2 text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]"
-                            title="Desactivar"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </td>
+                       <td className="px-6 py-4">
+                         <div className="flex items-center gap-1.5">
+                           <button
+                             type="button"
+                             onClick={() => handleEdit(customer)}
+                             className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]"
+                             title="Editar"
+                           >
+                             <PencilLine size={15} />
+                           </button>
+                           <button
+                             type="button"
+                             onClick={() => setPinResetTarget(customer)}
+                             className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-amber-500"
+                             title="Resetear PIN"
+                           >
+                             <KeyRound size={15} />
+                           </button>
+                           <button
+                             type="button"
+                             onClick={() => { setSelectedId(customer.id); setIsDeleteConfirmOpen(true); }}
+                             className="rounded-lg p-2 text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]"
+                             title="Desactivar"
+                           >
+                             <Trash2 size={15} />
+                           </button>
+                         </div>
+                       </td>
                     </tr>
                   ))}
                 </tbody>
@@ -380,21 +416,19 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
           ) : (
             <div className="overflow-hidden rounded-3xl border border-[var(--destructive-border)] bg-[var(--background-secondary)]">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border)] text-left">
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">#</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden md:table-cell">Teléfono</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">Correo</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">DNI</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {paginatedInactive.map((customer, i) => (
-                    <tr key={customer.id} className="transition hover:bg-[var(--destructive-hover)]">
-                      <td className="px-6 py-4 text-[var(--text-muted)] tabular-nums">{(page - 1) * pageSize + i + 1}</td>
-                      <td className="px-6 py-4 font-medium text-[var(--foreground)]">{customer.nombres} {customer.apellidos}</td>
+                 <thead>
+                   <tr className="border-b border-[var(--border)] text-left">
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden md:table-cell">Teléfono</th>
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">Correo</th>
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">DNI</th>
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
+                   </tr>
+                 </thead>
+                 <tbody className="divide-y divide-[var(--border)]">
+                   {paginatedInactive.map((customer, i) => (
+                     <tr key={customer.id} className="transition hover:bg-[var(--destructive-hover)]">
+                       <td className="px-6 py-4 font-medium text-[var(--foreground)]">{customer.nombres} {customer.apellidos}</td>
                       <td className="px-6 py-4 text-[var(--text-muted)] hidden md:table-cell">{customer.phone || "—"}</td>
                       <td className="px-6 py-4 text-[var(--text-muted)] hidden lg:table-cell truncate max-w-[180px]">{customer.email || "—"}</td>
                       <td className="px-6 py-4 text-[var(--text-muted)] hidden lg:table-cell tabular-nums">{customer.dni || "—"}</td>
@@ -500,6 +534,26 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
                 }}
               />
             </Field>
+            <Field label="Nuevo PIN (dejar vacío para no cambiar)">
+              <input
+                type="password"
+                className={inputClassName}
+                value={draft.pin}
+                onChange={(event) => setDraft((current) => ({ ...current, pin: event.target.value.replace(/\D/g, "").slice(0, 6) }))}
+                placeholder="4-6 dígitos"
+                inputMode="numeric"
+              />
+            </Field>
+            <Field label="Confirmar PIN">
+              <input
+                type="password"
+                className={inputClassName}
+                value={draft.pinConfirm}
+                onChange={(event) => setDraft((current) => ({ ...current, pinConfirm: event.target.value.replace(/\D/g, "").slice(0, 6) }))}
+                placeholder="Repetir PIN"
+                inputMode="numeric"
+              />
+            </Field>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-6">
@@ -548,6 +602,15 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
         confirmLabel="Si, eliminar"
         onClose={() => setIsDeleteConfirmOpen(false)}
         onConfirm={handleDelete}
+      />
+
+      <ConfirmationModal
+        open={pinResetTarget !== null}
+        title="Resetear PIN"
+        description={`Se generará un nuevo PIN para ${pinResetTarget?.nombres ?? ""} ${pinResetTarget?.apellidos ?? ""}.${pinResetTarget?.email ? " Se enviará por correo." : ""}`}
+        confirmLabel={resettingPin ? "Generando..." : "Si, resetear"}
+        onClose={() => setPinResetTarget(null)}
+        onConfirm={handleResetPin}
       />
     </>
   );

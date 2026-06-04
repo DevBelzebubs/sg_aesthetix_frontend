@@ -7,7 +7,17 @@ type ReservarPageProps = {
   params: Promise<{ slug: string }>;
 };
 
-const availableSlots = ["10:00", "11:30", "13:00", "15:30", "17:00", "18:30"];
+function generateTimeSlots(startHour = 9, endHour = 19): string[] {
+  const slots: string[] = [];
+  for (let h = startHour; h < endHour; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    }
+  }
+  return slots;
+}
+
+const availableSlots = generateTimeSlots();
 
 const weekdayShort = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const weekdayLong = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
@@ -46,12 +56,12 @@ export default async function ReservarPage({ params }: ReservarPageProps) {
   const [{ data: serviciosData }, { data: usuariosData }] = await Promise.all([
     supabase
       .from("servicios")
-      .select("id, nombre, precio, duracion_minutos")
+      .select("id, nombre, precio, duracion_minutos, imagen_url")
       .eq("esta_activo", true)
       .order("precio", { ascending: true }),
     supabase
       .from("usuarios")
-      .select("id, nombres, apellidos, rol")
+      .select("id, nombres, apellidos, rol, imagen_url")
       .in("rol", ["admin", "empleado"])
       .eq("esta_activo", true),
   ]);
@@ -61,12 +71,14 @@ export default async function ReservarPage({ params }: ReservarPageProps) {
     name: s.nombre,
     duration: `${s.duracion_minutos} min`,
     price: `S/${s.precio}`,
+    imageUrl: (s as Record<string, unknown>).imagen_url as string | null,
   }));
 
   const barbers = (usuariosData ?? []).map((u) => ({
     id: u.id,
     name: u.nombres,
     role: u.rol === "admin" ? "Master Barber" : "Barbero",
+    imageUrl: (u as Record<string, unknown>).imagen_url as string | null,
   }));
 
   const today = new Date();

@@ -15,6 +15,11 @@ function mapRowToCustomer(row: Record<string, unknown>): Customer {
     promocionEstado: row.promocion_estado as string | undefined,
     promocionCreadoEn: row.promocion_creado_en as string | undefined,
     fechaNacimiento: row.fecha_nacimiento as string | undefined,
+    pinHash: row.pin_hash as string | undefined,
+    pinSalt: row.pin_salt as string | undefined,
+    intentosFallidos: (row.intentos_fallidos as number) ?? 0,
+    bloqueadoHasta: row.bloqueado_hasta as string | undefined,
+    emailConfirmado: (row.email_confirmado as boolean) ?? false,
   };
 }
 
@@ -68,6 +73,19 @@ export const CustomersService = {
     return mapRowToCustomer(data as Record<string, unknown>);
   },
 
+  async findByEmail(email: string): Promise<Customer | null> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("clientes")
+      .select("*")
+      .eq("correo_electronico", email)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+    return mapRowToCustomer(data as Record<string, unknown>);
+  },
+
   async create(data: CreateCustomerPayload): Promise<Customer> {
     const supabase = createClient();
     const { data: row, error } = await supabase
@@ -83,6 +101,9 @@ export const CustomersService = {
         promocion_estado: data.promocionEstado || null,
         promocion_creado_en: data.promocionEstado ? new Date().toISOString() : null,
         fecha_nacimiento: data.fechaNacimiento || null,
+        pin_hash: data.pinHash || null,
+        pin_salt: data.pinSalt || null,
+        email_confirmado: data.emailConfirmado ?? false,
       })
       .select()
       .single();
@@ -102,6 +123,11 @@ export const CustomersService = {
     if (data.authUserId !== undefined) updateData.auth_user_id = data.authUserId;
     if (data.promocionEstado !== undefined) updateData.promocion_estado = data.promocionEstado;
     if (data.fechaNacimiento !== undefined) updateData.fecha_nacimiento = data.fechaNacimiento;
+    if (data.pinHash !== undefined) updateData.pin_hash = data.pinHash;
+    if (data.pinSalt !== undefined) updateData.pin_salt = data.pinSalt;
+    if (data.intentosFallidos !== undefined) updateData.intentos_fallidos = data.intentosFallidos;
+    if (data.bloqueadoHasta !== undefined) updateData.bloqueado_hasta = data.bloqueadoHasta;
+    if (data.emailConfirmado !== undefined) updateData.email_confirmado = data.emailConfirmado;
 
     const { data: row, error } = await supabase
       .from("clientes")
@@ -112,6 +138,24 @@ export const CustomersService = {
 
     if (error) throw new Error(error.message);
     return mapRowToCustomer(row as Record<string, unknown>);
+  },
+
+  async updatePin(id: string, pinHash: string, pinSalt: string): Promise<void> {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("clientes")
+      .update({ pin_hash: pinHash, pin_salt: pinSalt, intentos_fallidos: 0, bloqueado_hasta: null })
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+  },
+
+  async confirmEmail(id: string): Promise<void> {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("clientes")
+      .update({ email_confirmado: true })
+      .eq("id", id);
+    if (error) throw new Error(error.message);
   },
 
   async getPendingPromociones(): Promise<Customer[]> {

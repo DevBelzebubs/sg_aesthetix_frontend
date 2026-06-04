@@ -583,7 +583,7 @@ export default function LandingPage({
             className="border-b bg-[var(--background-secondary)] px-6 py-8"
             style={{ borderColor: "color-mix(in srgb, var(--hover) 12.5%, transparent)" }}
           >
-            {/* Línea verde en lugar de la negra */}
+
             <div
               className="mb-4 h-[3px] w-10 rounded-full"
               style={{ background: "var(--hover)" }}
