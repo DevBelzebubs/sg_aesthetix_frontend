@@ -108,7 +108,7 @@ const dropdownItemClass =
 function getStatusClass(estado: string) {
   if (estado === "pagada") return "bg-[var(--hover)]/15 text-[var(--hover)]";
   if (estado === "anulada") return "bg-[var(--destructive)]/15 text-[var(--destructive)]";
-  return "bg-[var(--background)] text-[var(--text-muted)]";
+  return "bg-[var(--background-secondary)] text-[var(--text-muted)]";
 }
 
 function getStatusLabel(estado: string) {
@@ -361,7 +361,7 @@ function ClientRightbar({
               <div className="relative mb-4">
                 <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
                 <input
-                  className="w-full rounded-2xl border border-[var(--border)] bg-[var(--background)] pl-11 pr-4 py-3 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]"
+                  className="w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] pl-11 pr-4 py-3 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Buscar por nombre o DNI..."
@@ -370,7 +370,7 @@ function ClientRightbar({
 
               <button
                 onClick={() => setShowCreate(true)}
-                className="mb-3 flex w-full items-center gap-3 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--foreground)] transition hover:border-[var(--foreground)]"
+                className="mb-3 flex w-full items-center gap-3 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)] px-4 py-3 text-sm text-[var(--foreground)] transition hover:border-[var(--foreground)]"
               >
                 <UserPlus size={18} className="text-[var(--hover)]" />
                 Crear nuevo cliente
@@ -964,7 +964,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
     <>
       {/* KPIs */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <article className="rounded-3xl border-2 border-[var(--hover)]/15 bg-[var(--background)] p-5 shadow-md">
+        <article className="rounded-3xl border-2 border-[var(--hover)]/15 bg-[var(--background-secondary)] p-5 shadow-md">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
             Total ventas
           </p>
@@ -973,7 +973,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
             <p className="text-xl font-bold text-[var(--foreground)]">{totalVentas}</p>
           </div>
         </article>
-        <article className="rounded-3xl border-2 border-[var(--hover)]/15 bg-[var(--background)] p-5 shadow-md">
+        <article className="rounded-3xl border-2 border-[var(--hover)]/15 bg-[var(--background-secondary)] p-5 shadow-md">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
             Ventas hoy
           </p>
@@ -982,7 +982,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
             <p className="text-xl font-bold text-[var(--foreground)]">{totalDia}</p>
           </div>
         </article>
-        <article className="rounded-3xl border-2 border-[var(--hover)]/15 bg-[var(--background)] p-5 shadow-md">
+        <article className="rounded-3xl border-2 border-[var(--hover)]/15 bg-[var(--background-secondary)] p-5 shadow-md">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
             Ingreso total
           </p>
@@ -996,7 +996,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
       </div>
 
       {/* Toolbar */}
-      <div className="rounded-3xl border-2 border-[var(--hover)]/15 bg-[var(--background)] p-5 shadow-md">
+      <div className="rounded-3xl border-2 border-[var(--hover)]/15 bg-[var(--background-secondary)] p-5 shadow-md">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-[var(--foreground)]">
@@ -1021,7 +1021,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
             <button
               type="button"
               onClick={handleBack}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--background)]"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--background-secondary)]"
             >
               <ArrowLeft size={16} />
               Volver al listado
@@ -1065,10 +1065,10 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
                 return (
                   <article
                     key={sale.id}
-                    className="flex gap-4 rounded-3xl border-2 border-[var(--hover)]/15 bg-[var(--background)] p-5 shadow-md transition hover:-translate-y-0.5 hover:shadow-lg"
+                    className="flex gap-4 rounded-3xl border-2 border-[var(--hover)]/15 bg-[var(--background-secondary)] p-5 shadow-md transition hover:-translate-y-0.5 hover:shadow-lg"
                   >
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--hover)]/10 relative">
-                      <span className="text-[10px] font-bold text-[var(--hover)] absolute -top-1 -right-1 bg-[var(--background)] rounded-full w-4 h-4 flex items-center justify-center ring-1 ring-[var(--hover)]/20">{numero}</span>
+                      <span className="text-[10px] font-bold text-[var(--hover)] absolute -top-1 -right-1 bg-[var(--background-secondary)] rounded-full w-4 h-4 flex items-center justify-center ring-1 ring-[var(--hover)]/20">{numero}</span>
                       <FileText size={18} className="text-[var(--hover)]" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1153,7 +1153,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
         <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm">
           {/* Header */}
           <div className="mb-6 flex items-center gap-3">
-            <div className="rounded-2xl bg-[var(--background)] p-3">
+            <div className="rounded-2xl bg-[var(--background-secondary)] p-3">
               <ReceiptText size={20} className="text-[var(--foreground)]" />
             </div>
             <div>
@@ -1169,7 +1169,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
           {/* ---- Service + Product + Client ---- */}
           <div className="flex gap-3">
             {/* Service search */}
-            <div className="flex-1 rounded-3xl border-2 border-[var(--hover)]/15 bg-[var(--background)] p-5 shadow-md">
+            <div className="flex-1 rounded-3xl border-2 border-[var(--hover)]/15 bg-[var(--background-secondary)] p-5 shadow-md">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                 Servicio
               </p>
@@ -1209,7 +1209,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
             </div>
 
             {/* Product search */}
-            <div className="flex-1 rounded-3xl border-2 border-[var(--hover)]/15 bg-[var(--background)] p-5 shadow-md">
+            <div className="flex-1 rounded-3xl border-2 border-[var(--hover)]/15 bg-[var(--background-secondary)] p-5 shadow-md">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                 Producto
               </p>
@@ -1255,7 +1255,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
                   <button
                     type="button"
                     onClick={() => setProductQty((q) => Math.max(1, q - 1))}
-                    className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] transition hover:bg-[var(--hover)]/15 hover:border-[var(--hover)]"
+                    className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] transition hover:bg-[var(--hover)]/15 hover:border-[var(--hover)]"
                   >
                     <Minus size={13} />
                   </button>
@@ -1265,7 +1265,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
                   <button
                     type="button"
                     onClick={() => setProductQty((q) => q + 1)}
-                    className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] transition hover:bg-[var(--hover)]/15 hover:border-[var(--hover)]"
+                    className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] transition hover:bg-[var(--hover)]/15 hover:border-[var(--hover)]"
                   >
                     <Plus size={13} />
                   </button>
@@ -1277,7 +1277,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
             <button
               type="button"
               onClick={() => setRightbarOpen(true)}
-              className="flex flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed border-[var(--hover)]/30 bg-[var(--background)] px-6 py-5 shadow-md transition hover:border-[var(--hover)] hover:shadow-lg"
+              className="flex flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed border-[var(--hover)]/30 bg-[var(--background-secondary)] px-6 py-5 shadow-md transition hover:border-[var(--hover)] hover:shadow-lg"
             >
               {selectedClient ? (
                 <>
@@ -1303,7 +1303,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
 
           {/* ---- Items list ---- */}
           {draft.items.length > 0 && (
-            <div className="mt-4 rounded-3xl border-2 border-[var(--hover)]/15 bg-[var(--background)] p-5 shadow-md">
+            <div className="mt-4 rounded-3xl border-2 border-[var(--hover)]/15 bg-[var(--background-secondary)] p-5 shadow-md">
               <p className="mb-3 text-sm font-semibold text-[var(--foreground)]">
                 Carrito ({draft.items.length})
               </p>
@@ -1333,7 +1333,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
                       <button
                         type="button"
                         onClick={() => updateItemQuantity(idx, -1)}
-                        className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] transition hover:bg-[var(--hover)]/15 hover:border-[var(--hover)]"
+                        className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] transition hover:bg-[var(--hover)]/15 hover:border-[var(--hover)]"
                       >
                         <Minus size={13} />
                       </button>
@@ -1348,7 +1348,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
                           item.stockDisponible !== undefined &&
                           item.cantidad >= item.stockDisponible
                         }
-                        className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] transition hover:bg-[var(--hover)]/15 hover:border-[var(--hover)] disabled:opacity-30"
+                        className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] transition hover:bg-[var(--hover)]/15 hover:border-[var(--hover)] disabled:opacity-30"
                       >
                         <Plus size={13} />
                       </button>
@@ -1384,7 +1384,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
                     <input
                       type="text"
                       inputMode="decimal"
-                      className="w-16 rounded-lg bg-[var(--background)] px-2 py-1 text-right text-sm font-semibold text-[var(--foreground)] outline-none ring-1 ring-red-500/20 placeholder:text-[var(--text-muted)]"
+                      className="w-16 rounded-lg bg-[var(--background-secondary)] px-2 py-1 text-right text-sm font-semibold text-[var(--foreground)] outline-none ring-1 ring-red-500/20 placeholder:text-[var(--text-muted)]"
                       value={descuentoText}
                       placeholder="0"
                       onChange={(e) => {
@@ -1442,7 +1442,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
 
           {/* Empty state when no items */}
           {draft.items.length === 0 && (
-            <div className="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--background)] py-12">
+            <div className="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)] py-12">
               <ShoppingCart size={32} className="text-[var(--text-muted)]" />
               <p className="text-sm text-[var(--text-muted)]">
                 Carrito vacio. Busca productos o servicios para agregar.
@@ -1450,7 +1450,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
             </div>
           )}
 
-          <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--background)] p-5">
+          <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Observaciones</p>
             <textarea
               className={inputClassName}
@@ -1484,7 +1484,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
             <button
               type="button"
               onClick={handleBack}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--background)]"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--background-secondary)]"
             >
               <X size={16} />
               Cancelar

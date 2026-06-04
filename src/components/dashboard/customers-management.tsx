@@ -335,22 +335,20 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
           ) : (
             <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)]">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border)] text-left">
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">#</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden md:table-cell">Teléfono</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">Correo</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">DNI</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden xl:table-cell">Nacimiento</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {paginatedCustomers.map((customer, i) => (
-                    <tr key={customer.id} className="transition hover:bg-[var(--background)]">
-                      <td className="px-6 py-4 text-[var(--text-muted)] tabular-nums">{(page - 1) * pageSize + i + 1}</td>
-                      <td className="px-6 py-4 font-medium text-[var(--foreground)]">{customer.nombres} {customer.apellidos}</td>
+                 <thead>
+                   <tr className="border-b border-[var(--border)] text-left">
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden md:table-cell">Teléfono</th>
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">Correo</th>
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">DNI</th>
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden xl:table-cell">Nacimiento</th>
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
+                   </tr>
+                 </thead>
+                 <tbody className="divide-y divide-[var(--border)]">
+                   {paginatedCustomers.map((customer, i) => (
+                     <tr key={customer.id} className="transition hover:bg-[var(--background)]">
+                       <td className="px-6 py-4 font-medium text-[var(--foreground)]">{customer.nombres} {customer.apellidos}</td>
                       <td className="px-6 py-4 text-[var(--text-muted)] hidden md:table-cell">{customer.phone || "—"}</td>
                       <td className="px-6 py-4 text-[var(--text-muted)] hidden lg:table-cell truncate max-w-[180px]">{customer.email || "—"}</td>
                       <td className="px-6 py-4 text-[var(--text-muted)] hidden lg:table-cell tabular-nums">{customer.dni || "—"}</td>
@@ -408,21 +406,19 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
           ) : (
             <div className="overflow-hidden rounded-3xl border border-[var(--destructive-border)] bg-[var(--background-secondary)]">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border)] text-left">
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">#</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden md:table-cell">Teléfono</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">Correo</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">DNI</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {paginatedInactive.map((customer, i) => (
-                    <tr key={customer.id} className="transition hover:bg-[var(--destructive-hover)]">
-                      <td className="px-6 py-4 text-[var(--text-muted)] tabular-nums">{(page - 1) * pageSize + i + 1}</td>
-                      <td className="px-6 py-4 font-medium text-[var(--foreground)]">{customer.nombres} {customer.apellidos}</td>
+                 <thead>
+                   <tr className="border-b border-[var(--border)] text-left">
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden md:table-cell">Teléfono</th>
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">Correo</th>
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">DNI</th>
+                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
+                   </tr>
+                 </thead>
+                 <tbody className="divide-y divide-[var(--border)]">
+                   {paginatedInactive.map((customer, i) => (
+                     <tr key={customer.id} className="transition hover:bg-[var(--destructive-hover)]">
+                       <td className="px-6 py-4 font-medium text-[var(--foreground)]">{customer.nombres} {customer.apellidos}</td>
                       <td className="px-6 py-4 text-[var(--text-muted)] hidden md:table-cell">{customer.phone || "—"}</td>
                       <td className="px-6 py-4 text-[var(--text-muted)] hidden lg:table-cell truncate max-w-[180px]">{customer.email || "—"}</td>
                       <td className="px-6 py-4 text-[var(--text-muted)] hidden lg:table-cell tabular-nums">{customer.dni || "—"}</td>
