@@ -8,7 +8,7 @@ import { AppointmentsService, type AppointmentWithDetails } from "@/services/app
 import { RewardsService } from "@/services/rewards.service";
 
 const emptyDraft = { hora_inicio: "", estado: "Pendiente", observaciones: "" };
-const inputClassName = "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+const inputClassName = "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
 
 type Props = { totalCitas: number; totalPendientes: number; totalCompletadas: number; };
 
@@ -21,6 +21,7 @@ export function AgendaManagement({ totalCitas, totalPendientes, totalCompletadas
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState(emptyDraft);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const pageSize = 10;
@@ -51,14 +52,18 @@ export function AgendaManagement({ totalCitas, totalPendientes, totalCompletadas
 
   const handleEdit = (appointment: AppointmentWithDetails) => {
     setSelectedId(appointment.id);
-    setDraft({ hora_inicio: appointment.hora_inicio, estado: appointment.estado, observaciones: appointment.observaciones ?? "" });
+    setDraft({ hora_inicio: appointment.hora_inicio ?? "", estado: appointment.estado, observaciones: appointment.observaciones ?? "" });
     setMode("edit");
   };
 
   const handleBack = () => { setMode("list"); setSelectedId(null); setDraft(emptyDraft); };
 
   const handleSave = async () => {
-    if (!selectedId || !draft.hora_inicio) return;
+    if (!selectedId) return;
+    const errors: Record<string, string> = {};
+    const horaErr = validateRequired(draft.hora_inicio, "La hora de inicio");
+    if (horaErr) errors.horaInicio = horaErr;
+    if (Object.keys(errors).length > 0) { setFieldErrors(errors); return; }
     try {
       const estadoAnterior = selectedAppointment?.estado;
       await AppointmentsService.update(selectedId, { hora_inicio: draft.hora_inicio, estado: draft.estado, observaciones: draft.observaciones || null });
@@ -177,17 +182,17 @@ export function AgendaManagement({ totalCitas, totalPendientes, totalCompletadas
         <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm">
           <div className="mb-6 flex items-center gap-3"><div className="rounded-2xl bg-[var(--background)] p-3"><CalendarClock size={20} className="text-[var(--foreground)]" /></div><div><p className="text-lg font-semibold text-[var(--foreground)]">Editar cita</p><p className="text-sm text-[var(--text-muted)]">Cambia la hora, el estado o la nota.</p></div></div>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Hora"><input type="time" className={inputClassName} value={draft.hora_inicio} onChange={(e) => setDraft((c) => ({ ...c, hora_inicio: e.target.value }))} /></Field>
+            <Field label="Hora" error={fieldErrors.horaInicio}><input type="time" className={inputClassName} value={draft.hora_inicio} onChange={(e) => { setFieldErrors((prev) => ({ ...prev, horaInicio: "" })); setDraft((c) => ({ ...c, hora_inicio: e.target.value })); }} /></Field>
             <Field label="Cliente"><div className={inputClassName + " bg-[var(--background)] text-[var(--text-muted)]"}>{selectedAppointment.cliente_nombre}</div></Field>
             <Field label="Servicio"><div className={inputClassName + " bg-[var(--background)] text-[var(--text-muted)]"}>{selectedAppointment.servicio_nombre}</div></Field>
             <Field label="Profesional"><div className={inputClassName + " bg-[var(--background)] text-[var(--text-muted)]"}>{selectedAppointment.empleado_nombre}</div></Field>
-            <Field label="Estado"><select className={inputClassName} value={draft.estado} onChange={(e) => setDraft((c) => ({ ...c, estado: e.target.value }))}><option>Pendiente</option><option>Confirmada</option><option>Completada</option></select></Field>
+            <Field label="Estado"><select className={inputClassName} value={draft.estado} onChange={(e) => { setFieldErrors((prev) => ({ ...prev, estado: "" })); setDraft((c) => ({ ...c, estado: e.target.value })); }}><option>Pendiente</option><option>Confirmada</option><option>En curso</option><option>Completada</option></select></Field>
           </div>
           <div className="mt-4">
-            <Field label="Nota operativa"><textarea className={`${inputClassName} min-h-28 resize-none`} value={draft.observaciones} onChange={(e) => setDraft((c) => ({ ...c, observaciones: e.target.value }))} /></Field>
+            <Field label="Nota operativa"><textarea className={`${inputClassName} min-h-28 resize-none`} value={draft.observaciones} onChange={(e) => { setFieldErrors((prev) => ({ ...prev, observaciones: "" })); setDraft((c) => ({ ...c, observaciones: e.target.value })); }} /></Field>
           </div>
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-6">
-            <button type="button" onClick={() => setIsConfirmOpen(true)} className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90"><PencilLine size={16} /> Guardar cambios</button>
+            <button type="button" onClick={() => setIsConfirmOpen(true)} disabled={Object.keys(fieldErrors).length > 0} className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50"><PencilLine size={16} /> Guardar cambios</button>
             <button type="button" onClick={() => setIsDeleteConfirmOpen(true)} className="inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-5 py-2.5 text-sm font-semibold text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]"><Trash2 size={16} /> Eliminar cita</button>
             <button type="button" onClick={handleBack} className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--background)]"><X size={16} /> Cancelar</button>
           </div>
@@ -200,8 +205,8 @@ export function AgendaManagement({ totalCitas, totalPendientes, totalCompletadas
   );
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return <label className="space-y-2"><span className="text-sm font-medium text-[var(--foreground)]">{label}{required && <span className="ml-1 text-[var(--destructive)]">*</span>}</span>{children}</label>;
+function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
+  return <label className="space-y-2"><span className="text-sm font-medium text-[var(--foreground)]">{label}{required && <span className="ml-1 text-[var(--destructive)]">*</span>}</span>{children}{error && <p className="flex items-center gap-1 text-[11px] text-[var(--destructive)]"><AlertCircle size={11} />{error}</p>}</label>;
 }
 
 function getStatusClassName(status: string) {

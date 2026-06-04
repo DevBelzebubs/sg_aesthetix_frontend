@@ -25,6 +25,7 @@ import {
   ShoppingCart,
   ArrowDownToLine,
   PackagePlus,
+  BookOpen,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,6 +46,7 @@ const navigation = [
   { href: "/admin/categoria-servicios", label: "Cat. Servicios", icon: Folder },
   { href: "/admin/movimientos-inventario", label: "Mov. Inventario", icon: ArrowDownToLine },
   { href: "/admin/ingreso-mercaderia", label: "Ingr. Mercaderia", icon: PackagePlus },
+  { href: "/admin/libro-reclamaciones", label: "Libro Reclamaciones", icon: BookOpen },
   { href: "/admin/configuracion/puntos", label: "Config. Puntos", icon: Settings },
 ];
 

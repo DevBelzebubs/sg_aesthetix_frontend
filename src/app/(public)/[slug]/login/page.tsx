@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { AlertCircle } from "lucide-react";
+import { validateEmail, validatePassword } from "@/lib/validators";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -16,6 +18,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const [redirecting, setRedirecting] = useState(false);
 
@@ -50,6 +53,15 @@ export default function LoginPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    const errors: Record<string, string> = {};
+    const emailErr = validateEmail(email);
+    const passErr = validatePassword(password);
+    if (emailErr) errors.email = emailErr;
+    if (passErr) errors.password = passErr;
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
     setLoading(true);
 
     try {
@@ -120,13 +132,25 @@ export default function LoginPage() {
             </label>
             <input
               type="email"
-              required
               autoComplete="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setFieldErrors((prev) => ({ ...prev, email: "" }));
+              }}
+              onBlur={() => {
+                const err = validateEmail(email);
+                if (err) setFieldErrors((prev) => ({ ...prev, email: err }));
+              }}
               placeholder="tu@correo.com"
-              className="border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-white/30"
+              className="border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-white/30 focus:ring-2 focus:ring-white/20"
             />
+            {fieldErrors.email && (
+              <p className="mt-1 flex items-center gap-1 text-[11px] text-red-400">
+                <AlertCircle size={11} />
+                {fieldErrors.email}
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -135,13 +159,25 @@ export default function LoginPage() {
             </label>
             <input
               type="password"
-              required
               autoComplete="current-password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setFieldErrors((prev) => ({ ...prev, password: "" }));
+              }}
+              onBlur={() => {
+                const err = validatePassword(password);
+                if (err) setFieldErrors((prev) => ({ ...prev, password: err }));
+              }}
               placeholder="••••••••"
-              className="border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-white/30"
+              className="border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-white/30 focus:ring-2 focus:ring-white/20"
             />
+            {fieldErrors.password && (
+              <p className="mt-1 flex items-center gap-1 text-[11px] text-red-400">
+                <AlertCircle size={11} />
+                {fieldErrors.password}
+              </p>
+            )}
           </div>
 
           {error && (
@@ -152,7 +188,7 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || Object.keys(fieldErrors).length > 0}
             className="mt-2 border border-white/20 bg-white px-6 py-3.5 text-[11px] font-semibold tracking-[0.18em] uppercase text-black transition hover:bg-white/90 disabled:opacity-50"
           >
             {loading ? "Verificando..." : "Ingresar"}

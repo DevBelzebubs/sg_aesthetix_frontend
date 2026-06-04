@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownToLine, ArrowLeft, Loader2, Package, PackagePlus, Search, X } from "lucide-react";
+import { AlertCircle, ArrowDownToLine, ArrowLeft, Loader2, Package, PackagePlus, Search, X } from "lucide-react";
+import { validateRequired, validatePositiveNumber } from "@/lib/validators";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { createClient } from "@/lib/supabase/client";
@@ -35,7 +36,7 @@ const emptyDraft: GoodsReceiptDraft = {
 };
 
 const inputClassName =
-  "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+  "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
 
 type Props = {
   totalIngresos: number;
@@ -51,6 +52,7 @@ export function GoodsReceiptManagement({ totalIngresos, totalUnidades }: Props) 
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<"list" | "create">("list");
   const [draft, setDraft] = useState<GoodsReceiptDraft>(emptyDraft);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [page, setPage] = useState(1);
 
@@ -104,7 +106,15 @@ export function GoodsReceiptManagement({ totalIngresos, totalUnidades }: Props) 
   };
 
   async function saveIngreso() {
-    if (!draft.producto_id || draft.cantidad < 1) return;
+    const errors: Record<string, string> = {};
+    const errProducto = validateRequired(draft.producto_id, "Producto");
+    if (errProducto) errors.producto = errProducto;
+    const errCantidad = validatePositiveNumber(draft.cantidad, "Cantidad");
+    if (errCantidad) errors.cantidad = errCantidad;
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
     setSaving(true);
 
     const { data: product } = await supabase
@@ -308,13 +318,14 @@ export function GoodsReceiptManagement({ totalIngresos, totalUnidades }: Props) 
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Producto" required>
+            <Field label="Producto" required error={fieldErrors.producto}>
               <select
                 className={inputClassName}
                 value={draft.producto_id}
-                onChange={(e) =>
-                  setDraft((d) => ({ ...d, producto_id: e.target.value }))
-                }
+                onChange={(e) => {
+                  setDraft((d) => ({ ...d, producto_id: e.target.value }));
+                  setFieldErrors((prev) => { const next = { ...prev }; delete next.producto; return next; });
+                }}
               >
                 <option value="" disabled>
                   Seleccionar producto
@@ -326,24 +337,26 @@ export function GoodsReceiptManagement({ totalIngresos, totalUnidades }: Props) 
                 ))}
               </select>
             </Field>
-            <Field label="Cantidad" required>
+            <Field label="Cantidad" required error={fieldErrors.cantidad}>
               <input
                 type="number"
                 className={inputClassName}
                 value={draft.cantidad}
                 min={1}
-                onChange={(e) =>
-                  setDraft((d) => ({ ...d, cantidad: Number(e.target.value) }))
-                }
+                onChange={(e) => {
+                  setDraft((d) => ({ ...d, cantidad: Number(e.target.value) }));
+                  setFieldErrors((prev) => { const next = { ...prev }; delete next.cantidad; return next; });
+                }}
               />
             </Field>
-            <Field label="Motivo">
+            <Field label="Motivo" error={fieldErrors.motivo}>
               <input
                 className={inputClassName}
                 value={draft.motivo}
-                onChange={(e) =>
-                  setDraft((d) => ({ ...d, motivo: e.target.value }))
-                }
+                onChange={(e) => {
+                  setDraft((d) => ({ ...d, motivo: e.target.value }));
+                  setFieldErrors((prev) => { const next = { ...prev }; delete next.motivo; return next; });
+                }}
                 placeholder="Compra a proveedor"
               />
             </Field>
@@ -353,9 +366,7 @@ export function GoodsReceiptManagement({ totalIngresos, totalUnidades }: Props) 
             <button
               type="button"
               onClick={() => setIsConfirmOpen(true)}
-              disabled={
-                !draft.producto_id || draft.cantidad < 1 || saving
-              }
+              disabled={Object.keys(fieldErrors).length > 0 || saving}
               className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50"
             >
               {saving && <Loader2 size={16} className="animate-spin" />}
@@ -388,10 +399,12 @@ export function GoodsReceiptManagement({ totalIngresos, totalUnidades }: Props) 
 function Field({
   label,
   required,
+  error,
   children,
 }: {
   label: string;
   required?: boolean;
+  error?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -401,6 +414,12 @@ function Field({
         {required && <span className="ml-1 text-[var(--destructive)]">*</span>}
       </span>
       {children}
+      {error && (
+        <div className="flex items-center gap-1.5 text-xs text-[var(--destructive)]">
+          <AlertCircle size={12} />
+          {error}
+        </div>
+      )}
     </label>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  AlertCircle,
   CalendarClock,
   CheckCircle2,
   ChevronRight,
@@ -58,6 +59,7 @@ export function EmployeeWorkspace({
     { id: 3, text: "Citas de la tarde confirmadas", done: false },
     { id: 4, text: "Notas de clientes actualizadas", done: false },
   ]);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     async function load() {
@@ -325,10 +327,19 @@ export function EmployeeWorkspace({
             </div>
             <textarea
               value={dailyNote}
-              onChange={(e) => setDailyNote(e.target.value)}
-              className="min-h-24 w-full rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)] resize-none"
+              onChange={(e) => {
+                setDailyNote(e.target.value);
+                setFieldErrors((prev) => ({ ...prev, dailyNote: "" }));
+              }}
+              className="min-h-24 w-full rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20 resize-none"
               placeholder="Escribe una nota para hoy..."
             />
+            {fieldErrors.dailyNote && (
+              <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                <AlertCircle size={11} />
+                {fieldErrors.dailyNote}
+              </p>
+            )}
           </div>
         </div>
       </div>

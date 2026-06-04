@@ -1,18 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { AlertCircle, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
 import { CustomersService } from "@/services/customers.service";
 import { RewardsService } from "@/services/rewards.service";
-import { hashPin, verifyPin } from "@/lib/pin";
-import { sendConfirmationEmail, sendPinResetEmail } from "@/lib/email-client";
-import { X, Eye, EyeOff, Loader2, Mail, Check } from "lucide-react";
+import { validateDni, validateEmail, validateEmailOptional, validatePhoneOptional, validateRequired, validatePassword } from "@/lib/validators";
 
 type Tab = "cliente" | "registro" | "admin" | "olvide-pin";
 
 const MAX_INTENTOS = 3;
+
+const fieldClass =
+  "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--foreground)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
 
 export function CustomerAuthModal() {
   const { session, modalOpen, closeModal, login, logout, refreshPoints } = useCustomerAuth();
@@ -24,12 +26,7 @@ export function CustomerAuthModal() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
-
-  // Login fields
-  const [loginDni, setLoginDni] = useState("");
-  const [loginPin, setLoginPin] = useState("");
-  const [showPin, setShowPin] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Register fields
   const [regNombres, setRegNombres] = useState("");
@@ -51,11 +48,19 @@ export function CustomerAuthModal() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regNombres || !regApellidos || !regDni || !regTelefono || !regEmail || !regFechaNacimiento || !regPin) return;
-    if (regPin !== regPinConfirm) { setError("Los PIN no coinciden"); return; }
-    if (regPin.length < 4 || regPin.length > 6) { setError("El PIN debe tener entre 4 y 6 dígitos"); return; }
-    if (!/^\d+$/.test(regPin)) { setError("El PIN solo puede contener números"); return; }
-
+    const errors: Record<string, string> = {};
+    const nameErr = validateRequired(regNombres, "Los nombres");
+    const dniErr = validateDni(regDni);
+    const emailErr = validateEmailOptional(regEmail);
+    const phoneErr = validatePhoneOptional(regTelefono);
+    if (nameErr) errors.nombres = nameErr;
+    if (dniErr) errors.regDni = dniErr;
+    if (emailErr) errors.regEmail = emailErr;
+    if (phoneErr) errors.regTelefono = phoneErr;
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -91,7 +96,15 @@ export function CustomerAuthModal() {
 
   const handleCustomerLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loginDni || !loginPin) return;
+    const errors: Record<string, string> = {};
+    const emailErr = validateEmail(email);
+    const dniErr = validateDni(dni);
+    if (emailErr) errors.email = emailErr;
+    if (dniErr) errors.dni = dniErr;
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
     setLoading(true);
     setError("");
 
@@ -135,7 +148,9 @@ export function CustomerAuthModal() {
         const yaTieneBienvenida = cuenta
           ? (await RewardsService.getTransacciones(cuenta.id)).some((t) => t.tipo === "bienvenida")
           : false;
-        if (!yaTieneBienvenida) await RewardsService.claimWelcomeReward(customer.id);
+        if (!yaTieneBienvenida) {
+          await RewardsService.claimWelcomeReward(customer.id);
+        }
       } catch {}
 
       closeModal();
@@ -177,7 +192,15 @@ export function CustomerAuthModal() {
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
+    const errors: Record<string, string> = {};
+    const emailErr = validateEmail(email);
+    const passErr = validatePassword(password);
+    if (emailErr) errors.adminEmail = emailErr;
+    if (passErr) errors.adminPassword = passErr;
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -217,51 +240,34 @@ export function CustomerAuthModal() {
     }
   };
 
-  const resetRegisterForm = () => {
-    setRegSuccess(false);
-    setRegSent(false);
-    setRegNombres("");
-    setRegApellidos("");
-    setRegEmail("");
-    setRegDni("");
-    setRegTelefono("");
-    setRegFechaNacimiento("");
-    setRegPin("");
-    setRegPinConfirm("");
-    setError("");
-  };
-
-  const inputClassName =
-    "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--foreground)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeModal} />
-      <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={closeModal} />
+      <div className="relative w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] shadow-2xl">
         <button
           type="button"
           onClick={closeModal}
-          className="absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--background)] text-[var(--text-muted)] transition hover:bg-[var(--border)] hover:text-[var(--foreground)]"
+          className="absolute right-3 top-3 z-10 flex items-center justify-center rounded-lg border border-[var(--border)] p-1.5 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]"
         >
           <X size="14" />
         </button>
 
         {/* Tabs */}
-        <div className="flex border-b border-[var(--border)]">
+        <div className="flex overflow-hidden rounded-t-2xl border-b border-[var(--border)]">
           <button
             type="button"
-            onClick={() => { setTab("cliente"); setError(""); setSuccessMsg(""); }}
-            className={`flex-1 py-3.5 text-[10px] font-bold uppercase tracking-[0.15em] transition ${
-              tab === "cliente" ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--text-muted)] hover:text-[var(--foreground)]"
+            onClick={() => { setTab("cliente"); setError(""); setFieldErrors({}); }}
+            className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-[0.15em] transition ${
+              tab === "cliente" ? "bg-black text-white" : "bg-[var(--background)] text-neutral-500 hover:text-[var(--foreground)]"
             }`}
           >
             Cliente
           </button>
           <button
             type="button"
-            onClick={() => { setTab("admin"); setError(""); setSuccessMsg(""); }}
-            className={`flex-1 py-3.5 text-[10px] font-bold uppercase tracking-[0.15em] transition ${
-              tab === "admin" ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--text-muted)] hover:text-[var(--foreground)]"
+            onClick={() => { setTab("admin"); setError(""); setFieldErrors({}); }}
+            className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-[0.15em] transition ${
+              tab === "admin" ? "bg-black text-white" : "bg-[var(--background)] text-neutral-500 hover:text-[var(--foreground)]"
             }`}
           >
             Admin
@@ -271,76 +277,85 @@ export function CustomerAuthModal() {
         {/* Session / Login / Register / Forgot PIN / Admin */}
         {session && tab === "cliente" ? (
           <div className="px-6 py-8 text-center space-y-4">
-            <p className="text-sm text-[var(--text-muted)]">Bienvenido, <strong className="text-[var(--foreground)]">{session.nombres}</strong></p>
-            <p className="text-4xl font-black tracking-tight text-[var(--foreground)]">{session.puntosDisponibles}</p>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Puntos disponibles</p>
-            <div className="flex gap-2 pt-2">
-              <button type="button" onClick={() => { refreshPoints(); }} className="flex-1 rounded-xl border border-[var(--border)] px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--foreground)] transition hover:bg-[var(--background)]">Actualizar</button>
-              <button type="button" onClick={() => { logout(); closeModal(); }} className="flex-1 rounded-xl border border-red-500/30 px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.15em] text-red-500 transition hover:bg-red-500/10">Cerrar</button>
+            <p className="text-sm text-neutral-500">Bienvenido, <strong>{session.nombres}</strong></p>
+            <p className="text-4xl font-black tracking-tight">{session.puntosDisponibles}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+              Puntos disponibles
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => { refreshPoints(); }}
+                className="flex-1 rounded-xl border border-[var(--border)] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] transition hover:bg-[var(--background)]"
+              >
+                Actualizar
+              </button>
+              <button
+                type="button"
+                onClick={() => { logout(); closeModal(); }}
+                className="flex-1 rounded-xl border border-[var(--destructive-border)] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]"
+              >
+                Cerrar
+              </button>
             </div>
           </div>
         ) : tab === "cliente" ? (
           <form onSubmit={handleCustomerLogin} className="px-6 py-8 space-y-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center">Ingresa con tu DNI y PIN</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center mb-4">
+              Ingresa con tu DNI y email
+            </p>
 
-            <label className="space-y-1.5 block">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">DNI *</span>
-              <input required type="text" value={loginDni} onChange={(e) => setLoginDni(e.target.value.replace(/\D/g, "").slice(0, 8))} placeholder="12345678" inputMode="numeric" className={inputClassName} />
-            </label>
-
-            <label className="space-y-1.5 block">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">PIN *</span>
-              <div className="relative">
-                <input required type={showPin ? "text" : "password"} value={loginPin} onChange={(e) => setLoginPin(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="••••" inputMode="numeric" className={`${inputClassName} pr-10`} />
-                <button type="button" onClick={() => setShowPin(!showPin)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--foreground)]">
-                  {showPin ? <EyeOff size="16" /> : <Eye size="16" />}
-                </button>
-              </div>
-            </label>
-
-            <button type="submit" disabled={loading} className="w-full rounded-xl bg-[var(--foreground)] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--background)] transition hover:opacity-85 disabled:opacity-40">
-              {loading ? <Loader2 size="14" className="animate-spin mx-auto" /> : "Ingresar"}
-            </button>
-
-            {error && <p className="text-[10px] font-semibold text-red-500 text-center">{error}</p>}
-
-            <div className="text-center pt-1">
-              <button type="button" onClick={() => { setTab("olvide-pin"); setError(""); setSuccessMsg(""); }} className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--foreground)] transition">
-                ¿Olvidaste tu PIN?
-              </button>
-            </div>
-          </form>
-        ) : tab === "olvide-pin" ? (
-          <form onSubmit={handleForgotPin} className="px-6 py-8 space-y-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center">Recuperar PIN</p>
-            <p className="text-xs text-[var(--text-muted)] text-center">Ingresa tu DNI y correo. Te enviaremos un PIN temporal.</p>
-
-            <label className="space-y-1.5 block">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">DNI *</span>
-              <input required type="text" value={forgotDni} onChange={(e) => setForgotDni(e.target.value.replace(/\D/g, "").slice(0, 8))} placeholder="12345678" inputMode="numeric" className={inputClassName} />
-            </label>
-            <label className="space-y-1.5 block">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Correo *</span>
-              <input required type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder="correo@ejemplo.com" className={inputClassName} />
-            </label>
-
-            <button type="submit" disabled={loading} className="w-full rounded-xl bg-[var(--foreground)] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--background)] transition hover:opacity-85 disabled:opacity-40">
-              {loading ? <Loader2 size="14" className="animate-spin mx-auto" /> : "Enviar PIN temporal"}
-            </button>
-
-            {successMsg && (
-              <div className="flex items-start gap-2 rounded-xl bg-emerald-500/10 p-3 text-[10px] font-semibold text-emerald-600">
-                <Check size="14" className="shrink-0 mt-0.5" />
-                {successMsg}
+            {error && (
+              <div className="flex items-center gap-2 rounded-xl border border-[var(--destructive-border)] bg-[var(--destructive-hover)] px-4 py-3 text-xs text-[var(--destructive)]">
+                <AlertCircle size="14" className="shrink-0" />
+                <span>{error}</span>
               </div>
             )}
-            {error && <p className="text-[10px] font-semibold text-red-500 text-center">{error}</p>}
 
-            <div className="text-center pt-1">
-              <button type="button" onClick={() => { setTab("cliente"); setError(""); setSuccessMsg(""); }} className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--foreground)] transition">
-                ← Volver al inicio
-              </button>
-            </div>
+            <label className="space-y-1.5 block">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                Email <span className="text-[var(--destructive)]">*</span>
+              </span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, email: "" })); }}
+                placeholder="nombre@correo.com"
+                className={fieldClass}
+              />
+              {fieldErrors.email && (
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                  <AlertCircle size={11} />
+                  {fieldErrors.email}
+                </p>
+              )}
+            </label>
+            <label className="space-y-1.5 block">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                DNI <span className="text-[var(--destructive)]">*</span>
+              </span>
+              <input
+                type="text"
+                value={dni}
+                onChange={(e) => { setDni(e.target.value); setFieldErrors((prev) => ({ ...prev, dni: "" })); }}
+                placeholder="12345678"
+                maxLength={8}
+                className={fieldClass}
+              />
+              {fieldErrors.dni && (
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                  <AlertCircle size={11} />
+                  {fieldErrors.dni}
+                </p>
+              )}
+            </label>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl bg-black px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {loading ? "Ingresando..." : "Ingresar"}
+            </button>
           </form>
         ) : tab === "registro" ? (
           <form onSubmit={handleRegister} className="px-6 py-8 space-y-4">
@@ -361,93 +376,193 @@ export function CustomerAuthModal() {
               </div>
             ) : (
               <>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center">Crea tu cuenta de cliente</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center mb-2">
+                  Crea tu cuenta de cliente
+                </p>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="space-y-1.5 block">
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Apellidos *</span>
-                    <input required type="text" value={regApellidos} onChange={(e) => setRegApellidos(e.target.value)} placeholder="Apellidos" className={inputClassName} />
-                  </label>
-                  <label className="space-y-1.5 block">
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Nombres *</span>
-                    <input required type="text" value={regNombres} onChange={(e) => setRegNombres(e.target.value)} placeholder="Nombres" className={inputClassName} />
-                  </label>
-                </div>
+                {error && (
+                  <div className="flex items-center gap-2 rounded-xl border border-[var(--destructive-border)] bg-[var(--destructive-hover)] px-4 py-3 text-xs text-[var(--destructive)]">
+                    <AlertCircle size="14" className="shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
 
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="space-y-1.5 block">
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">DNI *</span>
-                    <input required type="text" value={regDni} onChange={(e) => setRegDni(e.target.value.replace(/\D/g, "").slice(0, 8))} placeholder="12345678" inputMode="numeric" className={inputClassName} />
-                  </label>
-                  <label className="space-y-1.5 block">
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Teléfono *</span>
-                    <input required type="text" value={regTelefono} onChange={(e) => setRegTelefono(e.target.value.replace(/\D/g, "").slice(0, 9))} placeholder="999 999 999" inputMode="numeric" className={inputClassName} />
-                  </label>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="space-y-1.5 block">
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Correo *</span>
-                    <input required type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="correo@ejemplo.com" className={inputClassName} />
-                  </label>
-                  <label className="space-y-1.5 block">
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">F. Nacimiento *</span>
-                    <input required type="date" value={regFechaNacimiento} onChange={(e) => setRegFechaNacimiento(e.target.value)} className={inputClassName} />
-                  </label>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="space-y-1.5 block">
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">PIN (4-6 dígitos) *</span>
-                    <div className="relative">
-                      <input required type={regShowPin ? "text" : "password"} value={regPin} onChange={(e) => setRegPin(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="••••" inputMode="numeric" className={`${inputClassName} pr-10`} />
-                      <button type="button" onClick={() => setRegShowPin(!regShowPin)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--foreground)]">
-                        {regShowPin ? <EyeOff size="16" /> : <Eye size="16" />}
-                      </button>
-                    </div>
-                  </label>
-                  <label className="space-y-1.5 block">
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Confirmar PIN *</span>
-                    <input required type="password" value={regPinConfirm} onChange={(e) => setRegPinConfirm(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="••••" inputMode="numeric" className={inputClassName} />
-                  </label>
-                </div>
-
-                <button type="submit" disabled={loading} className="w-full rounded-xl bg-[var(--foreground)] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--background)] transition hover:opacity-85 disabled:opacity-40">
-                  {loading ? <Loader2 size="14" className="animate-spin mx-auto" /> : "Registrarme"}
+                <label className="space-y-1 block">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                    Nombres <span className="text-[var(--destructive)]">*</span>
+                  </span>
+                  <input
+                    type="text"
+                    value={regNombres}
+                    onChange={(e) => { setRegNombres(e.target.value); setFieldErrors((prev) => ({ ...prev, nombres: "" })); }}
+                    placeholder="Tus nombres"
+                    className={fieldClass}
+                  />
+                  {fieldErrors.nombres && (
+                    <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                      <AlertCircle size={11} />
+                      {fieldErrors.nombres}
+                    </p>
+                  )}
+                </label>
+                <label className="space-y-1 block">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Apellidos</span>
+                  <input
+                    type="text"
+                    value={regApellidos}
+                    onChange={(e) => setRegApellidos(e.target.value)}
+                    placeholder="Tus apellidos"
+                    className={fieldClass}
+                  />
+                </label>
+                <label className="space-y-1 block">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                    DNI <span className="text-[var(--destructive)]">*</span>
+                  </span>
+                  <input
+                    type="text"
+                    value={regDni}
+                    onChange={(e) => { setRegDni(e.target.value); setFieldErrors((prev) => ({ ...prev, regDni: "" })); }}
+                    placeholder="12345678"
+                    maxLength={8}
+                    className={fieldClass}
+                  />
+                  {fieldErrors.regDni && (
+                    <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                      <AlertCircle size={11} />
+                      {fieldErrors.regDni}
+                    </p>
+                  )}
+                </label>
+                <label className="space-y-1 block">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Email (opcional)</span>
+                  <input
+                    type="email"
+                    value={regEmail}
+                    onChange={(e) => { setRegEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, regEmail: "" })); }}
+                    placeholder="correo@ejemplo.com"
+                    className={fieldClass}
+                  />
+                  {fieldErrors.regEmail && (
+                    <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                      <AlertCircle size={11} />
+                      {fieldErrors.regEmail}
+                    </p>
+                  )}
+                </label>
+                <label className="space-y-1 block">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Teléfono (opcional)</span>
+                  <input
+                    type="text"
+                    value={regTelefono}
+                    onChange={(e) => { setRegTelefono(e.target.value); setFieldErrors((prev) => ({ ...prev, regTelefono: "" })); }}
+                    placeholder="999 999 999"
+                    className={fieldClass}
+                  />
+                  {fieldErrors.regTelefono && (
+                    <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                      <AlertCircle size={11} />
+                      {fieldErrors.regTelefono}
+                    </p>
+                  )}
+                </label>
+                <label className="space-y-1 block">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Fecha de nacimiento (opcional)</span>
+                  <input
+                    type="date"
+                    value={regFechaNacimiento}
+                    onChange={(e) => setRegFechaNacimiento(e.target.value)}
+                    className={fieldClass}
+                  />
+                </label>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full rounded-xl bg-black px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {loading ? "Registrando..." : "Registrarme"}
                 </button>
-                {error && <p className="text-[10px] font-semibold text-red-500 text-center">{error}</p>}
               </>
             )}
           </form>
         ) : (
           <form onSubmit={handleAdminLogin} className="px-6 py-8 space-y-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center">Acceso administrativo</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center mb-4">
+              Acceso administrativo
+            </p>
+
+            {error && (
+              <div className="flex items-center gap-2 rounded-xl border border-[var(--destructive-border)] bg-[var(--destructive-hover)] px-4 py-3 text-xs text-[var(--destructive)]">
+                <AlertCircle size="14" className="shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
             <label className="space-y-1.5 block">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Email</span>
-              <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@correo.com" className={inputClassName} />
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                Email <span className="text-[var(--destructive)]">*</span>
+              </span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, adminEmail: "" })); }}
+                placeholder="admin@correo.com"
+                className={fieldClass}
+              />
+              {fieldErrors.adminEmail && (
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                  <AlertCircle size={11} />
+                  {fieldErrors.adminEmail}
+                </p>
+              )}
             </label>
             <label className="space-y-1.5 block">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Contraseña</span>
-              <input required type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className={inputClassName} />
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                Contraseña <span className="text-[var(--destructive)]">*</span>
+              </span>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, adminPassword: "" })); }}
+                placeholder="••••••••"
+                className={fieldClass}
+              />
+              {fieldErrors.adminPassword && (
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                  <AlertCircle size={11} />
+                  {fieldErrors.adminPassword}
+                </p>
+              )}
             </label>
-            <button type="submit" disabled={loading} className="w-full rounded-xl bg-[var(--foreground)] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--background)] transition hover:opacity-85 disabled:opacity-40">
-              {loading ? <Loader2 size="14" className="animate-spin mx-auto" /> : "Ingresar"}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl bg-black px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {loading ? "Ingresando..." : "Ingresar"}
             </button>
-            {error && <p className="text-[10px] font-semibold text-red-500 text-center">{error}</p>}
           </form>
         )}
 
         {/* Pie */}
         {tab === "cliente" && (
-          <div className="border-t border-[var(--border)] px-6 py-3.5 text-center">
-            <button type="button" onClick={() => { setTab("registro"); setError(""); setSuccessMsg(""); resetRegisterForm(); }} className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] transition hover:text-[var(--foreground)]">
+          <div className="border-t border-[var(--border)] px-6 py-3 text-center">
+            <button
+              type="button"
+              onClick={() => { setTab("registro"); setError(""); setFieldErrors({}); }}
+              className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--foreground)] transition"
+            >
               ¿No tienes cuenta? Regístrate aquí
             </button>
           </div>
         )}
-        {(tab === "registro" || tab === "olvide-pin") && (
-          <div className="border-t border-[var(--border)] px-6 py-3.5 text-center">
-            <button type="button" onClick={() => { setTab("cliente"); setError(""); setSuccessMsg(""); }} className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] transition hover:text-[var(--foreground)]">
+        {tab === "registro" && (
+          <div className="border-t border-[var(--border)] px-6 py-3 text-center">
+            <button
+              type="button"
+              onClick={() => { setTab("cliente"); setError(""); setFieldErrors({}); }}
+              className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--foreground)] transition"
+            >
               ¿Ya tienes cuenta? Ingresa aquí
             </button>
           </div>

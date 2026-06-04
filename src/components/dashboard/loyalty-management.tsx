@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Gift, PencilLine, Plus, QrCode, Star, Trash2, UserRound, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, Gift, PencilLine, Plus, QrCode, Star, Trash2, UserRound, X } from "lucide-react";
+import { validateRequired, validatePositiveNumber } from "@/lib/validators";
 import { CloudinaryUpload } from "@/components/dashboard/cloudinary-upload";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
@@ -18,7 +19,7 @@ type RewardDraft = {
 };
 
 const emptyDraft: RewardDraft = { nombre: "", tipo_recompensa: "servicio", puntos_requeridos: 100, descripcion: "", esta_activo: true, imagen_url: "" };
-const inputClassName = "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
+const inputClassName = "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
 
 type Props = { totalBeneficios: number; totalActivas: number; canjesPendientes: number; };
 
@@ -29,6 +30,7 @@ export function LoyaltyManagement({ totalBeneficios, totalActivas, canjesPendien
   const [mode, setMode] = useState<"list" | "create" | "edit">("list");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<RewardDraft>(emptyDraft);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
@@ -61,7 +63,12 @@ export function LoyaltyManagement({ totalBeneficios, totalActivas, canjesPendien
   const handleBack = () => { setMode("list"); setSelectedId(null); setDraft(emptyDraft); };
 
   const handleSave = async () => {
-    if (!draft.nombre || draft.puntos_requeridos < 1) return;
+    const errors: Record<string, string> = {};
+    const nombreErr = validateRequired(draft.nombre, "El nombre");
+    if (nombreErr) errors.nombre = nombreErr;
+    const puntosErr = validatePositiveNumber(draft.puntos_requeridos, "Puntos requeridos");
+    if (puntosErr) errors.puntos = puntosErr;
+    if (Object.keys(errors).length > 0) { setFieldErrors(errors); return; }
     try {
       if (mode === "edit" && selectedId) {
         await RecompensasService.update(selectedId, { nombre: draft.nombre, tipoRecompensa: draft.tipo_recompensa, puntosRequeridos: draft.puntos_requeridos, descripcion: draft.descripcion, estaActivo: draft.esta_activo, imagenUrl: draft.imagen_url || undefined });
@@ -252,16 +259,16 @@ export function LoyaltyManagement({ totalBeneficios, totalActivas, canjesPendien
             </div>
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="col-span-full"><Field label="Nombre" required><input className={inputClassName} value={draft.nombre} onChange={(e) => setDraft((c) => ({ ...c, nombre: e.target.value }))} /></Field></div>
-                <Field label="Tipo"><select className={inputClassName} value={draft.tipo_recompensa} onChange={(e) => setDraft((c) => ({ ...c, tipo_recompensa: e.target.value }))}><option value="servicio">Servicio</option><option value="producto">Producto</option><option value="descuento">Descuento</option><option value="general">General</option></select></Field>
-                <Field label="Puntos requeridos"><input type="number" min={1} className={inputClassName} value={draft.puntos_requeridos} onChange={(e) => setDraft((c) => ({ ...c, puntos_requeridos: Number(e.target.value) }))} /></Field>
+                <div className="col-span-full"><Field label="Nombre" required error={fieldErrors.nombre}><input className={inputClassName} value={draft.nombre} onChange={(e) => { setFieldErrors((prev) => ({ ...prev, nombre: "" })); setDraft((c) => ({ ...c, nombre: e.target.value })); }} /></Field></div>
+                <Field label="Tipo"><select className={inputClassName} value={draft.tipo_recompensa} onChange={(e) => { setFieldErrors((prev) => ({ ...prev, tipo_recompensa: "" })); setDraft((c) => ({ ...c, tipo_recompensa: e.target.value })); }}><option value="servicio">Servicio</option><option value="producto">Producto</option><option value="descuento">Descuento</option><option value="general">General</option></select></Field>
+                <Field label="Puntos requeridos" error={fieldErrors.puntos}><input type="number" min={1} className={inputClassName} value={draft.puntos_requeridos} onChange={(e) => { setFieldErrors((prev) => ({ ...prev, puntos: "" })); setDraft((c) => ({ ...c, puntos_requeridos: Number(e.target.value) })); }} /></Field>
                 <Field label="Estado"><select className={inputClassName} value={draft.esta_activo ? "Activa" : "Pausada"} onChange={(e) => setDraft((c) => ({ ...c, esta_activo: e.target.value === "Activa" }))}><option>Activa</option><option>Pausada</option></select></Field>
-                <div className="col-span-full"><Field label="Descripcion"><textarea className={`${inputClassName} min-h-28 resize-none`} value={draft.descripcion} onChange={(e) => setDraft((c) => ({ ...c, descripcion: e.target.value }))} /></Field></div>
+                <div className="col-span-full"><Field label="Descripcion"><textarea className={`${inputClassName} min-h-28 resize-none`} value={draft.descripcion} onChange={(e) => { setFieldErrors((prev) => ({ ...prev, descripcion: "" })); setDraft((c) => ({ ...c, descripcion: e.target.value })); }} /></Field></div>
               </div>
             </div>
           </div>
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-6">
-            <button type="button" onClick={() => setIsConfirmOpen(true)} disabled={!draft.nombre || draft.puntos_requeridos < 1} className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50"><PencilLine size={16} />{mode === "create" ? "Crear beneficio" : "Guardar beneficio"}</button>
+            <button type="button" onClick={() => setIsConfirmOpen(true)} disabled={!draft.nombre || draft.puntos_requeridos < 1 || Object.keys(fieldErrors).length > 0} className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50"><PencilLine size={16} />{mode === "create" ? "Crear beneficio" : "Guardar beneficio"}</button>
             {mode === "edit" && <button type="button" onClick={() => setIsDeleteConfirmOpen(true)} disabled={!selectedRecompensa} className="inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-5 py-2.5 text-sm font-semibold text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)] disabled:opacity-50"><Trash2 size={16} /> Eliminar</button>}
             <button type="button" onClick={handleBack} className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--background)]"><X size={16} /> Cancelar</button>
           </div>
@@ -274,6 +281,6 @@ export function LoyaltyManagement({ totalBeneficios, totalActivas, canjesPendien
   );
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return <label className="space-y-2"><span className="text-sm font-medium text-[var(--foreground)]">{label}{required && <span className="ml-1 text-[var(--destructive)]">*</span>}</span>{children}</label>;
+function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
+  return <label className="space-y-2"><span className="text-sm font-medium text-[var(--foreground)]">{label}{required && <span className="ml-1 text-[var(--destructive)]">*</span>}</span>{children}{error && <p className="flex items-center gap-1 text-[11px] text-[var(--destructive)]"><AlertCircle size={11} />{error}</p>}</label>;
 }

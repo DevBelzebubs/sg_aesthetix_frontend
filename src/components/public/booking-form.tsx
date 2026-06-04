@@ -5,6 +5,7 @@ import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { AppointmentsService } from "@/services/appointments.service";
 import { CustomersService } from "@/services/customers.service";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
+import { validateDni, validateDniOptional, validateEmail, validateEmailOptional, validateName, validateRequired } from "@/lib/validators";
 
 type BookingOption = {
   id: string;
@@ -64,8 +65,8 @@ const initialDraft: BookingDraft = {
   fechaNacimiento: "",
 };
 
-const inputClassName =
-  "w-full border border-transparent/10 bg-[var(--background-secondary)] px-4 py-3.5 text-base text-[var(--foreground)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-black focus:ring-0";
+const fieldClass =
+  "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-base text-[var(--foreground)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
 
 const selectClassName =
   "w-full border border-[var(--foreground)]/20 bg-[var(--background-secondary)] px-4 py-3.5 text-base text-[var(--foreground)] outline-none transition focus:border-black focus:ring-0 appearance-none cursor-pointer pr-10";
@@ -115,6 +116,8 @@ export function BookingForm({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const monthOptions = useMemo(() => {
     const groupedMonths = new Map
@@ -203,10 +206,16 @@ export function BookingForm({
     setFormData((current) => ({ ...current, [name]: value }));
     setIsSubmitted(false);
     setError("");
+    setFieldErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const handleDniLookup = async (e: React.FormEvent) => {
     e.preventDefault();
+    const err = validateDni(dni);
+    if (err) {
+      setFieldErrors({ dni: err });
+      return;
+    }
     setIsLoading(true);
     setError("");
     try {
@@ -259,6 +268,25 @@ export function BookingForm({
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const errors: Record<string, string> = {};
+    const nameErr = validateName(formData.customerName);
+    const phoneErr = validatePhone9(formData.phone);
+    const emailErr = validateEmail(formData.email);
+    const dniErr = validateDniOptional(formData.dni);
+    const serviceErr = validateRequired(formData.serviceId, "El servicio");
+    const dateErr = validateRequired(formData.date, "La fecha");
+    const timeErr = validateRequired(formData.time, "La hora");
+    if (nameErr) errors.customerName = nameErr;
+    if (phoneErr) errors.phone = phoneErr;
+    if (emailErr) errors.email = emailErr;
+    if (dniErr) errors.dni = dniErr;
+    if (serviceErr) errors.serviceId = serviceErr;
+    if (dateErr) errors.date = dateErr;
+    if (timeErr) errors.time = timeErr;
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
     setIsLoading(true);
     setError("");
 
@@ -267,14 +295,15 @@ export function BookingForm({
       const exactService = services.find((s) => s.id === formData.serviceId);
       const exactBarber = barbers.find((b) => b.id === formData.barberId);
 
-      const servicioId = exactService?.id ?? "";
+      if (!exactService) throw new Error("El servicio seleccionado no está disponible");
       const empleadoId = exactBarber?.id ?? "";
-      const duration = exactService?.duration ?? "30 min";
+
+      const duration = exactService.duration;
       const endTimeHHMM = calculateEndTime(formData.time, duration);
 
       const payload = {
         clienteId: customerId,
-        servicioId,
+        servicioId: exactService.id,
         empleadoId,
         fechaReserva: formData.date,
         horaInicio: `${formData.time}:00`,
@@ -312,32 +341,39 @@ export function BookingForm({
       </div>
 
       {error && (
-        <div className="mb-6 border border-red-500/20 bg-red-50 px-4 py-3">
-          <p className="text-xs font-semibold text-red-600">{error}</p>
+        <div className="mb-6 flex items-center gap-2.5 rounded-2xl border border-[var(--destructive-border)] bg-[var(--destructive-hover)] px-5 py-3.5 text-sm text-[var(--destructive)]">
+          <AlertCircle size={16} className="shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
       {stage === "dni" && (
         <form onSubmit={handleDniLookup} className="space-y-4">
-          <label className="space-y-2">
+          <label className="space-y-1.5">
             <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-              Número de DNI
+              Número de DNI <span className="text-[var(--destructive)]">*</span>
             </span>
             <input
-              required
               type="text"
               inputMode="numeric"
               maxLength={8}
               value={dni}
               onChange={(e) => setDni(e.target.value.replace(/\D/g, ""))}
               placeholder="12345678"
-              className={inputClassName}
+              maxLength={8}
+              className={fieldClass}
             />
+            {fieldErrors.dni && (
+              <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                <AlertCircle size={11} />
+                {fieldErrors.dni}
+              </p>
+            )}
           </label>
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-black px-8 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-75 disabled:opacity-40"
+            className="w-full rounded-xl bg-black px-8 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
           >
             {isLoading ? "Buscando..." : "Buscar"}
           </button>
@@ -517,6 +553,12 @@ export function BookingForm({
               </div>
             ))}
           </div>
+          {fieldErrors.serviceId && (
+            <p className="mt-2 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+              <AlertCircle size={11} />
+              {fieldErrors.serviceId}
+            </p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -897,7 +939,7 @@ export function BookingForm({
       <aside className="bg-[var(--background-secondary)]">
         <div className="xl:sticky xl:top-6">
 
-          <div className="border-b border-transparent/10 px-6 py-8">
+          <div className="border-b border-[var(--border)] px-6 py-8">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
               Resumen
             </p>

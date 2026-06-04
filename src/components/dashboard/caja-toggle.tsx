@@ -4,13 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { CajaService } from "@/services/caja.service";
 import { createClient } from "@/lib/supabase/client";
 import type { Caja } from "@/types/caja";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 
 export function CajaToggle() {
   const [caja, setCaja] = useState<Caja | null>(null);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
   const [saldoInput, setSaldoInput] = useState("0");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [userId, setUserId] = useState<string | null>(null);
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
 
@@ -40,13 +41,20 @@ export function CajaToggle() {
 
   const handleToggle = async () => {
     if (!userId) return;
+    if (!caja?.estaAbierta) {
+      const saldo = parseFloat(saldoInput);
+      if (isNaN(saldo) || saldo < 0) {
+        setFieldErrors({ saldo: "El saldo inicial debe ser un número válido" });
+        return;
+      }
+    }
     setToggling(true);
     try {
       if (caja?.estaAbierta) {
         const updated = await CajaService.cerrar();
         setCaja(updated);
       } else {
-        const saldo = parseFloat(saldoInput) || 0;
+        const saldo = parseFloat(saldoInput);
         const updated = await CajaService.abrir(userId, saldo);
         setCaja(updated);
       }
@@ -107,9 +115,18 @@ export function CajaToggle() {
             step="0.01"
             min="0"
             value={saldoInput}
-            onChange={(e) => setSaldoInput(e.target.value)}
-            className="w-24 rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-1 text-sm outline-none"
+            onChange={(e) => {
+              setSaldoInput(e.target.value);
+              setFieldErrors((prev) => ({ ...prev, saldo: "" }));
+            }}
+            className="w-24 rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-1 text-sm outline-none transition focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20"
           />
+          {fieldErrors.saldo && (
+            <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+              <AlertCircle size={11} />
+              {fieldErrors.saldo}
+            </p>
+          )}
         </div>
       )}
     </div>
