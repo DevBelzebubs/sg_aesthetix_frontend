@@ -1,4 +1,4 @@
-﻿name = "sgaesthetix"
+﻿name = "sg-aesthetix-frontend"
 main = ".open-next/worker.js"
 compatibility_date = "2026-06-05"
 compatibility_flags = ["nodejs_compat"]
@@ -6,3 +6,10 @@ compatibility_flags = ["nodejs_compat"]
 [assets]
 directory = ".open-next/assets"
 binding = "ASSETS"
+
+[vars]
+NEXT_PUBLIC_SUPABASE_URL = "https://bnqflkoqeaowwcguakxs.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_f4wVAMOajjuxln9cQtsI-w_vlaKiS52"
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME = "dp1vgjhsq"
+NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET = "sg_aesthetix"
+NEXT_PUBLIC_WA_NUMBER = "+51902734463"
