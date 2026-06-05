@@ -24,7 +24,7 @@ export function AgendaManagement({ totalCitas, totalPendientes, totalCompletadas
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-
+//cambios para probar el tema de deploy
   const pageSize = 10;
   const [page, setPage] = useState(1);
 
