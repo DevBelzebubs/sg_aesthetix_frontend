@@ -1,4 +1,4 @@
-﻿name = "sg-aesthetix-frontend"
+﻿name = "sgaesthetix"
 main = ".open-next/worker.js"
 compatibility_date = "2026-06-05"
 compatibility_flags = ["nodejs_compat"]
