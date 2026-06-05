@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useCallback } from "react";
-import { Globe } from "lucide-react";
+import { Globe, Scissors } from "lucide-react";
 import { StoreStatus } from "@/components/public/store-status";
 import { useCart } from "@/contexts/cart-context";
 
@@ -12,6 +12,8 @@ type Service = {
   descripcion: string;
   precio: number;
   duracion_minutos: number;
+  imagenUrl: string;
+  puntos: number;
 };
 
 type ProductItem = {
@@ -286,15 +288,15 @@ function ProductCarousel({ products }: { products: ProductItem[] }) {
         style={{ background: "var(--hover)" }}
       >
         {/* Imagen */}
-        <div className="relative overflow-hidden bg-[var(--background-secondary)]">
+        <div className="flex items-center justify-center bg-[var(--background-secondary)] p-6">
           {product.imagenUrl ? (
             <img
               src={product.imagenUrl}
               alt={product.nombre}
-              className="h-full w-full object-cover absolute inset-0"
+              className="aspect-square w-full max-w-[340px] object-cover"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-[var(--background-secondary)]">
+            <div className="aspect-square w-full max-w-[340px] flex items-center justify-center bg-[var(--background-secondary)]">
               <span className="text-5xl font-black text-[var(--text-muted)]">
                 {product.nombre.charAt(0)}
               </span>
@@ -303,7 +305,7 @@ function ProductCarousel({ products }: { products: ProductItem[] }) {
         </div>
 
         {/* Info */}
-        <div className="flex flex-col justify-center bg-[var(--background-secondary)] px-8 py-6 md:px-12 md:py-8 overflow-y-auto">
+        <div className="flex flex-col justify-end bg-[var(--background-secondary)] px-8 py-6 md:px-12 md:py-8 overflow-y-auto">
           <div className="mb-3 h-[2px] w-6" style={{ background: "var(--hover)" }} />
           <p
             className="text-[12px] font-semibold uppercase tracking-[0.2em]"
@@ -315,7 +317,7 @@ function ProductCarousel({ products }: { products: ProductItem[] }) {
           <h3 className="mt-2 text-xl font-black uppercase tracking-tight leading-tight text-[var(--foreground)] md:text-2xl">
             {product.nombre}
           </h3>
-          <p className="mt-3 text-3xl text-[var(--text-muted)] leading-relaxed">
+          <p className="mt-3 text-base text-[var(--text-muted)] leading-relaxed">
             {product.descripcion}
           </p>
           <p className="mt-6 text-3xl font-black" style={{ color: "var(--hover)" }}>
@@ -445,25 +447,25 @@ function BarberCarousel({ barbers }: { barbers: Barber[] }) {
         {hasSocial && (
           <div className="mt-5 flex items-center gap-4">
             {barber.instagram && (
-              <a
-                href={barber.instagram.startsWith("http") ? barber.instagram : `https://instagram.com/${barber.instagram.replace("@", "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-sm text-[var(--text-muted)] transition hover:text-[var(--hover)]"
-              >
-                <Globe size={15} />
-                Instagram
-              </a>
+                          <a
+                            href={barber.instagram.startsWith("http") ? barber.instagram : `https://instagram.com/${barber.instagram.replace("@", "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="transition hover:text-[var(--hover)]"
+                            title="Instagram"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><line x1="18" y1="5.5" x2="18.01" y2="5.5"/></svg>
+                          </a>
             )}
             {barber.facebook && (
               <a
                 href={barber.facebook.startsWith("http") ? barber.facebook : `https://facebook.com/${barber.facebook}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-sm text-[var(--text-muted)] transition hover:text-[var(--hover)]"
+                className="transition hover:text-[var(--hover)]"
+                title="Facebook"
               >
-                <Globe size={15} />
-                Facebook
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
               </a>
             )}
             {barber.tiktok && (
@@ -471,10 +473,10 @@ function BarberCarousel({ barbers }: { barbers: Barber[] }) {
                 href={barber.tiktok.startsWith("http") ? barber.tiktok : `https://tiktok.com/@${barber.tiktok.replace("@", "")}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-sm text-[var(--text-muted)] transition hover:text-[var(--hover)]"
+                className="transition hover:text-[var(--hover)]"
+                title="TikTok"
               >
-                <Globe size={15} />
-                TikTok
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>
               </a>
             )}
           </div>
@@ -581,7 +583,7 @@ export default function LandingPage({
             className="border-b bg-[var(--background-secondary)] px-6 py-8"
             style={{ borderColor: "color-mix(in srgb, var(--hover) 12.5%, transparent)" }}
           >
-            {/* Línea verde en lugar de la negra */}
+
             <div
               className="mb-4 h-[3px] w-10 rounded-full"
               style={{ background: "var(--hover)" }}
@@ -737,12 +739,11 @@ export default function LandingPage({
           style={{ background: "var(--hover)" }}
         >
           {services.map((service, index) => {
-            const isDark = index % 2 !== 0;
             return (
               <article
                 key={service.id}
-                className={`relative grid gap-[1px] transition group ${isDark ? "bg-neutral-900" : "bg-[var(--background-secondary)]"}`}
-                style={{ gridTemplateColumns: "1fr auto" }}
+                className="relative grid gap-[1px] transition group bg-[var(--background-secondary)]"
+                style={{ gridTemplateColumns: "auto 1fr auto" }}
               >
                 {/* Barra lateral izquierda animada al hover */}
                 <div
@@ -750,49 +751,54 @@ export default function LandingPage({
                   style={{ background: "var(--hover)" }}
                 />
 
-                {/* Contenido principal */}
-                <div className="px-8 py-7 pl-10">
+                {/* FOTO - columna 1 */}
+                <div className="flex items-center justify-center px-6 py-7">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[var(--background)]">
+                    {service.imagenUrl ? (
+                      <img
+                        src={service.imagenUrl}
+                        alt={service.nombre}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <Scissors size={28} className="text-[var(--text-muted)]" />
+                    )}
+                  </div>
+                </div>
+
+                {/* INFO - columna 2 */}
+                <div className="px-8 py-7">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      {/* Número */}
-                      <span
-                        className="text-xs font-black tabular-nums shrink-0"
-                        style={{ color: isDark ? "var(--hover)" : "color-mix(in srgb, var(--hover) 50%, transparent)" }}
-                      >
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <h3
-                        className={`text-base font-black uppercase tracking-tight ${isDark ? "text-white" : "text-[var(--foreground)]"}`}
-                      >
-                        {service.nombre}
-                      </h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-black tabular-nums shrink-0" style={{ color: "var(--hover)" }}>
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+                        <h3 className="text-base font-black uppercase tracking-tight text-[var(--foreground)]">
+                          {service.nombre}
+                        </h3>
+                      </div>
+                      <p className="text-sm leading-relaxed max-w-lg text-[var(--text-muted)]">
+                        {service.descripcion}
+                      </p>
+                      {service.puntos > 0 && (
+                        <span className="inline-block rounded-full px-3 py-0.5 text-[11px] font-semibold bg-[var(--hover)]/10 text-[var(--hover)]">
+                          +{service.puntos} pts
+                        </span>
+                      )}
                     </div>
-                    <span
-                      className={`shrink-0 text-xs font-semibold uppercase tracking-widest pt-0.5 ${isDark ? "text-white/30" : "text-[var(--text-muted)]"}`}
-                    >
+                    <span className="shrink-0 text-xs font-semibold uppercase tracking-widest pt-0.5 text-[var(--text-muted)]">
                       {service.duracion_minutos} min
                     </span>
                   </div>
-                  <p
-                    className={`mt-2 text-sm leading-relaxed max-w-lg ${isDark ? "text-white/50" : "text-[var(--text-muted)]"}`}
-                  >
-                    {service.descripcion}
-                  </p>
                 </div>
 
-                {/* Precio — bloque derecho separado por gap-px */}
-                <div
-                  className={`flex flex-col items-center justify-center px-7 py-7 min-w-[100px] ${isDark ? "bg-neutral-800" : "bg-[var(--background)]"}`}
-                >
-                  <span
-                    className={`text-xs font-semibold uppercase tracking-widest mb-1 ${isDark ? "text-white/30" : "text-[var(--text-muted)]"}`}
-                  >
+                {/* Precio — bloque derecho */}
+                <div className="flex flex-col items-center justify-center px-7 py-7 min-w-[100px] bg-[var(--background)]">
+                  <span className="text-xs font-semibold uppercase tracking-widest mb-1 text-[var(--text-muted)]">
                     Desde
                   </span>
-                  <span
-                    className="text-3xl font-black tracking-tight"
-                    style={{ color: isDark ? "white" : "var(--hover)" }}
-                  >
+                  <span className="text-3xl font-black tracking-tight" style={{ color: "var(--hover)" }}>
                     S/{service.precio}
                   </span>
                 </div>
@@ -935,7 +941,96 @@ export default function LandingPage({
               Nuestros barbers
             </h2>
           </div>
-          <BarberCarousel barbers={barbers} />
+          <div
+            className="grid gap-[1px] md:grid-cols-2 lg:grid-cols-3"
+            style={{ background: "var(--background)" }}
+          >
+            {barbers.map((barber) => {
+              return (
+                <article
+                  key={barber.id}
+                  className="relative flex items-center gap-5 px-7 py-7 transition group bg-[var(--background-secondary)] border"
+                  style={{ borderColor: "var(--border)" }}
+                >
+                  {/* Avatar con foto o inicial */}
+                  <div
+                    className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 text-xl font-black bg-[var(--background-secondary)] text-[var(--foreground)]"
+                    style={{ borderColor: "var(--hover)" }}
+                  >
+                    {barber.imagenUrl ? (
+                      <img
+                        src={barber.imagenUrl}
+                        alt={barber.nombre}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      barber.nombre.charAt(0)
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h3
+                      className="text-sm font-black uppercase tracking-tight truncate text-[var(--foreground)]"
+                    >
+                      {barber.nombre}
+                    </h3>
+                    {barber.specialties.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {barber.specialties.map((s) => (
+                          <span
+                            key={s}
+                            className="inline-block px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest"
+                            style={{
+                              background: "color-mix(in srgb, var(--hover) 8.2%, transparent)",
+                              color: "var(--hover)",
+                            }}
+                          >
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {(barber.instagram || barber.facebook || barber.tiktok) && (
+                      <div className="mt-2 flex flex-wrap items-center gap-3 text-[var(--text-muted)]">
+                        {barber.instagram && (
+                          <a
+                            href={barber.instagram.startsWith("http") ? barber.instagram : `https://instagram.com/${barber.instagram.replace("@", "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="transition hover:text-[var(--hover)]"
+                            title="Instagram"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><line x1="18" y1="5.5" x2="18.01" y2="5.5"/></svg>
+                          </a>
+                        )}
+                        {barber.facebook && (
+                          <a
+                            href={barber.facebook.startsWith("http") ? barber.facebook : `https://facebook.com/${barber.facebook}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="transition hover:text-[var(--hover)]"
+                            title="Facebook"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                          </a>
+                        )}
+                        {barber.tiktok && (
+                          <a
+                            href={barber.tiktok.startsWith("http") ? barber.tiktok : `https://tiktok.com/@${barber.tiktok.replace("@", "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="transition hover:text-[var(--hover)]"
+                            title="TikTok"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         </section>
       )}
 
@@ -1088,7 +1183,7 @@ export default function LandingPage({
             className="absolute bottom-0 left-0 right-0 h-[1px]"
             style={{ background: "var(--hover)" }}
           />
-          <div className="grid md:grid-cols-[1fr_1.2fr] gap-[1px]" style={{ background: "var(--hover)" }}>
+          <div className="grid md:grid-cols-[1fr_1.2fr] gap-[1px]" style={{ background: "var(--background)" }}>
             <div className="relative flex flex-col justify-center px-8 py-12 md:px-14 md:py-16 bg-neutral-950">
               <GreenCorner className="top-6 right-6" />
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--hover)" }}>

@@ -2,6 +2,8 @@ import { KeyRound, LockKeyhole, ShieldCheck, Smartphone, UserCog } from "lucide-
 import { ModulePageShell } from "@/components/dashboard/module-page-shell";
 import { createServerSupabase } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 const securityControls = [
   {
     title: "Roles y permisos",

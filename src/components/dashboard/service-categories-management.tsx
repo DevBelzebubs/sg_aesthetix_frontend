@@ -33,6 +33,8 @@ export default function ServiceCategoriesManagement() {
   const supabase = createClient();
 
   const [items, setItems] = useState<Category[]>([]);
+  const [inactiveItems, setInactiveItems] = useState<Category[]>([]);
+  const [showInactive, setShowInactive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState("");
@@ -49,11 +51,24 @@ export default function ServiceCategoriesManagement() {
 
   useEffect(() => { fetchItems(); }, []);
 
+  useEffect(() => {
+    if (!showInactive) return;
+    setLoading(true);
+    supabase
+      .from("categoria_servicio")
+      .select("*")
+      .eq("esta_activo", false)
+      .order("orden", { ascending: true })
+      .then(({ data }) => setInactiveItems(data ?? []))
+      .finally(() => setLoading(false));
+  }, [showInactive]);
+
   async function fetchItems() {
     setLoading(true);
     const { data } = await supabase
       .from("categoria_servicio")
       .select("*")
+      .eq("esta_activo", true)
       .order("orden", { ascending: true });
     setItems(data ?? []);
     setLoading(false);
@@ -137,12 +152,17 @@ export default function ServiceCategoriesManagement() {
 
   async function deleteItem() {
     if (selectedId === null) return;
-    await supabase.from("categoria_servicio").delete().eq("id", selectedId);
+    await supabase.from("categoria_servicio").update({ esta_activo: false }).eq("id", selectedId);
+    setItems((prev) => prev.filter((i) => i.id !== selectedId));
     setSelectedId(null);
     setDraft(emptyDraft);
     setMode("list");
-    await fetchItems();
     setIsDeleteOpen(false);
+  }
+
+  async function handleRestore(itemId: number) {
+    await supabase.from("categoria_servicio").update({ esta_activo: true }).eq("id", itemId);
+    setInactiveItems((prev) => prev.filter((i) => i.id !== itemId));
   }
 
   async function moveItem(itemId: number, direction: "up" | "down") {
@@ -176,9 +196,24 @@ export default function ServiceCategoriesManagement() {
       <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-[var(--foreground)]">Categorías de servicios</p>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">{items.length} categoría(s)</p>
+            <p className="text-sm font-semibold text-[var(--foreground)]">
+              {showInactive ? "Categorías desactivadas" : "Categorías de servicios"}
+            </p>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">
+              {showInactive ? `${inactiveItems.length} categoría(s) desactivada(s)` : `${items.length} categoría(s)`}
+            </p>
           </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { setShowInactive((v) => !v); setQuery(""); setPage(1); }}
+              className={`inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-4 py-2 text-sm font-semibold text-[var(--destructive)] transition ${
+                showInactive ? "bg-[var(--destructive-hover)]" : "hover:bg-[var(--destructive-hover)]"
+              }`}
+            >
+              <Trash2 size={16} />
+              Papelera
+            </button>
           {mode === "list" ? (
             <button type="button" onClick={handleCreate} className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-4 py-2 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90">
               <Plus size={16} /> Nueva categoría
@@ -188,6 +223,7 @@ export default function ServiceCategoriesManagement() {
               <ArrowLeft size={16} /> Volver al listado
             </button>
           )}
+          </div>
         </div>
         {mode === "list" && (
           <label className="mt-4 flex items-center gap-3 rounded-2xl border border-[var(--border)] px-4 py-3">
@@ -197,61 +233,104 @@ export default function ServiceCategoriesManagement() {
         )}
       </div>
 
-      {mode === "list" && (
+      {mode === "list" && !showInactive && (
         <>
-          <div className="overflow-hidden rounded-2xl border border-[var(--border)]">
-            <div className="grid grid-cols-[1fr_1fr_80px_60px_60px_80px] gap-3 border-b border-[var(--border)] bg-[var(--background)] px-5 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-              <span>Nombre</span>
-              <span>Descripción</span>
-              <span className="text-center">Orden</span>
-              <span className="text-center">Público</span>
-              <span className="text-center">Estado</span>
-              <span className="text-right">Acción</span>
+          {paginatedItems.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-16">
+              <Folder size={32} className="text-[var(--text-muted)]" />
+              <p className="text-sm text-[var(--text-muted)]">{query ? "No se encontraron categorías." : "No hay categorías registradas."}</p>
             </div>
-            {paginatedItems.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-16">
-                <Folder size={32} className="text-[var(--text-muted)]" />
-                <p className="text-sm text-[var(--text-muted)]">{query ? "No se encontraron categorías." : "No hay categorías registradas."}</p>
-              </div>
-            ) : (
-              paginatedItems.map((item) => (
-                <div key={item.id} className="grid grid-cols-[1fr_1fr_80px_60px_60px_80px] gap-3 border-b border-[var(--border)] px-5 py-3 last:border-b-0 items-center hover:bg-[var(--background)]">
-                  <span className="truncate text-sm font-semibold text-[var(--foreground)] cursor-pointer" onClick={() => handleEdit(item)}>{item.nombre}</span>
-                  <span className="truncate text-sm text-[var(--text-muted)] cursor-pointer" onClick={() => handleEdit(item)}>{item.descripcion || "—"}</span>
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span className="text-sm font-medium text-[var(--foreground)] w-5 text-center">{item.orden}</span>
-                    <div className="flex flex-col">
-                      <button type="button" onClick={() => moveItem(item.id, "up")} className="rounded p-0.5 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)] leading-none">
-                        <ArrowUp size={10} />
-                      </button>
-                      <button type="button" onClick={() => moveItem(item.id, "down")} className="rounded p-0.5 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)] leading-none">
-                        <ArrowDown size={10} />
-                      </button>
-                    </div>
-                  </div>
-                  <span>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${item.publico ? "bg-[var(--hover)]/15 text-[var(--hover)]" : "bg-[var(--background)] text-[var(--text-muted)]"}`}>
-                      {item.publico ? "Sí" : "No"}
-                    </span>
-                  </span>
-                  <span>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${item.esta_activo ? "bg-[var(--hover)]/15 text-[var(--hover)]" : "bg-[var(--warning)]/15 text-[var(--warning)]"}`}>
-                      {item.esta_activo ? "Activo" : "Inactivo"}
-                    </span>
-                  </span>
-                  <div className="flex items-center justify-end gap-1">
-                    <button type="button" onClick={() => handleEdit(item)} className="rounded-lg p-1.5 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]">
-                      <PencilLine size={14} />
-                    </button>
-                    <button type="button" onClick={() => { setSelectedId(item.id); setIsDeleteOpen(true); }} className="rounded-lg p-1.5 text-[var(--text-muted)] transition hover:bg-[var(--destructive-hover)] hover:text-[var(--destructive)]">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+          ) : (
+            <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)]">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border)] text-left">
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Descripción</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center">Orden</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center">Público</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center">Estado</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {paginatedItems.map((item) => (
+                    <tr key={item.id} className="transition hover:bg-[var(--background)]">
+                      <td className="px-6 py-4 font-medium text-[var(--foreground)] cursor-pointer" onClick={() => handleEdit(item)}>{item.nombre}</td>
+                      <td className="px-6 py-4 text-[var(--text-muted)] cursor-pointer" onClick={() => handleEdit(item)}>{item.descripcion || "—"}</td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-sm font-medium text-[var(--foreground)]">{item.orden}</span>
+                          <div className="flex flex-col -space-y-0.5">
+                            <button type="button" onClick={() => moveItem(item.id, "up")} className="rounded p-0.5 text-[var(--text-muted)] transition hover:text-[var(--foreground)] leading-none"><ArrowUp size="10" /></button>
+                            <button type="button" onClick={() => moveItem(item.id, "down")} className="rounded p-0.5 text-[var(--text-muted)] transition hover:text-[var(--foreground)] leading-none"><ArrowDown size="10" /></button>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${item.publico ? "bg-[var(--hover)]/15 text-[var(--hover)]" : "bg-[var(--background)] text-[var(--text-muted)]"}`}>{item.publico ? "Sí" : "No"}</span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${item.esta_activo ? "bg-[var(--hover)]/15 text-[var(--hover)]" : "bg-[var(--warning)]/15 text-[var(--warning)]"}`}>{item.esta_activo ? "Activo" : "Inactivo"}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1.5">
+                          <button type="button" onClick={() => handleEdit(item)} className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]" title="Editar"><PencilLine size={15} /></button>
+                          <button type="button" onClick={() => { setSelectedId(item.id); setIsDeleteOpen(true); }} className="rounded-lg p-2 text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]" title="Desactivar"><Trash2 size={15} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+        </>
+      )}
+
+      {/* Papelera */}
+      {mode === "list" && showInactive && (
+        <>
+          {inactiveItems.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-16">
+              <Trash2 size={32} className="text-[var(--text-muted)]" />
+              <p className="text-sm text-[var(--text-muted)]">No hay categorías en la papelera.</p>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-3xl border border-[var(--destructive-border)] bg-[var(--background-secondary)]">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border)] text-left">
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Descripción</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center">Orden</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center">Público</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {inactiveItems.map((item) => (
+                    <tr key={item.id} className="transition hover:bg-[var(--destructive-hover)]">
+                      <td className="px-6 py-4 font-medium text-[var(--foreground)]">{item.nombre}</td>
+                      <td className="px-6 py-4 text-[var(--text-muted)]">{item.descripcion || "—"}</td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="text-sm font-medium text-[var(--text-muted)]">{item.orden}</span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${item.publico ? "bg-[var(--hover)]/15 text-[var(--hover)]" : "bg-[var(--background)] text-[var(--text-muted)]"}`}>{item.publico ? "Sí" : "No"}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <button type="button" onClick={() => handleRestore(item.id)} className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--hover)]/10 hover:text-[var(--hover)]" title="Restaurar">
+                          <Undo2 size={15} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </>
       )}
 

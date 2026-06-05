@@ -1,13 +1,15 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Filter, Globe, Loader2, PencilLine, Plus, Search, ShieldCheck, Trash2, Undo2, UserCog, UserRound, Users, X, AlertCircle } from "lucide-react";
-import { validateRequired, validateEmailOptional, validatePhoneOptional, validatePassword, validateUrl } from "@/lib/validators";
+import { ArrowLeft, Eye, EyeOff, Filter, Globe, Loader2, PencilLine, Plus, Search, ShieldCheck, Trash2, Undo2, UserCog, UserRound, Users, X, AlertCircle } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { CloudinaryUpload } from "@/components/dashboard/cloudinary-upload";
+import { Toast } from "@/components/dashboard/toast";
+import type { ToastType } from "@/components/dashboard/toast";
 import { EmployeesService } from "@/services/employees.service";
 import type { Employee, EmployeeDraft, EmployeeFilter } from "@/types/employee";
+import { validateRequired, validateEmailOptional, validatePhoneOptional, validateUrl, validatePassword } from "@/lib/validators";
 
 const emptyDraft: EmployeeDraft = {
   nombres: "",
@@ -49,9 +51,14 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deactivateTarget, setDeactivateTarget] = useState<Employee | null>(null);
   const [saving, setSaving] = useState(false);
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<ToastType>("success");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const pageSize = 10;
   const [page, setPage] = useState(1);
@@ -145,6 +152,23 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
       setError(err instanceof Error ? err.message : "Error al desactivar");
     } finally {
       setIsDeleteOpen(false);
+    }
+  };
+
+  const handleDeactivateFromCard = async () => {
+    if (!deactivateTarget) return;
+    try {
+      await EmployeesService.remove(deactivateTarget.id);
+      setEmployees((prev) => prev.filter((e) => e.id !== deactivateTarget.id));
+      setToastMessage(`${deactivateTarget.name} ha sido desactivado.`);
+      setToastType("success");
+      setToastOpen(true);
+    } catch (err) {
+      setToastMessage(err instanceof Error ? err.message : "Error al desactivar");
+      setToastType("error");
+      setToastOpen(true);
+    } finally {
+      setDeactivateTarget(null);
     }
   };
 
@@ -295,10 +319,10 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
             <button
               type="button"
               onClick={() => { setShowInactive((v) => !v); setQuery(""); setPage(1); }}
-              className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+              className={`inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-4 py-2 text-sm font-semibold text-[var(--destructive)] transition ${
                 showInactive
-                  ? "border-[var(--destructive-border)] bg-[var(--destructive-hover)] text-[var(--destructive)]"
-                  : "border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--background)] hover:text-[var(--foreground)]"
+                  ? "bg-[var(--destructive-hover)]"
+                  : "hover:bg-[var(--destructive-hover)]"
               }`}
             >
               <Trash2 size={16} />
@@ -403,15 +427,15 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">
                           <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
                             employee.role === "admin"
-                              ? "bg-[var(--foreground)]/10 text-[var(--foreground)]"
+                              ? "bg-purple-500/10 text-purple-500"
                               : "bg-[var(--hover)]/10 text-[var(--hover)]"
                           }`}>
                             {employee.role}
                           </span>
                           <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                             employee.status === "Activo"
-                              ? "bg-[var(--hover)]/15 text-[var(--hover)]"
-                              : "bg-[var(--warning)]/15 text-[var(--warning)]"
+                              ? "bg-emerald-500/10 text-emerald-500"
+                              : "bg-[var(--destructive)]/10 text-[var(--destructive)]"
                           }`}>
                             {employee.status}
                           </span>
@@ -423,7 +447,7 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
                         {employee.specialties.map((specialty) => (
                           <span
                             key={specialty}
-                            className="rounded-full bg-[var(--background)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-muted)]"
+                            className="rounded-full bg-[var(--hover)]/10 px-2 py-0.5 text-[11px] font-medium text-[var(--hover)]"
                           >
                             {specialty}
                           </span>
@@ -440,7 +464,7 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
                             className="text-[var(--text-muted)] transition hover:text-[var(--foreground)]"
                             title="Instagram"
                           >
-                            <Globe size={14} />
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><line x1="18" y1="5.5" x2="18.01" y2="5.5"/></svg>
                           </a>
                         )}
                         {employee.facebook && (
@@ -451,7 +475,7 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
                             className="text-[var(--text-muted)] transition hover:text-[var(--foreground)]"
                             title="Facebook"
                           >
-                            <Globe size={14} />
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
                           </a>
                         )}
                         {employee.tiktok && (
@@ -462,7 +486,7 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
                             className="text-[var(--text-muted)] transition hover:text-[var(--foreground)]"
                             title="TikTok"
                           >
-                            <Globe size={14} />
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>
                           </a>
                         )}
                       </div>
@@ -497,6 +521,13 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
                         <ArrowLeft size={14} className="rotate-180" />
                         Perfil
                       </Link>
+                      <button
+                        type="button"
+                        onClick={() => setDeactivateTarget(employee)}
+                        className="flex shrink-0 items-center justify-center rounded-xl border border-[var(--destructive-border)] p-2 text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </>
                   )}
                 </div>
@@ -551,6 +582,15 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
                     </button>
                   )}
                 </div>
+                {mode === "edit" && selectedEmployee && (
+                  <div className="mt-4 w-full space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-5 text-center">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Creado</p>
+                    <p className="text-xs text-[var(--foreground)]">{formatDate(selectedEmployee.creadoEn)}</p>
+                    <div className="my-2 h-px bg-[var(--border)]" />
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Actualizado</p>
+                    <p className="text-xs text-[var(--foreground)]">{formatDate(selectedEmployee.actualizadoEn)}</p>
+                  </div>
+                )}
             </div>
 
             <div className="space-y-4">
@@ -632,41 +672,56 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
                     placeholder="@usuario o url"
                   />
                 </Field>
-                {mode === "edit" && selectedEmployee && (
-                  <>
-                    <Field label="Creado">
-                      <div className={inputClassName + " bg-[var(--background)] text-[var(--text-muted)]"}>
-                        {formatDate(selectedEmployee.creadoEn)}
-                      </div>
-                    </Field>
-                    <Field label="Actualizado">
-                      <div className={inputClassName + " bg-[var(--background)] text-[var(--text-muted)]"}>
-                        {formatDate(selectedEmployee.actualizadoEn)}
-                      </div>
-                    </Field>
-                  </>
-                )}
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label={`Clave ${mode === "edit" ? "(dejar en blanco para no cambiar)" : ""}`}>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    className={inputClassName}
-                    placeholder={mode === "create" ? "Clave de acceso" : "Nueva clave (opcional)"}
-                  />
-                </Field>
-                <Field label="Confirmar clave">
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    className={inputClassName}
-                    placeholder={mode === "create" ? "Repetir clave de acceso" : "Repetir nueva clave"}
-                  />
-                </Field>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                  <ShieldCheck size={18} className="text-[var(--text-muted)] shrink-0" />
+                  <div className="grid gap-2 flex-1 sm:grid-cols-2">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      className={inputClassName}
+                      placeholder={mode === "create" ? "Clave de acceso" : "Nueva clave (opcional)"}
+                      autoComplete="new-password"
+                    />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      className={inputClassName}
+                      placeholder={mode === "create" ? "Repetir clave" : "Repetir nueva clave"}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="shrink-0 text-[var(--text-muted)] transition hover:text-[var(--foreground)]"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                <div className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] shrink-0">Estado</span>
+                  <div className="flex rounded-xl bg-[var(--background-secondary)] p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setDraft((d) => ({ ...d, esta_activo: true }))}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${draft.esta_activo ? "bg-[var(--hover)] text-white" : "text-[var(--text-muted)]"}`}
+                    >
+                      Activo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDraft((d) => ({ ...d, esta_activo: false }))}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${!draft.esta_activo ? "bg-neutral-700 text-white" : "text-[var(--text-muted)]"}`}
+                    >
+                      Inactivo
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {passwordError && (
@@ -727,6 +782,22 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
         confirmLabel="Si, desactivar"
         onClose={() => setIsDeleteOpen(false)}
         onConfirm={handleDesactivate}
+      />
+
+      <ConfirmationModal
+        open={deactivateTarget !== null}
+        title="Desactivar empleado"
+        description={`${deactivateTarget?.name ?? ""} pasara a estado inactivo. Podras restaurarlo desde la papelera.`}
+        confirmLabel="Si, desactivar"
+        onClose={() => setDeactivateTarget(null)}
+        onConfirm={handleDeactivateFromCard}
+      />
+
+      <Toast
+        message={toastMessage}
+        type={toastType}
+        open={toastOpen}
+        onClose={() => setToastOpen(false)}
       />
     </>
   );

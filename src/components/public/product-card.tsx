@@ -46,15 +46,6 @@ export function ProductCard({
           : "bg-[var(--background-secondary)]"
       }`}
     >
-      <span
-        className={`pointer-events-none absolute bottom-6 right-6 font-black leading-none ${
-          featured ? "text-white/5" : "text-[var(--foreground)]/5"
-        }`}
-        style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "80px" }}
-      >
-        {String(index + 1).padStart(2, "0")}
-      </span>
-
       <div className="space-y-4">
         <p
           className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${
