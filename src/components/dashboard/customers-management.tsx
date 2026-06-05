@@ -83,6 +83,8 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
             dni: c.dni ?? "",
             fechaNacimiento: c.fechaNacimiento ?? "",
             estaActivo: c.estaActivo,
+            pin: "",
+            pinConfirm: "",
           })),
         );
       })
@@ -111,6 +113,8 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
             dni: (c.dni as string) ?? "",
             fechaNacimiento: (c.fecha_nacimiento as string) ?? "",
             estaActivo: false,
+            pin: "",
+            pinConfirm: "",
           })),
         );
       }

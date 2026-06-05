@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "cf:build": "npx @opennextjs/cloudflare build",
+    "cf:preview": "npx @opennextjs/cloudflare preview",
+    "cf:deploy": "npx @opennextjs/cloudflare deploy",
+    "cf:wrangler-deploy": "npx wrangler pages deploy .open-next",
+    "cf:dev": "npx wrangler pages dev .open-next --compatibility-flag=nodejs_compat"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
@@ -14,7 +19,7 @@
     "bcryptjs": "^3.0.3",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.7.0",
-    "next": "16.2.2",
+    "next": "^16.2.7",
     "postcss": "^8.5.8",
     "qrcode.react": "^4.2.0",
     "react": "19.2.4",
@@ -22,13 +27,15 @@
     "resend": "^6.12.4"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.19.11",
     "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.2",
+    "eslint-config-next": "^16.2.7",
     "tailwindcss": "^4.2.2",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.98.0"
   }
 }

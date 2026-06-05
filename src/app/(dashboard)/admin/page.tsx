@@ -1,4 +1,6 @@
 import { createServerSupabase } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
 import { CajaToggle } from "@/components/dashboard/caja-toggle";
 import { DashboardWidgets } from "@/components/dashboard/dashboard-widgets";
 
