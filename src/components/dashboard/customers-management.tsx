@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, ArrowLeft, Calendar, PencilLine, Phone, Search, Trash2, Undo2, UserRound, Users, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, Calendar, KeyRound, PencilLine, Phone, Search, Trash2, Undo2, UserRound, Users, X } from "lucide-react";
 import { validateRequired, validateEmailOptional, validatePhoneOptional, validateDniOptional } from "@/lib/validators";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
@@ -83,6 +83,8 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
             dni: c.dni ?? "",
             fechaNacimiento: c.fechaNacimiento ?? "",
             estaActivo: c.estaActivo,
+            pin: "",
+            pinConfirm: "",
           })),
         );
       })
@@ -111,6 +113,8 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
             dni: (c.dni as string) ?? "",
             fechaNacimiento: (c.fecha_nacimiento as string) ?? "",
             estaActivo: false,
+            pin: "",
+            pinConfirm: "",
           })),
         );
       }

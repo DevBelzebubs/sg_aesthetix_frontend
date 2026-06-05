@@ -35,9 +35,7 @@ export async function POST(request: Request) {
   );
   const authUsers = await listRes.json();
   const existingAuthUser = authUsers?.users?.[0];
-
   if (existingAuthUser?.id) {
-    // Ya existe → solo actualizar contraseña (sin email)
     await fetch(
       `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/users/${existingAuthUser.id}`,
       {
@@ -50,39 +48,10 @@ export async function POST(request: Request) {
         body: JSON.stringify({ password, email_confirm: true }),
       },
     );
-  } else {
-    // No existe → crear (sin email de confirmación)
-    const createRes = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/users`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: serviceKey,
-          Authorization: `Bearer ${serviceKey}`,
-        },
-        body: JSON.stringify({ email, password, email_confirm: true, user_metadata: { role: usuario.rol } }),
-      },
-    );
-    const createData = await createRes.json();
-    if (createData?.user?.id) {
-      await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/usuarios?id=eq.${usuario.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
-            Prefer: "return=minimal",
-          },
-          body: JSON.stringify({ auth_user_id: createData.user.id }),
-        },
-      );
-    }
+
+    return Response.json({ success: true, email });
   }
 
-  // Crear nuevo usuario Auth via admin API (sin enviar email)
   const createRes = await fetch(
     `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/users`,
     {
@@ -92,12 +61,7 @@ export async function POST(request: Request) {
         apikey: serviceKey,
         Authorization: `Bearer ${serviceKey}`,
       },
-      body: JSON.stringify({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: { role: usuario.rol },
-      }),
+      body: JSON.stringify({ email, password, email_confirm: true, user_metadata: { role: usuario.rol } }),
     },
   );
   const createData = await createRes.json();
@@ -107,7 +71,6 @@ export async function POST(request: Request) {
     return Response.json({ error: `No se pudo crear el usuario en Auth: ${JSON.stringify(createData)}` }, { status: 500 });
   }
 
-  // Vincular nuevo auth_user_id
   const patchRes = await fetch(
     `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/usuarios?id=eq.${usuario.id}`,
     {

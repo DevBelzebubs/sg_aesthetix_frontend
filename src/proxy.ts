@@ -1,8 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export async function proxy(req: NextRequest) {
-    let res = NextResponse.next({ request: req });
+export async function proxy(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,65 +11,28 @@ export async function proxy(req: NextRequest) {
     {
       cookies: {
         getAll() {
-          return req.cookies.getAll();
+          return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) =>
-            req.cookies.set(name, value)
+            request.cookies.set(name, value),
           );
-          res = NextResponse.next({ request: req });
+          supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            res.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options),
           );
         },
       },
-    }
+    },
   );
 
-  const { data: { session } } = await supabase.auth.getSession();
+  await supabase.auth.getSession();
 
-  const { pathname } = req.nextUrl;
-  const segments = pathname.split("/").filter(Boolean);
-  const slug = segments[0];
-  const section = segments[1];
-
-  const isLoginPage = section === "login";
-
-  // Con sesión en login → redirigir a su panel
-  if (session && isLoginPage) {
-    const { data: usuario } = await supabase
-      .from("usuarios")
-      .select("rol")
-      .eq("auth_user_id", session.user.id)
-      .single();
-
-    if (usuario?.rol === "admin") {
-      const url = req.nextUrl.clone();
-      url.pathname = `/admin`;
-      return NextResponse.redirect(url);
-    }
-
-    if (usuario?.rol === "empleado") {
-      const url = req.nextUrl.clone();
-      url.pathname = `/empleado`;
-      return NextResponse.redirect(url);
-    }
-  }
-
-  // Sin sesión en /admin o /empleado → login
-  if (!session && (pathname.startsWith("/admin") || pathname.startsWith("/empleado"))) {
-    const url = req.nextUrl.clone();
-    url.pathname = `/${slug}/login`;
-    return NextResponse.redirect(url);
-  }
-
-  return res;
+  return supabaseResponse;
 }
 
 export const config = {
   matcher: [
-    "/:slug((?!_next|favicon|api)[^/]+)/:section(login)/:path*",
-    "/admin/:path*",
-    "/empleado/:path*",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

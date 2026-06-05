@@ -6,6 +6,7 @@ import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { AppointmentsService, type AppointmentWithDetails } from "@/services/appointments.service";
 import { RewardsService } from "@/services/rewards.service";
+import { validateRequired } from "@/lib/validators";
 
 const emptyDraft = { hora_inicio: "", estado: "Pendiente", observaciones: "" };
 const inputClassName = "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
