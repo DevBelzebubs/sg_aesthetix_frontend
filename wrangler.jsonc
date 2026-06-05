@@ -3,9 +3,6 @@
   "compatibility_date": "2026-06-04",
   "compatibility_flags": ["nodejs_compat"],
   "pages_build_output_dir": ".open-next",
-  "build": {
-    "command": "npx @opennextjs/cloudflare build"
-  },
   "vars": {
     "NEXT_PUBLIC_SUPABASE_URL": "",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "",
