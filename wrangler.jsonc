@@ -1,13 +1,12 @@
 {
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "sgaesthetix",
+  "main": ".open-next/worker.js",
   "compatibility_date": "2026-06-04",
-  "compatibility_flags": ["nodejs_compat"],
-  "pages_build_output_dir": ".open-next",
-  "vars": {
-    "NEXT_PUBLIC_SUPABASE_URL": "",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "",
-    "SUPABASE_SERVICE_ROLE_KEY": "",
-    "RESEND_API_KEY": ""
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
   },
   "observability": {
     "enabled": true
