@@ -10,8 +10,9 @@
     "cf:build": "npx @opennextjs/cloudflare build",
     "cf:preview": "npx @opennextjs/cloudflare preview",
     "cf:deploy": "npx @opennextjs/cloudflare deploy",
-    "cf:wrangler-deploy": "npx wrangler pages deploy .open-next",
-    "cf:dev": "npx wrangler pages dev .open-next --compatibility-flag=nodejs_compat"
+    "cf:wrangler-deploy": "npx wrangler deploy",
+    "cf:dev": "npx wrangler dev",
+    "cf:create-r2-bucket": "npx wrangler r2 bucket create sgaesthetix-opennext-cache"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
