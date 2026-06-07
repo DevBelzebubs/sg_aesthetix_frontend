@@ -205,7 +205,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="relative z-10 flex w-72 flex-col bg-[var(--background-secondary)] p-4 shadow-xl">
+          <div className="relative z-10 flex h-full w-72 flex-col bg-[var(--background-secondary)] p-4 shadow-xl overflow-y-auto">
             <div className="mb-4 flex items-center justify-between">
               <p className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-widest">Menú</p>
               <button
