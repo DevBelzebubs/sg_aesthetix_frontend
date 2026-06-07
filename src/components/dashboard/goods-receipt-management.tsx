@@ -26,12 +26,14 @@ type GoodsReceipt = {
 type GoodsReceiptDraft = {
   producto_id: string;
   cantidad: number;
+  color: string;
   motivo: string;
 };
 
 const emptyDraft: GoodsReceiptDraft = {
   producto_id: "",
   cantidad: 1,
+  color: "",
   motivo: "",
 };
 
@@ -60,11 +62,6 @@ export function GoodsReceiptManagement({ totalIngresos, totalUnidades }: Props) 
 
   const pageSize = 10;
 
-  useEffect(() => {
-    fetchIngresos();
-    fetchProductos();
-  }, []);
-
   async function fetchIngresos() {
     setLoading(true);
     const { data } = await supabase
@@ -84,6 +81,11 @@ export function GoodsReceiptManagement({ totalIngresos, totalUnidades }: Props) 
     setProductos((data as { id: string; nombre: string }[]) ?? []);
   }
 
+  useEffect(() => {
+    fetchIngresos();
+    fetchProductos();
+  }, []);
+
   const filteredItems = useMemo(() => {
     return items.filter((i) =>
       i.productos?.nombre?.toLowerCase().includes(query.toLowerCase()) ||
@@ -97,6 +99,7 @@ export function GoodsReceiptManagement({ totalIngresos, totalUnidades }: Props) 
 
   const handleCreate = () => {
     setDraft(emptyDraft);
+    setFieldErrors({});
     setMode("create");
   };
 
@@ -126,11 +129,16 @@ export function GoodsReceiptManagement({ totalIngresos, totalUnidades }: Props) 
     const stockAnterior = (product as { stock_actual: number } | null)?.stock_actual ?? 0;
     const stockNuevo = stockAnterior + draft.cantidad;
 
+    const motivoCompleto = [
+      draft.color ? `Color: ${draft.color}` : null,
+      draft.motivo || null,
+    ].filter(Boolean).join(" · ");
+
     await supabase.from("movimientos_inventario").insert({
       producto_id: draft.producto_id,
       tipo: "ingreso",
       cantidad: draft.cantidad,
-      motivo: draft.motivo || null,
+      motivo: motivoCompleto || null,
       stock_anterior: stockAnterior,
       stock_nuevo: stockNuevo,
       referencia_tipo: "compra",
@@ -239,64 +247,63 @@ export function GoodsReceiptManagement({ totalIngresos, totalUnidades }: Props) 
 
       {mode === "list" && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {paginatedItems.length === 0 ? (
-              <div className="col-span-full flex flex-col items-center gap-3 py-16">
-                <Package size={32} className="text-[var(--text-muted)]" />
-                <p className="text-sm text-[var(--text-muted)]">
-                  {query
-                    ? "No se encontraron ingresos con ese filtro."
-                    : "No hay ingresos registrados."}
-                </p>
+          {paginatedItems.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-16">
+              <Package size={32} className="text-[var(--text-muted)]" />
+              <p className="text-sm text-[var(--text-muted)]">
+                {query
+                  ? "No se encontraron ingresos con ese filtro."
+                  : "No hay ingresos registrados."}
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)]">
+              <div className="overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]">
+                <table className="w-full text-sm min-w-[750px]">
+                  <thead>
+                    <tr className="border-b border-[var(--border)] text-left">
+                      <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Producto</th>
+                      <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Cantidad</th>
+                      <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Stock Ant.</th>
+                      <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Stock Nuevo</th>
+                      <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Motivo</th>
+                      <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Fecha</th>
+                      <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Usuario</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)]">
+                    {paginatedItems.map((item) => (
+                      <tr key={item.id} className="transition hover:bg-[var(--background)]">
+                        <td className="px-5 py-4 font-medium text-[var(--foreground)] whitespace-nowrap">
+                          {item.productos?.nombre ?? "Sin nombre"}
+                        </td>
+                        <td className="px-5 py-4 text-center text-[var(--foreground)] font-medium whitespace-nowrap">
+                          {item.cantidad}
+                        </td>
+                        <td className="px-5 py-4 text-center text-[var(--text-muted)] whitespace-nowrap">
+                          {item.stock_anterior}
+                        </td>
+                        <td className="px-5 py-4 text-center text-[var(--foreground)] font-medium whitespace-nowrap">
+                          {item.stock_nuevo}
+                        </td>
+                        <td className="px-5 py-4 text-[var(--text-muted)] max-w-[250px] truncate">
+                          {item.motivo || "—"}
+                        </td>
+                        <td className="px-5 py-4 text-[var(--text-muted)] whitespace-nowrap">
+                          {formatDate(item.creado_en)}
+                        </td>
+                        <td className="px-5 py-4 text-[var(--text-muted)] whitespace-nowrap">
+                          {item.usuarios
+                            ? `${item.usuarios.nombres} ${item.usuarios.apellidos}`
+                            : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ) : (
-              paginatedItems.map((item) => (
-                <article
-                  key={item.id}
-                  className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--background)] text-[var(--foreground)]">
-                      <Package size={20} />
-                    </div>
-                  </div>
-
-                  <div className="mt-3">
-                    <p className="text-base font-semibold text-[var(--foreground)]">
-                      {item.productos?.nombre ?? "Sin nombre"}
-                    </p>
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[var(--text-muted)]">
-                    <span>
-                      {item.cantidad} unidad(es)
-                    </span>
-                    <span className="font-medium text-[var(--foreground)]">
-                      Stock: {item.stock_anterior} &rarr; {item.stock_nuevo}
-                    </span>
-                  </div>
-
-                  {item.motivo && (
-                    <div className="mt-2 text-sm text-[var(--text-muted)]">
-                      {item.motivo}
-                    </div>
-                  )}
-
-                  <div className="mt-3 border-t border-[var(--border)] pt-3 text-xs text-[var(--text-muted)]">
-                    <p>
-                      {formatDate(item.creado_en)}
-                      {item.usuarios && (
-                        <>
-                          {" "}&middot;{" "}
-                          {item.usuarios.nombres} {item.usuarios.apellidos}
-                        </>
-                      )}
-                    </p>
-                  </div>
-                </article>
-              ))
-            )}
-          </div>
+            </div>
+          )}
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </>
       )}
@@ -347,6 +354,16 @@ export function GoodsReceiptManagement({ totalIngresos, totalUnidades }: Props) 
                   setDraft((d) => ({ ...d, cantidad: Number(e.target.value) }));
                   setFieldErrors((prev) => { const next = { ...prev }; delete next.cantidad; return next; });
                 }}
+              />
+            </Field>
+            <Field label="Color">
+              <input
+                className={inputClassName}
+                value={draft.color}
+                onChange={(e) => {
+                  setDraft((d) => ({ ...d, color: e.target.value }));
+                }}
+                placeholder="Ej. Rojo, Negro, Azul"
               />
             </Field>
             <Field label="Motivo" error={fieldErrors.motivo}>

@@ -9,7 +9,6 @@ import {
   AlertTriangle,
   MessageSquareText,
   Search,
-  X,
   ChevronRight,
   Send,
   Eye,
@@ -220,91 +219,105 @@ export function ComplaintsManagement() {
             </label>
           </div>
 
-          <div className="space-y-3">
-            {paginated.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-16">
-                <BookOpen size={32} className="text-[var(--text-muted)]" />
-                <p className="text-sm text-[var(--text-muted)]">
-                  {query || estadoFilter !== "todas"
-                    ? "No se encontraron reclamos con esos filtros."
-                    : "No hay reclamos registrados."}
-                </p>
-              </div>
-            ) : (
-              paginated.map((complaint) => {
-                const diasTranscurridos = daysBetween(
-                  new Date(complaint.creadoEn!),
-                  new Date(),
-                );
-                const vencido = complaint.estado === "pendiente" && diasTranscurridos > 15;
+          <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)]">
+            <div className="overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]">
+              {paginated.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 py-16">
+                  <BookOpen size={32} className="text-[var(--text-muted)]" />
+                  <p className="text-sm text-[var(--text-muted)]">
+                    {query || estadoFilter !== "todas"
+                      ? "No se encontraron reclamos con esos filtros."
+                      : "No hay reclamos registrados."}
+                  </p>
+                </div>
+              ) : (
+                <table className="w-full text-sm min-w-[900px]">
+                  <thead>
+                    <tr className="border-b border-[var(--border)] text-left">
+                      <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Cliente</th>
+                      <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Contacto</th>
+                      <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Tipo</th>
+                      <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Estado</th>
+                      <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Descripción</th>
+                      <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Plazo</th>
+                      <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Fecha</th>
+                      <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap w-16"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)]">
+                    {paginated.map((complaint) => {
+                      const diasTranscurridos = daysBetween(
+                        new Date(complaint.creadoEn!),
+                        new Date(),
+                      );
+                      const vencido = complaint.estado === "pendiente" && diasTranscurridos > 15;
 
-                return (
-                  <article
-                    key={complaint.id}
-                    className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                      return (
+                        <tr key={complaint.id} className="transition hover:bg-[var(--background)]">
+                          <td className="px-5 py-4 font-medium text-[var(--foreground)] whitespace-nowrap">
+                            {complaint.nombres} {complaint.apellidos}
+                          </td>
+                          <td className="px-5 py-4 text-[var(--text-muted)] max-w-[200px] truncate">
+                            <div className="text-xs space-y-0.5">
+                              <div>{complaint.email}</div>
+                              {complaint.telefono && <div>{complaint.telefono}</div>}
+                              {complaint.dni && <div>DNI: {complaint.dni}</div>}
+                            </div>
+                          </td>
+                          <td className="px-5 py-4 text-center whitespace-nowrap">
+                            <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase ${
+                              complaint.tipo === "reclamo"
+                                ? "bg-[var(--destructive-hover)] text-[var(--destructive)]"
+                                : "bg-[var(--hover)]/10 text-[var(--hover)]"
+                            }`}>
+                              {complaint.tipo}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 text-center whitespace-nowrap">
+                            <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
                               complaint.estado === "pendiente"
                                 ? "bg-[var(--warning)]/15 text-[var(--warning)]"
                                 : complaint.estado === "respondido"
                                   ? "bg-[var(--hover)]/15 text-[var(--hover)]"
                                   : "bg-[var(--text-muted)]/15 text-[var(--text-muted)]"
-                            }`}
-                          >
-                            {complaint.estado}
-                          </span>
-                          <span
-                            className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase ${
-                              complaint.tipo === "reclamo"
-                                ? "bg-[var(--destructive-hover)] text-[var(--destructive)]"
-                                : "bg-[var(--hover)]/10 text-[var(--hover)]"
-                            }`}
-                          >
-                            {complaint.tipo}
-                          </span>
-                          {vencido && (
-                            <span className="flex items-center gap-1 rounded-full bg-[var(--destructive-hover)] px-2.5 py-0.5 text-[10px] font-semibold text-[var(--destructive)]">
-                              <AlertTriangle size={10} />
-                              Vencido
+                            }`}>
+                              {complaint.estado}
                             </span>
-                          )}
-                        </div>
-                        <p className="mt-2 truncate text-sm font-semibold text-[var(--foreground)]">
-                          {complaint.nombres} {complaint.apellidos}
-                        </p>
-                        <p className="mt-0.5 text-xs text-[var(--text-muted)]">
-                          {complaint.email}
-                          {complaint.telefono && ` · ${complaint.telefono}`}
-                          {complaint.dni && ` · DNI: ${complaint.dni}`}
-                        </p>
-                        <p className="mt-2 line-clamp-2 text-sm text-[var(--text-muted)]">
-                          {complaint.descripcion}
-                        </p>
-                        <div className="mt-2 flex items-center gap-3 text-[11px] text-[var(--text-muted)]">
-                          <span>{formatDate(complaint.creadoEn!)}</span>
-                          {complaint.estado === "pendiente" && (
-                            <span className={vencido ? "text-[var(--destructive)] font-semibold" : ""}>
-                              {diasTranscurridos}/15 días hábiles
+                            {vencido && (
+                              <span className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-[var(--destructive-hover)] px-2 py-0.5 text-[10px] font-semibold text-[var(--destructive)]">
+                                <AlertTriangle size={10} />
+                                Vencido
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-5 py-4 text-[var(--text-muted)] max-w-[250px] truncate">
+                            {complaint.descripcion}
+                          </td>
+                          <td className="px-5 py-4 text-center whitespace-nowrap">
+                            <span className={`text-xs font-semibold ${vencido ? "text-[var(--destructive)]" : "text-[var(--text-muted)]"}`}>
+                              {diasTranscurridos}/15
                             </span>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleViewDetail(complaint)}
-                        className="shrink-0 rounded-xl border border-[var(--border)] p-2.5 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]"
-                      >
-                        <Eye size={16} />
-                      </button>
-                    </div>
-                  </article>
-                );
-              })
-            )}
+                          </td>
+                          <td className="px-5 py-4 text-[var(--text-muted)] whitespace-nowrap text-xs">
+                            {formatDate(complaint.creadoEn!).split(",")[0]}
+                          </td>
+                          <td className="px-5 py-4 text-center whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => handleViewDetail(complaint)}
+                              className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]"
+                              title="Ver detalle"
+                            >
+                              <Eye size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </>

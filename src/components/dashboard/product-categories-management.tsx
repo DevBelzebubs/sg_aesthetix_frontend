@@ -244,47 +244,49 @@ export default function ProductCategoriesManagement() {
             </div>
           ) : (
             <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)]">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border)] text-left">
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Descripción</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center">Orden</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center">Público</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center">Estado</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {paginatedItems.map((item) => (
-                    <tr key={item.id} className="transition hover:bg-[var(--background)]">
-                      <td className="px-6 py-4 font-medium text-[var(--foreground)] cursor-pointer" onClick={() => handleEdit(item)}>{item.nombre}</td>
-                      <td className="px-6 py-4 text-[var(--text-muted)] cursor-pointer" onClick={() => handleEdit(item)}>{item.descripcion || "—"}</td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <span className="text-sm font-medium text-[var(--foreground)]">{item.orden}</span>
-                          <div className="flex flex-col -space-y-0.5">
-                            <button type="button" onClick={() => moveItem(item.id, "up")} className="rounded p-0.5 text-[var(--text-muted)] transition hover:text-[var(--foreground)] leading-none"><ArrowUp size="10" /></button>
-                            <button type="button" onClick={() => moveItem(item.id, "down")} className="rounded p-0.5 text-[var(--text-muted)] transition hover:text-[var(--foreground)] leading-none"><ArrowDown size="10" /></button>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${item.publico ? "bg-[var(--hover)]/15 text-[var(--hover)]" : "bg-[var(--background)] text-[var(--text-muted)]"}`}>{item.publico ? "Sí" : "No"}</span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${item.esta_activo ? "bg-[var(--hover)]/15 text-[var(--hover)]" : "bg-[var(--warning)]/15 text-[var(--warning)]"}`}>{item.esta_activo ? "Activo" : "Inactivo"}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-1.5">
-                          <button type="button" onClick={() => handleEdit(item)} className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]" title="Editar"><PencilLine size={15} /></button>
-                          <button type="button" onClick={() => { setSelectedId(item.id); setIsDeleteOpen(true); }} className="rounded-lg p-2 text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]" title="Desactivar"><Trash2 size={15} /></button>
-                        </div>
-                      </td>
+              <div className="overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]">
+                <table className="w-full text-sm min-w-[700px]">
+                  <thead>
+                    <tr className="border-b border-[var(--border)] text-left">
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Nombre</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Descripción</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Orden</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Público</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Estado</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)]">
+                    {paginatedItems.map((item) => (
+                      <tr key={item.id} className="transition hover:bg-[var(--background)]">
+                        <td className="px-6 py-4 font-medium text-[var(--foreground)] cursor-pointer whitespace-nowrap" onClick={() => handleEdit(item)}>{item.nombre}</td>
+                        <td className="px-6 py-4 text-[var(--text-muted)] cursor-pointer" onClick={() => handleEdit(item)}>{item.descripcion || "—"}</td>
+                        <td className="px-6 py-4 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1">
+                            <span className="text-sm font-medium text-[var(--foreground)]">{item.orden}</span>
+                            <div className="flex flex-col -space-y-0.5">
+                              <button type="button" onClick={() => moveItem(item.id, "up")} className="rounded p-0.5 text-[var(--text-muted)] transition hover:text-[var(--foreground)] leading-none"><ArrowUp size="10" /></button>
+                              <button type="button" onClick={() => moveItem(item.id, "down")} className="rounded p-0.5 text-[var(--text-muted)] transition hover:text-[var(--foreground)] leading-none"><ArrowDown size="10" /></button>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center whitespace-nowrap">
+                          <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${item.publico ? "bg-[var(--hover)]/15 text-[var(--hover)]" : "bg-[var(--background)] text-[var(--text-muted)]"}`}>{item.publico ? "Sí" : "No"}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center whitespace-nowrap">
+                          <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${item.esta_activo ? "bg-[var(--hover)]/15 text-[var(--hover)]" : "bg-[var(--warning)]/15 text-[var(--warning)]"}`}>{item.esta_activo ? "Activo" : "Inactivo"}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <button type="button" onClick={() => handleEdit(item)} className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]" title="Editar"><PencilLine size={15} /></button>
+                            <button type="button" onClick={() => { setSelectedId(item.id); setIsDeleteOpen(true); }} className="rounded-lg p-2 text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]" title="Desactivar"><Trash2 size={15} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
@@ -301,36 +303,38 @@ export default function ProductCategoriesManagement() {
             </div>
           ) : (
             <div className="overflow-hidden rounded-3xl border border-[var(--destructive-border)] bg-[var(--background-secondary)]">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border)] text-left">
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Descripción</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center">Orden</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center">Público</th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {inactiveItems.map((item) => (
-                    <tr key={item.id} className="transition hover:bg-[var(--destructive-hover)]">
-                      <td className="px-6 py-4 font-medium text-[var(--foreground)]">{item.nombre}</td>
-                      <td className="px-6 py-4 text-[var(--text-muted)]">{item.descripcion || "—"}</td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="text-sm font-medium text-[var(--text-muted)]">{item.orden}</span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${item.publico ? "bg-[var(--hover)]/15 text-[var(--hover)]" : "bg-[var(--background)] text-[var(--text-muted)]"}`}>{item.publico ? "Sí" : "No"}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <button type="button" onClick={() => handleRestore(item.id)} className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--hover)]/10 hover:text-[var(--hover)]" title="Restaurar">
-                          <Undo2 size={15} />
-                        </button>
-                      </td>
+              <div className="overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]">
+                <table className="w-full text-sm min-w-[600px]">
+                  <thead>
+                    <tr className="border-b border-[var(--border)] text-left">
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Nombre</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Descripción</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Orden</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Público</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)]">
+                    {inactiveItems.map((item) => (
+                      <tr key={item.id} className="transition hover:bg-[var(--destructive-hover)]">
+                        <td className="px-6 py-4 font-medium text-[var(--foreground)] whitespace-nowrap">{item.nombre}</td>
+                        <td className="px-6 py-4 text-[var(--text-muted)]">{item.descripcion || "—"}</td>
+                        <td className="px-6 py-4 text-center whitespace-nowrap">
+                          <span className="text-sm font-medium text-[var(--text-muted)]">{item.orden}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center whitespace-nowrap">
+                          <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${item.publico ? "bg-[var(--hover)]/15 text-[var(--hover)]" : "bg-[var(--background)] text-[var(--text-muted)]"}`}>{item.publico ? "Sí" : "No"}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button type="button" onClick={() => handleRestore(item.id)} className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--hover)]/10 hover:text-[var(--hover)]" title="Restaurar">
+                            <Undo2 size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </>
