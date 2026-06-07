@@ -1046,7 +1046,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
       {mode === "list" && (
         <>
           <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)]">
-            <div className="overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]">
+            <div className="overflow-x-auto touch-pan-x [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]">
               {paginatedSales.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-16">
                   <FileText size={32} className="text-[var(--text-muted)]" />
@@ -1057,10 +1057,9 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
                   </p>
                 </div>
               ) : (
-                <table className="w-full text-sm min-w-[1000px]">
+                <table className="w-full text-sm min-w-[900px]">
                   <thead>
                     <tr className="border-b border-[var(--border)] text-left">
-                      <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap w-10">#</th>
                       <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Cliente</th>
                       <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Tipo</th>
                       <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Fecha</th>
@@ -1070,21 +1069,17 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
                       <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Método</th>
                       <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Puntos</th>
                       <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Estado</th>
-                      <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Observaciones</th>
+                      <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap w-[300px]">Observaciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border)]">
                     {paginatedSales.map((sale, idx) => {
-                      const numero = (page - 1) * pageSize + idx + 1;
                       const nombreCliente = sale.clientes
                         ? `${sale.clientes.nombres} ${sale.clientes.apellidos}`
                         : "Cliente ocasional";
 
                       return (
                         <tr key={sale.id} className="transition hover:bg-[var(--background)]">
-                          <td className="px-4 py-4 text-center text-[var(--text-muted)] text-xs font-medium whitespace-nowrap">
-                            {numero}
-                          </td>
                           <td className="px-4 py-4 font-medium text-[var(--foreground)] whitespace-nowrap">
                             {nombreCliente}
                           </td>
@@ -1124,7 +1119,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
                               {getStatusLabel(sale.estado)}
                             </span>
                           </td>
-                          <td className="px-4 py-4 min-w-[180px]">
+                          <td className="px-4 py-4 max-w-[300px] w-[300px] whitespace-normal break-words leading-relaxed">
                             {editingObs === sale.id ? (
                               <div className="space-y-1.5">
                                 <textarea
@@ -1144,16 +1139,16 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
                               </div>
                             ) : (
                               <div className="group flex items-start gap-1">
-                                <span className="text-xs text-[var(--text-muted)] line-clamp-2 flex-1">
+                                 <span className="text-xs text-[var(--text-muted)] line-clamp-3 flex-1">
                                   {sale.observaciones || "—"}
                                 </span>
-                                <button
-                                  onClick={() => { setEditingObs(sale.id); setEditObsText(sale.observaciones || ""); }}
-                                  className="shrink-0 rounded p-0.5 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition hover:text-[var(--foreground)]"
-                                  title="Editar observación"
-                                >
-                                  <FileText size={11} />
-                                </button>
+                                 <button
+                                   onClick={() => { setEditingObs(sale.id); setEditObsText(sale.observaciones || ""); }}
+                                   className="shrink-0 rounded p-1 text-[var(--text-muted)] opacity-70 hover:opacity-100 transition hover:text-[var(--foreground)] hover:bg-[var(--background)]"
+                                   title="Editar observación"
+                                 >
+                                   <FileText size={16} />
+                                 </button>
                               </div>
                             )}
                           </td>

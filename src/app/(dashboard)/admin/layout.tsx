@@ -225,7 +225,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <aside className="hidden h-fit rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-4 shadow-sm lg:block lg:sticky lg:top-6">
           <Sidebar />
         </aside>
-        <main className="mx-auto w-full max-w-[1400px] space-y-6">{children}</main>
+        <main className="mx-auto w-full min-w-0 space-y-6">{children}</main>
       </div>
     </div>
   );

@@ -258,7 +258,7 @@ export function GoodsReceiptManagement({ totalIngresos, totalUnidades }: Props) 
             </div>
           ) : (
             <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)]">
-              <div className="overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]">
+              <div className="overflow-x-auto touch-pan-x [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]">
                 <table className="w-full text-sm min-w-[750px]">
                   <thead>
                     <tr className="border-b border-[var(--border)] text-left">

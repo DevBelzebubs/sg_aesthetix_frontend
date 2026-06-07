@@ -248,17 +248,17 @@ export default async function AdminHomePage() {
   return (
     <section className="space-y-6">
       <header className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-sm text-[var(--text-muted)]">Bienvenido de nuevo</p>
-            <h1 className="mt-1 text-3xl font-bold text-[var(--foreground)]">
+            <h1 className="mt-1 text-2xl font-bold text-[var(--foreground)] sm:text-3xl">
               Resumen del negocio
             </h1>
             <p className="mt-2 text-sm text-[var(--text-muted)]">
               Esto es lo que importa hoy.
             </p>
           </div>
-          <div className="shrink-0 w-64">
+          <div className="w-full sm:w-64 sm:shrink-0">
             <CajaToggle />
           </div>
         </div>

@@ -348,59 +348,61 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
             </div>
           ) : (
             <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)]">
-              <table className="w-full text-sm">
-                 <thead>
-                   <tr className="border-b border-[var(--border)] text-left">
-                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
-                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden md:table-cell">Teléfono</th>
-                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">Correo</th>
-                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">DNI</th>
-                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden xl:table-cell">Nacimiento</th>
-                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
-                   </tr>
-                 </thead>
-                 <tbody className="divide-y divide-[var(--border)]">
-                   {paginatedCustomers.map((customer, i) => (
-                     <tr key={customer.id} className="transition hover:bg-[var(--background)]">
-                       <td className="px-6 py-4 font-medium text-[var(--foreground)]">{customer.nombres} {customer.apellidos}</td>
-                      <td className="px-6 py-4 text-[var(--text-muted)] hidden md:table-cell">{customer.phone || "—"}</td>
-                      <td className="px-6 py-4 text-[var(--text-muted)] hidden lg:table-cell truncate max-w-[180px]">{customer.email || "—"}</td>
-                      <td className="px-6 py-4 text-[var(--text-muted)] hidden lg:table-cell tabular-nums">{customer.dni || "—"}</td>
-                      <td className="px-6 py-4 text-[var(--text-muted)] hidden xl:table-cell">
-                        {customer.fechaNacimiento ? new Date(customer.fechaNacimiento).toLocaleDateString("es-PE") : "—"}
-                      </td>
-                       <td className="px-6 py-4">
-                         <div className="flex items-center gap-1.5">
-                           <button
-                             type="button"
-                             onClick={() => handleEdit(customer)}
-                             className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]"
-                             title="Editar"
-                           >
-                             <PencilLine size={15} />
-                           </button>
-                           <button
-                             type="button"
-                             onClick={() => setPinResetTarget(customer)}
-                             className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-amber-500"
-                             title="Resetear PIN"
-                           >
-                             <KeyRound size={15} />
-                           </button>
-                           <button
-                             type="button"
-                             onClick={() => { setSelectedId(customer.id); setIsDeleteConfirmOpen(true); }}
-                             className="rounded-lg p-2 text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]"
-                             title="Desactivar"
-                           >
-                             <Trash2 size={15} />
-                           </button>
-                         </div>
-                       </td>
+              <div className="overflow-x-auto touch-pan-x">
+                <table className="w-full text-sm min-w-[900px]">
+                  <thead>
+                    <tr className="border-b border-[var(--border)] text-left">
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Teléfono</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Correo</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">DNI</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nacimiento</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)]">
+                    {paginatedCustomers.map((customer, i) => (
+                      <tr key={customer.id} className="transition hover:bg-[var(--background)]">
+                        <td className="px-6 py-4 font-medium text-[var(--foreground)] whitespace-nowrap">{customer.nombres} {customer.apellidos}</td>
+                        <td className="px-6 py-4 text-[var(--text-muted)] whitespace-nowrap">{customer.phone || "—"}</td>
+                        <td className="px-6 py-4 text-[var(--text-muted)] truncate max-w-[180px]">{customer.email || "—"}</td>
+                        <td className="px-6 py-4 text-[var(--text-muted)] tabular-nums whitespace-nowrap">{customer.dni || "—"}</td>
+                        <td className="px-6 py-4 text-[var(--text-muted)] whitespace-nowrap">
+                          {customer.fechaNacimiento ? new Date(customer.fechaNacimiento).toLocaleDateString("es-PE") : "—"}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleEdit(customer)}
+                              className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]"
+                              title="Editar"
+                            >
+                              <PencilLine size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPinResetTarget(customer)}
+                              className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-amber-500"
+                              title="Resetear PIN"
+                            >
+                              <KeyRound size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setSelectedId(customer.id); setIsDeleteConfirmOpen(true); }}
+                              className="rounded-lg p-2 text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]"
+                              title="Desactivar"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
@@ -419,38 +421,40 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
             </div>
           ) : (
             <div className="overflow-hidden rounded-3xl border border-[var(--destructive-border)] bg-[var(--background-secondary)]">
-              <table className="w-full text-sm">
-                 <thead>
-                   <tr className="border-b border-[var(--border)] text-left">
-                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
-                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden md:table-cell">Teléfono</th>
-                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">Correo</th>
-                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hidden lg:table-cell">DNI</th>
-                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
-                   </tr>
-                 </thead>
-                 <tbody className="divide-y divide-[var(--border)]">
-                   {paginatedInactive.map((customer, i) => (
-                     <tr key={customer.id} className="transition hover:bg-[var(--destructive-hover)]">
-                       <td className="px-6 py-4 font-medium text-[var(--foreground)]">{customer.nombres} {customer.apellidos}</td>
-                      <td className="px-6 py-4 text-[var(--text-muted)] hidden md:table-cell">{customer.phone || "—"}</td>
-                      <td className="px-6 py-4 text-[var(--text-muted)] hidden lg:table-cell truncate max-w-[180px]">{customer.email || "—"}</td>
-                      <td className="px-6 py-4 text-[var(--text-muted)] hidden lg:table-cell tabular-nums">{customer.dni || "—"}</td>
-                      <td className="px-6 py-4">
-                        <button
-                          type="button"
-                          onClick={() => handleRestore(customer.id)}
-                          className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--hover)]/10 hover:text-[var(--hover)]"
-                          title="Restaurar"
-                        >
-                          <Undo2 size={15} />
-                        </button>
-                      </td>
+              <div className="overflow-x-auto touch-pan-x">
+                <table className="w-full text-sm min-w-[700px]">
+                  <thead>
+                    <tr className="border-b border-[var(--border)] text-left">
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Teléfono</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Correo</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">DNI</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
                     </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)]">
+                    {paginatedInactive.map((customer, i) => (
+                      <tr key={customer.id} className="transition hover:bg-[var(--destructive-hover)]">
+                        <td className="px-6 py-4 font-medium text-[var(--foreground)] whitespace-nowrap">{customer.nombres} {customer.apellidos}</td>
+                        <td className="px-6 py-4 text-[var(--text-muted)] whitespace-nowrap">{customer.phone || "—"}</td>
+                        <td className="px-6 py-4 text-[var(--text-muted)] truncate max-w-[180px]">{customer.email || "—"}</td>
+                        <td className="px-6 py-4 text-[var(--text-muted)] tabular-nums whitespace-nowrap">{customer.dni || "—"}</td>
+                        <td className="px-6 py-4">
+                          <button
+                            type="button"
+                            onClick={() => handleRestore(customer.id)}
+                            className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--hover)]/10 hover:text-[var(--hover)]"
+                            title="Restaurar"
+                          >
+                            <Undo2 size={15} />
+                          </button>
+                        </td>
+                      </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+          </div>
           )}
           <Pagination page={page} totalPages={totalPagesInactive} onPageChange={setPage} />
         </>

@@ -220,7 +220,7 @@ export function ComplaintsManagement() {
           </div>
 
           <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)]">
-            <div className="overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]">
+            <div className="overflow-x-auto touch-pan-x [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]">
               {paginated.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-16">
                   <BookOpen size={32} className="text-[var(--text-muted)]" />
