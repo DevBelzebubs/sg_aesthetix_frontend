@@ -68,3 +68,27 @@ export async function sendNewClientPinEmail(toEmail: string, nombres: string, pi
     });
   } catch {}
 }
+
+export async function sendVerificationEmail(toEmail: string, nombres: string, code: string) {
+  try {
+    await fetch("/api/email/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: toEmail,
+        subject: "Código de verificación - Aesthetix",
+        html: `
+          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+            <h2 style="color:#111">Verifica tu cuenta, ${nombres}</h2>
+            <p>Gracias por registrarte en <strong>Aesthetix</strong>.</p>
+            <p>Tu código de verificación es:</p>
+            <div style="background:#f5f5f5;padding:16px;border-radius:8px;text-align:center;margin:16px 0">
+              <span style="font-size:28px;font-weight:bold;letter-spacing:8px;color:#111">${code}</span>
+            </div>
+            <p>Ingresa este código en la aplicación para completar tu registro.</p>
+            <p style="color:#666;font-size:12px">Si no creaste esta cuenta, ignora este mensaje.</p>
+          </div>`,
+      }),
+    });
+  } catch {}
+}

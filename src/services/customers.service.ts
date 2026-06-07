@@ -20,6 +20,8 @@ function mapRowToCustomer(row: Record<string, unknown>): Customer {
     intentosFallidos: (row.intentos_fallidos as number) ?? 0,
     bloqueadoHasta: row.bloqueado_hasta as string | undefined,
     emailConfirmado: (row.email_confirmado as boolean) ?? false,
+    codigoVerificacion: row.codigo_verificacion as string | undefined,
+    codigoExpiracion: row.codigo_expiracion as string | undefined,
   };
 }
 
@@ -128,6 +130,8 @@ export const CustomersService = {
     if (data.intentosFallidos !== undefined) updateData.intentos_fallidos = data.intentosFallidos;
     if (data.bloqueadoHasta !== undefined) updateData.bloqueado_hasta = data.bloqueadoHasta;
     if (data.emailConfirmado !== undefined) updateData.email_confirmado = data.emailConfirmado;
+    if (data.codigoVerificacion !== undefined) updateData.codigo_verificacion = data.codigoVerificacion;
+    if (data.codigoExpiracion !== undefined) updateData.codigo_expiracion = data.codigoExpiracion;
 
     const { data: row, error } = await supabase
       .from("clientes")
@@ -154,6 +158,42 @@ export const CustomersService = {
     const { error } = await supabase
       .from("clientes")
       .update({ email_confirmado: true })
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+  },
+
+  async saveVerificationCode(id: string, code: string): Promise<void> {
+    const supabase = createClient();
+    const expiracion = new Date(Date.now() + 15 * 60000).toISOString(); // 15 minutos
+    const { error } = await supabase
+      .from("clientes")
+      .update({ codigo_verificacion: code, codigo_expiracion: expiracion })
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+  },
+
+  async verifyCode(id: string, code: string): Promise<boolean> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("clientes")
+      .select("codigo_verificacion, codigo_expiracion")
+      .eq("id", id)
+      .single();
+
+    if (error || !data) return false;
+    
+    if (data.codigo_expiracion && new Date(data.codigo_expiracion) < new Date()) {
+      return false;
+    }
+    
+    return data.codigo_verificacion === code;
+  },
+
+  async clearVerificationCode(id: string): Promise<void> {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("clientes")
+      .update({ codigo_verificacion: null, codigo_expiracion: null })
       .eq("id", id);
     if (error) throw new Error(error.message);
   },
