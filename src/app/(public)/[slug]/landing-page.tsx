@@ -613,8 +613,8 @@ export default function LandingPage({
             <img
               src={
                 theme === "dark"
-                  ? "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
-                  : "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1780970216/ChatGPT_Image_4_jun_2026_18_53_34_qwlk6n.png"
+                  ? "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1780970216/ChatGPT_Image_4_jun_2026_18_53_34_qwlk6n.png"
+                  : "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
               }
               alt="For Men Castilla"
               style={{ height: 160, width: "100%", objectFit: "contain" }}
@@ -679,8 +679,8 @@ export default function LandingPage({
               <img
                 src={
                   theme === "dark"
-                    ? "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
-                    : "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1780970216/ChatGPT_Image_4_jun_2026_18_53_34_qwlk6n.png"
+                    ? "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1780970216/ChatGPT_Image_4_jun_2026_18_53_34_qwlk6n.png"
+                    : "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
                 }
                 alt="For Men Castilla"
                 style={{ height: 160, width: 160, objectFit: "contain" }}

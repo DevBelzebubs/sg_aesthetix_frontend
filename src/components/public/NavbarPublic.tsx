@@ -115,8 +115,8 @@ export function NavbarPublic({ slug, basePath, brandName }: Props) {
             <img
               src={
                 theme === "dark"
-                  ? "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981236/ZONA-FADE_nziudx.png"
-                  : "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1780970210/ChatGPT_Image_4_jun_2026_18_46_26_dlzo86.png"
+                  ? "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1780970210/ChatGPT_Image_4_jun_2026_18_46_26_dlzo86.png"
+                  : "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981236/ZONA-FADE_nziudx.png"
               }
               alt={brandName}
               className={`w-auto max-w-[180px] object-contain transition-all ${
