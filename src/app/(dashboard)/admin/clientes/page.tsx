@@ -1,4 +1,6 @@
 import { CustomersManagement } from "@/components/dashboard/customers-management";
+
+export const dynamic = "force-dynamic";
 import { ModulePageShell } from "@/components/dashboard/module-page-shell";
 import { createServerSupabase } from "@/lib/supabase/server";
 
