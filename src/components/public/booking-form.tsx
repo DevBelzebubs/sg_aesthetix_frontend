@@ -71,6 +71,9 @@ const fieldClass =
 const selectClassName =
   "w-full border border-[var(--foreground)]/20 bg-[var(--background-secondary)] px-4 py-3.5 text-base text-[var(--foreground)] outline-none transition focus:border-black focus:ring-0 appearance-none cursor-pointer pr-10";
 
+const inputClassName =
+  "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-base text-[var(--foreground)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
+
 const calendarWeekdays = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 const STEPS = ["Servicio", "Profesional", "Fecha", "Horario", "Datos"] as const;

@@ -40,7 +40,7 @@ export function ProductCard({
 
   return (
     <article
-      className={`group relative flex flex-col justify-between p-8 transition hover:-translate-y-px ${
+      className={`group relative flex flex-col justify-between p-5 transition hover:-translate-y-px ${
         featured
           ? "bg-neutral-900 text-white"
           : "bg-[var(--background-secondary)]"
@@ -59,7 +59,7 @@ export function ProductCard({
           <img
             src={imagenUrl}
             alt={nombre}
-            className="aspect-square w-full rounded-2xl object-cover"
+            className="aspect-[16/10] w-full rounded-lg object-cover"
           />
         )}
 
@@ -67,7 +67,7 @@ export function ProductCard({
           className={`font-black uppercase tracking-tight ${
             featured ? "text-white" : "text-[var(--foreground)]"
           }`}
-          style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(22px,3vw,30px)" }}
+          style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(18px,2.2vw,24px)" }}
         >
           {nombre}
         </h2>
@@ -81,13 +81,13 @@ export function ProductCard({
         </p>
       </div>
 
-      <div className="mt-8 flex items-end justify-between">
+      <div className="mt-5 flex items-end justify-between">
         <div>
           <span
             className={`font-black leading-none ${
               featured ? "text-white" : "text-[var(--tenant-primary)]"
             }`}
-            style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "44px" }}
+            style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "32px" }}
           >
             S/{precio}
           </span>

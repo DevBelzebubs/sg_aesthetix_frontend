@@ -21,9 +21,6 @@ type Movement = {
   usuarios: { nombres: string; apellidos: string } | null;
 };
 
-const inputClassName =
-  "w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] px-4 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]";
-
 type Props = {
   totalMovimientos: number;
   totalEntradas: number;
@@ -52,8 +49,6 @@ export function InventoryMovementsManagement({ totalMovimientos, totalEntradas, 
   const pageSize = 10;
   const [page, setPage] = useState(1);
 
-  useEffect(() => { fetchMovements(); }, []);
-
   async function fetchMovements() {
     setLoading(true);
     const { data } = await supabase
@@ -63,6 +58,8 @@ export function InventoryMovementsManagement({ totalMovimientos, totalEntradas, 
     setMovements(data ?? []);
     setLoading(false);
   }
+
+  useEffect(() => { fetchMovements(); }, []);
 
   const filteredMovements = useMemo(() => {
     return movements.filter((m) => {
@@ -139,78 +136,68 @@ export function InventoryMovementsManagement({ totalMovimientos, totalEntradas, 
 
       {/* Listado */}
       <>
-        <div className="grid gap-4 sm:grid-cols-1">
-          {paginatedMovements.length === 0 ? (
-            <div className="col-span-full flex flex-col items-center gap-3 py-16">
-              <Package size={32} className="text-[var(--text-muted)]" />
-              <p className="text-sm text-[var(--text-muted)]">
-                {query ? "No se encontraron movimientos con ese filtro." : "No hay movimientos registrados."}
-              </p>
+        {paginatedMovements.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-16">
+            <Package size={32} className="text-[var(--text-muted)]" />
+            <p className="text-sm text-[var(--text-muted)]">
+              {query ? "No se encontraron movimientos con ese filtro." : "No hay movimientos registrados."}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)]">
+            <div className="overflow-x-auto touch-pan-x [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]">
+              <table className="w-full text-sm min-w-[750px]">
+                <thead>
+                  <tr className="border-b border-[var(--border)] text-left">
+                    <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Producto</th>
+                    <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Tipo</th>
+                    <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Cantidad</th>
+                    <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Motivo</th>
+                    <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Stock Ant.</th>
+                    <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Stock Nuevo</th>
+                    <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Fecha</th>
+                    <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Usuario</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {paginatedMovements.map((movement) => (
+                    <tr key={movement.id} className="transition hover:bg-[var(--background)]">
+                      <td className="px-5 py-4 font-medium text-[var(--foreground)] whitespace-nowrap">
+                        {movement.productos?.nombre ?? "Sin nombre"}
+                      </td>
+                      <td className="px-5 py-4 text-center whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${getTipoClass(movement.tipo)}`}>
+                          {movement.tipo === "ingreso" ? <ArrowDownToLine size={10} /> : movement.tipo === "salida" ? <ArrowUpFromLine size={10} /> : <Package size={10} />}
+                          {getTipoLabel(movement.tipo)}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-center text-[var(--foreground)] font-medium whitespace-nowrap">
+                        {movement.cantidad}
+                      </td>
+                      <td className="px-5 py-4 text-[var(--text-muted)] max-w-[200px] truncate">
+                        {movement.motivo || "—"}
+                      </td>
+                      <td className="px-5 py-4 text-center text-[var(--text-muted)] whitespace-nowrap">
+                        {movement.stock_anterior}
+                      </td>
+                      <td className="px-5 py-4 text-center text-[var(--foreground)] font-medium whitespace-nowrap">
+                        {movement.stock_nuevo}
+                      </td>
+                      <td className="px-5 py-4 text-[var(--text-muted)] whitespace-nowrap">
+                        {movement.creado_en.slice(0, 10)}
+                      </td>
+                      <td className="px-5 py-4 text-[var(--text-muted)] whitespace-nowrap">
+                        {movement.usuarios
+                          ? `${movement.usuarios.nombres} ${movement.usuarios.apellidos}`
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          ) : (
-            paginatedMovements.map((movement) => (
-              <article
-                key={movement.id}
-                className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--background)] text-[var(--foreground)]">
-                    <Package size={20} />
-                  </div>
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getTipoClass(movement.tipo)}`}>
-                    {getTipoLabel(movement.tipo)}
-                  </span>
-                </div>
-
-                <div className="mt-3">
-                  <p className="text-base font-semibold text-[var(--foreground)]">{movement.productos?.nombre ?? "Sin nombre"}</p>
-                </div>
-
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-[var(--text-muted)]">
-                  <span className="inline-flex items-center gap-1">
-                    {movement.tipo === "ingreso" ? (
-                      <ArrowDownToLine size={13} className="text-[var(--hover)]" />
-                    ) : movement.tipo === "salida" ? (
-                      <ArrowUpFromLine size={13} className="text-[var(--destructive)]" />
-                    ) : (
-                      <Package size={13} />
-                    )}
-                    {movement.cantidad} {movement.cantidad === 1 ? "unidad" : "unidades"}
-                  </span>
-                  {movement.motivo && (
-                    <span className="rounded-full bg-[var(--background)] px-2 py-0.5 text-xs font-medium">
-                      {movement.motivo}
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-2 text-sm text-[var(--text-muted)]">
-                  <span>
-                    Stock: {movement.stock_anterior} → {movement.stock_nuevo}
-                  </span>
-                </div>
-
-                {movement.referencia_tipo && movement.referencia_id && (
-                  <div className="mt-2 text-sm text-[var(--text-muted)]">
-                    <span className="rounded-full bg-[var(--background)] px-2 py-0.5 text-xs font-medium">
-                      Ref: {movement.referencia_tipo} · {movement.referencia_id}
-                    </span>
-                  </div>
-                )}
-
-                <div className="mt-4 flex items-center gap-2 border-t border-[var(--border)] pt-4 text-sm text-[var(--text-muted)]">
-                  <span>{movement.creado_en.slice(0, 10)}</span>
-                  <span>&middot;</span>
-                  <span>
-                    {movement.usuarios
-                      ? `${movement.usuarios.nombres} ${movement.usuarios.apellidos}`
-                      : "—"}
-                  </span>
-                </div>
-              </article>
-            ))
-          )}
-        </div>
+          </div>
+        )}
         <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
       </>
     </>
