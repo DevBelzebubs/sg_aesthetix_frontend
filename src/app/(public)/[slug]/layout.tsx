@@ -5,7 +5,7 @@ import { getThemeSettingsByTenantId } from "@/lib/theme/get-theme-settings";
 import { resolveTenantBySlug } from "@/lib/tenant/resolve-tenant";
 import { TapeDecor } from "@/components/tape-decor";
 import { PublicLayoutShell } from "@/components/public/public-layout-shell";
-import { createClient } from "@/lib/supabase/client";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 type PublicLandingLayoutProps = {
   children: ReactNode;
@@ -31,6 +31,22 @@ export default async function PublicLandingLayout({
   const { slug } = await params;
   const tenant = await resolveTenantBySlug(slug);
   const theme = await getThemeSettingsByTenantId(tenant.tenantId);
+  const supabase = await createServerSupabase();
+
+  const { data: localesData } = await supabase
+    .from("locales")
+    .select("nombre, direccion, telefono, maps_url, lat, lng")
+    .order("orden", { ascending: true })
+    .limit(1);
+
+  const { data: usersData } = await supabase
+    .from("usuarios")
+    .select("instagram, facebook, tiktok")
+    .not("instagram", "is", null)
+    .limit(1);
+
+  const locale = localesData?.[0];
+  const socialUser = usersData?.[0];
 
   const themeVariables: CSSProperties = {
     ["--tenant-primary" as string]: theme.primaryColor,
@@ -38,16 +54,6 @@ export default async function PublicLandingLayout({
   };
 
   const basePath = `/${tenant.slug}`;
-
-  const supabase = createClient();
-  const { data: localesData } = await supabase
-    .from("locales")
-    .select("direccion, telefono")
-    .order("orden", { ascending: true });
-  const locales = (localesData ?? []).map((l) => ({
-    address: l.direccion,
-    phone: l.telefono,
-  }));
 
   const footer = (
     <footer className="mt-auto px-6 pb-8 max-w-[1400px] mx-auto w-full">
@@ -207,7 +213,8 @@ export default async function PublicLandingLayout({
         basePath={basePath}
         brandName={theme.brandName}
         footer={footer}
-        locales={locales}
+        locale={locale}
+        socialLinks={socialUser}
       >
         {children}
       </PublicLayoutShell>
