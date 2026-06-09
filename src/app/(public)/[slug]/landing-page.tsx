@@ -5,6 +5,7 @@ import { useState, useCallback } from "react";
 import { Globe, Scissors } from "lucide-react";
 import { StoreStatus } from "@/components/public/store-status";
 import { useCart } from "@/contexts/cart-context";
+import { useTheme } from "@/contexts/theme-context";
 
 type Service = {
   id: string;
@@ -284,7 +285,7 @@ function ProductCarousel({ products }: { products: ProductItem[] }) {
   return (
     <div className="relative overflow-hidden" style={{ background: "var(--hover)" }}>
       <div
-        className="grid md:grid-cols-[1fr_1fr] gap-[1px] h-[400px] md:h-[440px]"
+        className="grid md:grid-cols-[1fr_1fr] gap-[1px] md:h-[440px]"
         style={{ background: "var(--hover)" }}
       >
         {/* Imagen */}
@@ -545,6 +546,7 @@ export default function LandingPage({
   const locales = localesProp.length > 0 ? localesProp : defaultLocales;
   const WA_NUMBER = "5491112345678";
   const WA_MESSAGE = encodeURIComponent("Hola, quiero reservar un turno.");
+  const { theme } = useTheme();
 
   return (
     <div className="space-y-20 pb-8">
@@ -609,7 +611,11 @@ export default function LandingPage({
           </div>
           <div className="w-full bg-[var(--background-secondary)]" style={{ height: 160 }}>
             <img
-              src="https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
+              src={
+                theme === "dark"
+                  ? "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
+                  : "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1780970216/ChatGPT_Image_4_jun_2026_18_53_34_qwlk6n.png"
+              }
               alt="For Men Castilla"
               style={{ height: 160, width: "100%", objectFit: "contain" }}
             />
@@ -671,7 +677,11 @@ export default function LandingPage({
               style={{ gridColumn: "1 / 2", gridRow: "2 / 3" }}
             >
               <img
-                src="https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
+                src={
+                  theme === "dark"
+                    ? "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
+                    : "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1780970216/ChatGPT_Image_4_jun_2026_18_53_34_qwlk6n.png"
+                }
                 alt="For Men Castilla"
                 style={{ height: 160, width: 160, objectFit: "contain" }}
               />
