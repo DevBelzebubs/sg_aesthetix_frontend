@@ -16,6 +16,9 @@ export interface Customer {
   intentosFallidos: number;
   bloqueadoHasta?: string;
   emailConfirmado: boolean;
+  codigoVerificacionHash?: string;
+  codigoVerificacionSalt?: string;
+  codigoVerificacionExpira?: string;
 }
 
 export interface CreateCustomerPayload {
@@ -46,4 +49,7 @@ export interface UpdateCustomerPayload {
   intentosFallidos?: number;
   bloqueadoHasta?: string;
   emailConfirmado?: boolean;
+  codigoVerificacionHash?: string | null;
+  codigoVerificacionSalt?: string | null;
+  codigoVerificacionExpira?: string | null;
 }

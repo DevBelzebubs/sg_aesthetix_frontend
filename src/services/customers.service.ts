@@ -20,6 +20,9 @@ function mapRowToCustomer(row: Record<string, unknown>): Customer {
     intentosFallidos: (row.intentos_fallidos as number) ?? 0,
     bloqueadoHasta: row.bloqueado_hasta as string | undefined,
     emailConfirmado: (row.email_confirmado as boolean) ?? false,
+    codigoVerificacionHash: row.codigo_verificacion_hash as string | undefined,
+    codigoVerificacionSalt: row.codigo_verificacion_salt as string | undefined,
+    codigoVerificacionExpira: row.codigo_verificacion_expira as string | undefined,
   };
 }
 
@@ -128,6 +131,9 @@ export const CustomersService = {
     if (data.intentosFallidos !== undefined) updateData.intentos_fallidos = data.intentosFallidos;
     if (data.bloqueadoHasta !== undefined) updateData.bloqueado_hasta = data.bloqueadoHasta;
     if (data.emailConfirmado !== undefined) updateData.email_confirmado = data.emailConfirmado;
+    if (data.codigoVerificacionHash !== undefined) updateData.codigo_verificacion_hash = data.codigoVerificacionHash;
+    if (data.codigoVerificacionSalt !== undefined) updateData.codigo_verificacion_salt = data.codigoVerificacionSalt;
+    if (data.codigoVerificacionExpira !== undefined) updateData.codigo_verificacion_expira = data.codigoVerificacionExpira;
 
     const { data: row, error } = await supabase
       .from("clientes")

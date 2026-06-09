@@ -9,7 +9,7 @@ import { CustomersService } from "@/services/customers.service";
 import { RewardsService } from "@/services/rewards.service";
 import { validateDni, validateEmail, validateEmailOptional, validatePhoneOptional, validateRequired, validatePassword } from "@/lib/validators";
 import { hashPin, verifyPin } from "@/lib/pin";
-import { sendConfirmationEmail, sendPinResetEmail } from "@/lib/email-client";
+import { sendPinResetEmail } from "@/lib/email-client";
 
 type Tab = "cliente" | "registro" | "admin" | "olvide-pin";
 
@@ -45,7 +45,10 @@ export function CustomerAuthModal() {
   const [regPin, setRegPin] = useState("");
   const [regPinConfirm, setRegPinConfirm] = useState("");
   const [regShowPin, setRegShowPin] = useState(false);
-  const [regSent, setRegSent] = useState(false);
+  const [regNuevoId, setRegNuevoId] = useState<string | null>(null);
+  const [regNuevoNombres, setRegNuevoNombres] = useState("");
+  const [regCodigo, setRegCodigo] = useState("");
+  const [regStep, setRegStep] = useState<"form" | "verify">("form");
 
   // Forgot PIN fields
   const [forgotDni, setForgotDni] = useState("");
@@ -88,14 +91,76 @@ export function CustomerAuthModal() {
         fechaNacimiento: regFechaNacimiento,
         pinHash: hash,
         pinSalt: salt,
+        emailConfirmado: false,
       });
 
-      await login(nuevo.id, nuevo.nombres);
-      try { await RewardsService.claimWelcomeReward(nuevo.id); } catch {}
-      await sendConfirmationEmail(nuevo.id, regEmail);
-      setRegSent(true);
+      // Generate 6-digit verification code
+      const codigo = String(Math.floor(100000 + Math.random() * 900000));
+      const { hash: codeHash, salt: codeSalt } = await hashPin(codigo);
+      await CustomersService.update(nuevo.id, {
+        codigoVerificacionHash: codeHash,
+        codigoVerificacionSalt: codeSalt,
+        codigoVerificacionExpira: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      });
+
+      // Send code via email
+      if (regEmail) {
+        const emailRes = await fetch("/api/email/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: regEmail,
+            subject: "Verifica tu correo - Aesthetix",
+            html: `
+              <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+                <h2 style="color:#111">Verifica tu correo</h2>
+                <p>Gracias por registrarte en <strong>Aesthetix</strong>.</p>
+                <p>Tu código de verificación es:</p>
+                <div style="background:#f5f5f5;padding:16px;border-radius:8px;text-align:center;margin:16px 0">
+                  <span style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#111">${codigo}</span>
+                </div>
+                <p style="color:#666;font-size:12px">Este código expira en 10 minutos.</p>
+              </div>`,
+          }),
+        });
+        if (!emailRes.ok) {
+          const errText = await emailRes.text();
+          console.error("[REGISTRO] Error al enviar código:", errText);
+        }
+      }
+
+      setRegNuevoId(nuevo.id);
+      setRegNuevoNombres(nuevo.nombres);
+      setRegStep("verify");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al crear la cuenta");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regNuevoId || !regCodigo || regCodigo.length !== 6) {
+      setError("Ingresa el código de 6 dígitos");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/email/verificar-codigo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: regNuevoId, codigo: regCodigo }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Código incorrecto");
+
+      await login(regNuevoId, regNuevoNombres);
+      try { await RewardsService.claimWelcomeReward(regNuevoId); } catch {}
+      closeModal();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al verificar el código");
     } finally {
       setLoading(false);
     }
@@ -256,7 +321,10 @@ export function CustomerAuthModal() {
     setRegFechaNacimiento("");
     setRegPin("");
     setRegPinConfirm("");
-    setRegSent(false);
+    setRegNuevoId(null);
+    setRegNuevoNombres("");
+    setRegCodigo("");
+    setRegStep("form");
     setError("");
     setFieldErrors({});
   };
@@ -400,133 +468,168 @@ export function CustomerAuthModal() {
             </button>
           </form>
         ) : tab === "registro" ? (
-          <form onSubmit={handleRegister} className="px-6 py-8 space-y-4">
-            {regSent ? (
-              <div className="text-center space-y-5 py-4">
+          regStep === "verify" ? (
+            <form onSubmit={handleVerifyCode} className="px-6 py-8 space-y-4">
+              <div className="text-center space-y-3">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10">
                   <Mail className="h-7 w-7 text-emerald-500" />
                 </div>
-                <div>
-                  <p className="text-lg font-bold text-[var(--foreground)]">¡Registro exitoso!</p>
-                  <p className="text-sm text-[var(--text-muted)]">+50 puntos de bienvenida</p>
-                  <p className="text-xs text-[var(--text-muted)] mt-2">Te enviamos un correo de confirmación.<br />Revisa tu bandeja de entrada.</p>
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <button type="button" onClick={() => { resetRegisterForm(); }} className="flex-1 rounded-xl border border-[var(--border)] px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--foreground)] transition hover:bg-[var(--background)]">Nuevo registro</button>
-                  <button type="button" onClick={closeModal} className="flex-1 rounded-xl bg-[var(--foreground)] px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--background)] transition hover:opacity-85">Cerrar</button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center mb-2">
-                  Crea tu cuenta de cliente
+                <p className="text-lg font-bold text-[var(--foreground)]">Verifica tu correo</p>
+                <p className="text-sm text-[var(--text-muted)]">
+                  Enviamos un código de 6 dígitos a<br />
+                  <strong className="text-[var(--foreground)]">{regEmail}</strong>
                 </p>
+              </div>
 
-                {error && (
-                  <div className="flex items-center gap-2 rounded-xl border border-[var(--destructive-border)] bg-[var(--destructive-hover)] px-4 py-3 text-xs text-[var(--destructive)]">
-                    <AlertCircle size="14" className="shrink-0" />
-                    <span>{error}</span>
-                  </div>
+              {error && (
+                <div className="flex items-center gap-2 rounded-xl border border-[var(--destructive-border)] bg-[var(--destructive-hover)] px-4 py-3 text-xs text-[var(--destructive)]">
+                  <AlertCircle size="14" className="shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <label className="space-y-1.5 block">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                  Código de verificación <span className="text-[var(--destructive)]">*</span>
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={regCodigo}
+                  onChange={(e) => { setRegCodigo(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }}
+                  placeholder="123456"
+                  maxLength={6}
+                  className={fieldClass}
+                  autoFocus
+                />
+              </label>
+
+              <button
+                type="submit"
+                disabled={loading || regCodigo.length !== 6}
+                className="w-full rounded-xl bg-black px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {loading ? "Verificando..." : "Verificar y registrarme"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { resetRegisterForm(); }}
+                className="w-full text-center text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--foreground)] transition"
+              >
+                Volver al formulario
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleRegister} className="px-6 py-8 space-y-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center mb-2">
+                Crea tu cuenta de cliente
+              </p>
+
+              {error && (
+                <div className="flex items-center gap-2 rounded-xl border border-[var(--destructive-border)] bg-[var(--destructive-hover)] px-4 py-3 text-xs text-[var(--destructive)]">
+                  <AlertCircle size="14" className="shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <label className="space-y-1 block">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                  Nombres <span className="text-[var(--destructive)]">*</span>
+                </span>
+                <input
+                  type="text"
+                  value={regNombres}
+                  onChange={(e) => { setRegNombres(e.target.value); setFieldErrors((prev) => ({ ...prev, nombres: "" })); }}
+                  placeholder="Tus nombres"
+                  className={fieldClass}
+                />
+                {fieldErrors.nombres && (
+                  <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                    <AlertCircle size={11} />
+                    {fieldErrors.nombres}
+                  </p>
                 )}
-
-                <label className="space-y-1 block">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                    Nombres <span className="text-[var(--destructive)]">*</span>
-                  </span>
-                  <input
-                    type="text"
-                    value={regNombres}
-                    onChange={(e) => { setRegNombres(e.target.value); setFieldErrors((prev) => ({ ...prev, nombres: "" })); }}
-                    placeholder="Tus nombres"
-                    className={fieldClass}
-                  />
-                  {fieldErrors.nombres && (
-                    <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
-                      <AlertCircle size={11} />
-                      {fieldErrors.nombres}
-                    </p>
-                  )}
-                </label>
-                <label className="space-y-1 block">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Apellidos</span>
-                  <input
-                    type="text"
-                    value={regApellidos}
-                    onChange={(e) => setRegApellidos(e.target.value)}
-                    placeholder="Tus apellidos"
-                    className={fieldClass}
-                  />
-                </label>
-                <label className="space-y-1 block">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                    DNI <span className="text-[var(--destructive)]">*</span>
-                  </span>
-                  <input
-                    type="text"
-                    value={regDni}
-                    onChange={(e) => { setRegDni(e.target.value); setFieldErrors((prev) => ({ ...prev, regDni: "" })); }}
-                    placeholder="12345678"
-                    maxLength={8}
-                    className={fieldClass}
-                  />
-                  {fieldErrors.regDni && (
-                    <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
-                      <AlertCircle size={11} />
-                      {fieldErrors.regDni}
-                    </p>
-                  )}
-                </label>
-                <label className="space-y-1 block">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Email (opcional)</span>
-                  <input
-                    type="email"
-                    value={regEmail}
-                    onChange={(e) => { setRegEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, regEmail: "" })); }}
-                    placeholder="correo@ejemplo.com"
-                    className={fieldClass}
-                  />
-                  {fieldErrors.regEmail && (
-                    <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
-                      <AlertCircle size={11} />
-                      {fieldErrors.regEmail}
-                    </p>
-                  )}
-                </label>
-                <label className="space-y-1 block">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Teléfono (opcional)</span>
-                  <input
-                    type="text"
-                    value={regTelefono}
-                    onChange={(e) => { setRegTelefono(e.target.value); setFieldErrors((prev) => ({ ...prev, regTelefono: "" })); }}
-                    placeholder="999 999 999"
-                    className={fieldClass}
-                  />
-                  {fieldErrors.regTelefono && (
-                    <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
-                      <AlertCircle size={11} />
-                      {fieldErrors.regTelefono}
-                    </p>
-                  )}
-                </label>
-                <label className="space-y-1 block">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Fecha de nacimiento (opcional)</span>
-                  <input
-                    type="date"
-                    value={regFechaNacimiento}
-                    onChange={(e) => setRegFechaNacimiento(e.target.value)}
-                    className={fieldClass}
-                  />
-                </label>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full rounded-xl bg-black px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {loading ? "Registrando..." : "Registrarme"}
-                </button>
-              </>
-            )}
-          </form>
+              </label>
+              <label className="space-y-1 block">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Apellidos</span>
+                <input
+                  type="text"
+                  value={regApellidos}
+                  onChange={(e) => setRegApellidos(e.target.value)}
+                  placeholder="Tus apellidos"
+                  className={fieldClass}
+                />
+              </label>
+              <label className="space-y-1 block">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                  DNI <span className="text-[var(--destructive)]">*</span>
+                </span>
+                <input
+                  type="text"
+                  value={regDni}
+                  onChange={(e) => { setRegDni(e.target.value); setFieldErrors((prev) => ({ ...prev, regDni: "" })); }}
+                  placeholder="12345678"
+                  maxLength={8}
+                  className={fieldClass}
+                />
+                {fieldErrors.regDni && (
+                  <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                    <AlertCircle size={11} />
+                    {fieldErrors.regDni}
+                  </p>
+                )}
+              </label>
+              <label className="space-y-1 block">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Email (opcional)</span>
+                <input
+                  type="email"
+                  value={regEmail}
+                  onChange={(e) => { setRegEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, regEmail: "" })); }}
+                  placeholder="correo@ejemplo.com"
+                  className={fieldClass}
+                />
+                {fieldErrors.regEmail && (
+                  <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                    <AlertCircle size={11} />
+                    {fieldErrors.regEmail}
+                  </p>
+                )}
+              </label>
+              <label className="space-y-1 block">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Teléfono (opcional)</span>
+                <input
+                  type="text"
+                  value={regTelefono}
+                  onChange={(e) => { setRegTelefono(e.target.value); setFieldErrors((prev) => ({ ...prev, regTelefono: "" })); }}
+                  placeholder="999 999 999"
+                  className={fieldClass}
+                />
+                {fieldErrors.regTelefono && (
+                  <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                    <AlertCircle size={11} />
+                    {fieldErrors.regTelefono}
+                  </p>
+                )}
+              </label>
+              <label className="space-y-1 block">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Fecha de nacimiento (opcional)</span>
+                <input
+                  type="date"
+                  value={regFechaNacimiento}
+                  onChange={(e) => setRegFechaNacimiento(e.target.value)}
+                  className={fieldClass}
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-xl bg-black px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {loading ? "Registrando..." : "Registrarme"}
+              </button>
+            </form>
+          )
         ) : (
           <form onSubmit={handleAdminLogin} className="px-6 py-8 space-y-4">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center mb-4">
