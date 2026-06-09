@@ -8,6 +8,7 @@ const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY!;
 const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY!;
 const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID!;
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://tu-barberia.com";
 function apiHeaders(key: string) {
   return {
     "Content-Type": "application/json",
@@ -101,6 +102,7 @@ export async function POST(request: Request) {
 
     const tenantName = tenantSlug.replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
 
+    const linkDescarga = `${APP_URL}/${tenantSlug}/libro-reclamaciones/download?id=${complaint.id}`;
     await emailjs.send(
       EMAILJS_SERVICE_ID,
       EMAILJS_TEMPLATE_ID,
@@ -120,6 +122,7 @@ export async function POST(request: Request) {
         fecha,
         tenantName,
         to_email: email,
+        link_descarga: linkDescarga,
       },
       {
         publicKey: EMAILJS_PUBLIC_KEY,
