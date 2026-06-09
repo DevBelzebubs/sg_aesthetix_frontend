@@ -291,54 +291,7 @@ export function NavbarPublic({ slug, basePath, brandName, socialLinks }: Props) 
               </MobileNavLink>
             </nav>
 
-            {/* Sección inferior con separador */}
-            <div className="px-5">
-              <div className="border-t border-white/10 py-4 space-y-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    openCustomerModal();
-                  }}
-                  className="flex w-full items-center gap-2 py-2.5 text-sm font-semibold tracking-widest uppercase text-[var(--text-muted)] transition hover:text-[var(--foreground)]"
-                >
-                  <UserIcon size={16} /> · Mis Puntos
-                  {customerSession !== null && (
-                    <span className="flex h-4 min-w-[16px] items-center justify-center bg-[var(--tenant-primary)] text-white text-[10px] font-bold px-1">
-                      {customerSession.puntosDisponibles}
-                    </span>
-                  )}
-                </button>
-                {isReady && isAuthenticated ? (
-                  <>
-                    <Link
-                      href={panelHref}
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-2 py-2.5 text-sm font-semibold tracking-widest uppercase text-[var(--text-muted)] transition hover:text-[var(--foreground)]"
-                    >
-                      <GridIcon size={16} /> · Panel de control
-                    </Link>
-                    <button
-                      onClick={() => {
-                        logout();
-                        setMenuOpen(false);
-                      }}
-                      className="flex w-full items-center gap-2 py-2.5 text-sm font-semibold tracking-widest uppercase text-[var(--text-muted)] transition hover:text-red-500"
-                    >
-                      <LogoutIcon size={16} /> · Cerrar sesión
-                    </button>
-                  </>
-                ) : (
-                  <Link
-                    href={`/${slug}/login`}
-                    onClick={() => setMenuOpen(false)}
-                    className="flex w-full items-center gap-2 py-2.5 text-sm font-semibold tracking-widest uppercase text-[var(--text-muted)] transition hover:text-[var(--foreground)]"
-                  >
-                    <LockIcon size={16} /> · Admin
-                  </Link>
-                )}
-              </div>
-            </div>
+
           </div>
         </div>
       )}
