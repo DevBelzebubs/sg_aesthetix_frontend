@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { AppointmentsService } from "@/services/appointments.service";
 import { CustomersService } from "@/services/customers.service";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
-import { validateDni, validateDniOptional, validateEmail, validateEmailOptional, validateName, validateRequired } from "@/lib/validators";
+import { validateDni, validateDniOptional, validateEmail, validateName, validatePhone, validateRequired } from "@/lib/validators";
 
 type BookingOption = {
   id: string;
@@ -67,6 +67,8 @@ const initialDraft: BookingDraft = {
 
 const fieldClass =
   "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-base text-[var(--foreground)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
+
+const inputClassName = fieldClass;
 
 const selectClassName =
   "w-full border border-[var(--foreground)]/20 bg-[var(--background-secondary)] px-4 py-3.5 text-base text-[var(--foreground)] outline-none transition focus:border-black focus:ring-0 appearance-none cursor-pointer pr-10";
@@ -269,14 +271,16 @@ export function BookingForm({
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const errors: Record<string, string> = {};
-    const nameErr = validateName(formData.customerName);
-    const phoneErr = validatePhone9(formData.phone);
+    const nombresErr = validateName(formData.nombres, "Los nombres");
+    const apellidosErr = validateName(formData.apellidos, "Los apellidos");
+    const phoneErr = validatePhone(formData.phone);
     const emailErr = validateEmail(formData.email);
     const dniErr = validateDniOptional(formData.dni);
     const serviceErr = validateRequired(formData.serviceId, "El servicio");
     const dateErr = validateRequired(formData.date, "La fecha");
     const timeErr = validateRequired(formData.time, "La hora");
-    if (nameErr) errors.customerName = nameErr;
+    if (nombresErr) errors.nombres = nombresErr;
+    if (apellidosErr) errors.apellidos = apellidosErr;
     if (phoneErr) errors.phone = phoneErr;
     if (emailErr) errors.email = emailErr;
     if (dniErr) errors.dni = dniErr;
@@ -360,7 +364,6 @@ export function BookingForm({
               value={dni}
               onChange={(e) => setDni(e.target.value.replace(/\D/g, ""))}
               placeholder="12345678"
-              maxLength={8}
               className={fieldClass}
             />
             {fieldErrors.dni && (
@@ -828,6 +831,12 @@ export function BookingForm({
                       placeholder="Juan"
                       className={inputClassName}
                     />
+                    {fieldErrors.nombres && (
+                      <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                        <AlertCircle size={11} />
+                        {fieldErrors.nombres}
+                      </p>
+                    )}
                   </label>
                   <label className="space-y-2">
                     <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
@@ -842,6 +851,12 @@ export function BookingForm({
                       placeholder="Pérez"
                       className={inputClassName}
                     />
+                    {fieldErrors.apellidos && (
+                      <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                        <AlertCircle size={11} />
+                        {fieldErrors.apellidos}
+                      </p>
+                    )}
                   </label>
                 </div>
 
@@ -875,6 +890,12 @@ export function BookingForm({
                       placeholder="999 999 999"
                       className={inputClassName}
                     />
+                    {fieldErrors.phone && (
+                      <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                        <AlertCircle size={11} />
+                        {fieldErrors.phone}
+                      </p>
+                    )}
                   </label>
                 </div>
 
@@ -892,6 +913,12 @@ export function BookingForm({
                     placeholder="nombre@correo.com"
                     className={inputClassName}
                   />
+                  {fieldErrors.email && (
+                    <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                      <AlertCircle size={11} />
+                      {fieldErrors.email}
+                    </p>
+                  )}
                 </label>
               </div>
             </div>

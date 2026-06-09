@@ -415,7 +415,7 @@ export function ComplaintBookForm({ slug }: Props) {
         <div className="mt-8 flex flex-col items-center gap-4 border-t border-[var(--border)] pt-6 sm:flex-row sm:justify-between">
           <button
             type="submit"
-            disabled={isSubmitting || Object.keys(fieldErrors).length > 0}
+            disabled={isSubmitting || Object.values(fieldErrors).some((v) => v !== "")}
             className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl bg-[var(--hover)] px-8 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
             {isSubmitting ? (
