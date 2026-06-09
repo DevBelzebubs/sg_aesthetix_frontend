@@ -82,7 +82,7 @@ export default async function ReservarPage({ params }: ReservarPageProps) {
   }));
 
   const today = new Date();
-  const availableDates = buildAvailableDates(today, 12);
+  const availableDates = buildAvailableDates(today, 10);
 
   return (
     <section className="space-y-6 pt-8">
