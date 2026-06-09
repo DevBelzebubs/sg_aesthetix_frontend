@@ -9,6 +9,7 @@ import { CustomersService } from "@/services/customers.service";
 import { RewardsService } from "@/services/rewards.service";
 import { validateDni, validateEmail, validateEmailOptional, validatePhoneOptional, validateRequired, validatePassword } from "@/lib/validators";
 import { hashPin, verifyPin } from "@/lib/pin";
+import { sendConfirmationEmail, sendPinResetEmail } from "@/lib/email-client";
 
 type Tab = "cliente" | "registro" | "admin" | "olvide-pin";
 
@@ -260,25 +261,7 @@ export function CustomerAuthModal() {
     setFieldErrors({});
   };
 
-  const sendConfirmationEmail = async (_clienteId: string, _email: string) => {
-    try {
-      await fetch("/api/email/confirmacion", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clienteId: _clienteId, email: _email }),
-      });
-    } catch {}
-  };
 
-  const sendPinResetEmail = async (_clienteId: string, _email: string, _tempPin: string) => {
-    try {
-      await fetch("/api/email/pin-reset", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clienteId: _clienteId, email: _email, tempPin: _tempPin }),
-      });
-    } catch {}
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
