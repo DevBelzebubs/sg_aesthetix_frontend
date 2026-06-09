@@ -1,10 +1,16 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { NavbarPublic } from "@/components/public/NavbarPublic";
 import { CartDrawer } from "@/components/public/cart-drawer";
 import { CustomerAuthModal } from "@/components/public/customer-auth-modal";
+
+type LocaleItem = {
+  address: string;
+  phone: string;
+};
 
 type Props = {
   children: ReactNode;
@@ -12,15 +18,29 @@ type Props = {
   basePath: string;
   brandName: string;
   footer: ReactNode;
+  locales: LocaleItem[];
 };
 
-export function PublicLayoutShell({ children, slug, basePath, brandName, footer }: Props) {
+export function PublicLayoutShell({ children, slug, basePath, brandName, footer, locales }: Props) {
   const pathname = usePathname();
   const isLogin = pathname.endsWith("/login");
+
+  const [carouselIdx, setCarouselIdx] = useState(0);
+
+  useEffect(() => {
+    if (locales.length <= 1) return;
+    const interval = setInterval(() => {
+      setCarouselIdx((prev) => (prev + 1) % locales.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [locales.length]);
 
   if (isLogin) {
     return <>{children}</>;
   }
+
+  const currentLocale = locales.length > 0 ? locales[carouselIdx % locales.length] : null;
+  const displayPhone = locales.length > 0 ? locales[0].phone : "";
 
   return (
     <>
@@ -39,17 +59,23 @@ export function PublicLayoutShell({ children, slug, basePath, brandName, footer 
             <div className="w-px h-4 bg-white/15" />
             <span className="hidden lg:inline text-white/70 tracking-[0.05em]">Estilo que define. Confianza que se nota.</span>
           </div>
-          {/* Center */}
+          {/* Center — auto carrusel de direcciones */}
           <div className="flex items-center gap-3">
-            <span className="hidden md:inline text-white/60">Av. Aviación 3464 · San Borja</span>
+            {currentLocale && (
+              <span className="hidden md:inline text-white/60 transition-opacity duration-500">
+                {currentLocale.address}
+              </span>
+            )}
             <div className="hidden md:block w-[6px] h-[6px] rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)] animate-pulse" />
           </div>
-          {/* Right */}
+          {/* Right — teléfono estático + redes */}
           <div className="flex items-center gap-5">
-            <a href="tel:+51999999999" className="flex items-center gap-2 hover:text-white transition-colors group">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15" className="text-white/50 group-hover:text-white transition-colors"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-              <span className="text-white/65 group-hover:text-white transition-colors">+51 999 999 999</span>
-            </a>
+            {displayPhone && (
+              <a href={`tel:${displayPhone}`} className="flex items-center gap-2 hover:text-white transition-colors group">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15" className="text-white/50 group-hover:text-white transition-colors"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                <span className="text-white/65 group-hover:text-white transition-colors">{displayPhone}</span>
+              </a>
+            )}
             <div className="flex items-center gap-3">
               <a href="https://www.instagram.com/zonafade_barber/" target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform text-white/50 hover:text-white">
                 <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" fill="none" stroke="currentColor" strokeWidth="2"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" stroke="currentColor" strokeWidth="2"/></svg>

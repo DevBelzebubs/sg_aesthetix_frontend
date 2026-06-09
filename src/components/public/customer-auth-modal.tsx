@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, X } from "lucide-react";
+import { AlertCircle, X, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
 import { CustomersService } from "@/services/customers.service";
 import { RewardsService } from "@/services/rewards.service";
 import { validateDni, validateEmail, validateEmailOptional, validatePhoneOptional, validateRequired, validatePassword } from "@/lib/validators";
+import { hashPin, verifyPin } from "@/lib/pin";
 
 type Tab = "cliente" | "registro" | "admin" | "olvide-pin";
 
@@ -27,6 +28,11 @@ export function CustomerAuthModal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // Customer login fields
+  const [dni, setDni] = useState("");
+  const [loginPin, setLoginPin] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
   // Register fields
   const [regNombres, setRegNombres] = useState("");
@@ -109,7 +115,7 @@ export function CustomerAuthModal() {
     setError("");
 
     try {
-      const customer = await CustomersService.findByDni(loginDni);
+      const customer = await CustomersService.findByDni(dni);
       if (!customer) { setError("DNI no registrado"); setLoading(false); return; }
 
       if (customer.bloqueadoHasta && new Date(customer.bloqueadoHasta) > new Date()) {
@@ -240,6 +246,40 @@ export function CustomerAuthModal() {
     }
   };
 
+  const resetRegisterForm = () => {
+    setRegNombres("");
+    setRegApellidos("");
+    setRegEmail("");
+    setRegDni("");
+    setRegTelefono("");
+    setRegFechaNacimiento("");
+    setRegPin("");
+    setRegPinConfirm("");
+    setRegSent(false);
+    setError("");
+    setFieldErrors({});
+  };
+
+  const sendConfirmationEmail = async (_clienteId: string, _email: string) => {
+    try {
+      await fetch("/api/email/confirmacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clienteId: _clienteId, email: _email }),
+      });
+    } catch {}
+  };
+
+  const sendPinResetEmail = async (_clienteId: string, _email: string, _tempPin: string) => {
+    try {
+      await fetch("/api/email/pin-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clienteId: _clienteId, email: _email, tempPin: _tempPin }),
+      });
+    } catch {}
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={closeModal} />
@@ -346,6 +386,25 @@ export function CustomerAuthModal() {
                 <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
                   <AlertCircle size={11} />
                   {fieldErrors.dni}
+                </p>
+              )}
+            </label>
+            <label className="space-y-1.5 block">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                PIN <span className="text-[var(--destructive)]">*</span>
+              </span>
+              <input
+                type="password"
+                value={loginPin}
+                onChange={(e) => { setLoginPin(e.target.value); setFieldErrors((prev) => ({ ...prev, loginPin: "" })); }}
+                placeholder="••••"
+                maxLength={4}
+                className={fieldClass}
+              />
+              {fieldErrors.loginPin && (
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                  <AlertCircle size={11} />
+                  {fieldErrors.loginPin}
                 </p>
               )}
             </label>
