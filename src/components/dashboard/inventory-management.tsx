@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, AlertTriangle, ArrowLeft, Boxes, Loader2, PackagePlus, Plus, Search, TrendingDown, TrendingUp, Trash2, X } from "lucide-react";
+import { AlertCircle, AlertTriangle, ArrowLeft, Boxes, Loader2, PackagePlus, PencilLine, Plus, Search, TrendingDown, TrendingUp, Trash2, Undo2, X } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { CloudinaryUpload } from "@/components/dashboard/cloudinary-upload";
@@ -103,13 +103,19 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
   useEffect(() => {
     if (!showInactive) return;
     setLoading(true);
-    supabase
-      .from("productos")
-      .select("*")
-      .eq("esta_activo", false)
-      .order("nombre", { ascending: true })
-      .then(({ data }) => setInactiveInventory(data ?? []))
-      .finally(() => setLoading(false));
+    const fetchInactive = async () => {
+      try {
+        const { data } = await supabase
+          .from("productos")
+          .select("*")
+          .eq("esta_activo", false)
+          .order("nombre", { ascending: true });
+        setInactiveInventory(data ?? []);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInactive();
   }, [showInactive]);
 
   const inventoryForList = showInactive ? inactiveInventory : inventory;
@@ -352,7 +358,7 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
       )}
 
       {(mode === "create" || mode === "edit") && (
-        <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm">
+        <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-4 sm:p-6 shadow-sm max-h-[85vh] overflow-y-auto">
           <div className="mb-6 flex items-center gap-3">
             <div className="rounded-2xl bg-[var(--background)] p-3">
               {mode === "edit" ? (
@@ -366,43 +372,45 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
               <p className="text-sm text-[var(--text-muted)]">{mode === "create" ? "Agrega un producto al inventario." : `Editando ${selectedItem?.nombre ?? ""}`}</p>
             </div>
           </div>
-          <div className="grid gap-6 md:grid-cols-[320px_1fr]">
-            {/* IMAGEN - izquierda */}
-            <div className="flex flex-col items-center">
-              <p className="mb-3 text-sm font-medium text-[var(--foreground)]">Foto</p>
-              <div className="flex flex-col items-center gap-3">
-                <div className={`flex aspect-square w-full max-w-[200px] items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] ${!draft.imagen_url ? "bg-[var(--background)]" : ""}`}>
-                  {draft.imagen_url ? (
-                    <img src={draft.imagen_url} alt="preview" className="h-full w-full object-cover" />
-                  ) : (
-                    <Boxes size={48} className="text-[var(--text-muted)]" />
-                  )}
-                </div>
-                <CloudinaryUpload cloudName={process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!} uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!} onUpload={(url) => setDraft((d) => ({ ...d, imagen_url: url }))} />
-                {draft.imagen_url && (
-                  <button
-                    type="button"
-                    onClick={() => setDraft((d) => ({ ...d, imagen_url: null }))}
-                    className="text-xs text-[var(--destructive)] underline transition hover:opacity-80"
-                  >
-                    Quitar imagen
-                  </button>
-                )}
-              </div>
-            </div>
+           <div className="grid gap-6 md:grid-cols-[260px_1fr]">
+             {/* IMAGEN - izquierda / arriba en mobile */}
+             <div className="flex flex-col items-center">
+               <p className="mb-3 text-sm font-medium text-[var(--foreground)]">Foto</p>
+               <div className="flex flex-col items-center gap-3 mx-auto w-full max-w-[200px]">
+                 <div className={`flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] ${!draft.imagen_url ? "bg-[var(--background)]" : ""}`}>
+                   {draft.imagen_url ? (
+                     <img src={draft.imagen_url} alt="preview" className="h-full w-full object-cover" />
+                   ) : (
+                     <Boxes size={48} className="text-[var(--text-muted)]" />
+                   )}
+                 </div>
+                 <div className="flex justify-center w-full">
+                   <CloudinaryUpload cloudName={process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!} uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!} onUpload={(url) => setDraft((d) => ({ ...d, imagen_url: url }))} />
+                 </div>
+                 {draft.imagen_url && (
+                   <button
+                     type="button"
+                     onClick={() => setDraft((d) => ({ ...d, imagen_url: null }))}
+                     className="text-xs text-[var(--destructive)] underline transition hover:opacity-80"
+                   >
+                     Quitar imagen
+                   </button>
+                 )}
+               </div>
+             </div>
 
-            {/* FORMULARIO - derecha */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Nombre" required><input className={inputClassName} value={draft.nombre} onChange={(e) => setDraft((d) => ({ ...d, nombre: e.target.value }))} /></Field>
-              <Field label="SKU"><input className={inputClassName} value={draft.sku ?? ""} onChange={(e) => setDraft((d) => ({ ...d, sku: e.target.value }))} /></Field>
-              <div className="col-span-full">
-                <Field label="Descripcion"><textarea className={`${inputClassName} min-h-20 resize-none`} value={draft.descripcion ?? ""} onChange={(e) => setDraft((d) => ({ ...d, descripcion: e.target.value }))} /></Field>
-              </div>
-              <Field label="Precio costo"><input type="number" className={inputClassName} value={draft.precio_costo ?? 0} onChange={(e) => setDraft((d) => ({ ...d, precio_costo: Number(e.target.value) }))} /></Field>
-              <Field label="Precio venta"><input type="number" className={inputClassName} value={draft.precio_venta} onChange={(e) => setDraft((d) => ({ ...d, precio_venta: Number(e.target.value) }))} /></Field>
-              <Field label="Puntos otorgados"><input type="number" className={inputClassName} value={draft.puntos_otorgados} onChange={(e) => setDraft((d) => ({ ...d, puntos_otorgados: Number(e.target.value) }))} /></Field>
+             {/* FORMULARIO - derecha / abajo en mobile */}
+             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+               <Field label="Nombre" required><input className={inputClassName} value={draft.nombre} onChange={(e) => setDraft((d) => ({ ...d, nombre: e.target.value }))} /></Field>
+               <Field label="SKU"><input className={inputClassName} value={draft.sku ?? ""} onChange={(e) => setDraft((d) => ({ ...d, sku: e.target.value }))} /></Field>
+               <div className="col-span-full">
+                 <Field label="Descripcion"><textarea className={`${inputClassName} min-h-20 resize-none`} value={draft.descripcion ?? ""} onChange={(e) => setDraft((d) => ({ ...d, descripcion: e.target.value }))} /></Field>
+               </div>
+               <Field label="Precio costo"><input type="number" className={inputClassName} value={draft.precio_costo ?? 0} onChange={(e) => setDraft((d) => ({ ...d, precio_costo: Number(e.target.value) }))} /></Field>
+               <Field label="Precio venta"><input type="number" className={inputClassName} value={draft.precio_venta} onChange={(e) => setDraft((d) => ({ ...d, precio_venta: Number(e.target.value) }))} /></Field>
+               <Field label="Puntos otorgados"><input type="number" className={inputClassName} value={draft.puntos_otorgados} onChange={(e) => setDraft((d) => ({ ...d, puntos_otorgados: Number(e.target.value) }))} /></Field>
                <Field label="Stock mínimo"><input type="number" className={inputClassName} value={draft.stock_minimo} onChange={(e) => setDraft((d) => ({ ...d, stock_minimo: Number(e.target.value) }))} /></Field>
-               <Field label="Categoría">
+               <Field label="Categoría" className="col-span-full sm:col-span-1">
                  <select
                    className={inputClassName}
                    value={draft.categoria_producto_id}
@@ -413,69 +421,54 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
                    ))}
                  </select>
                </Field>
-              <div className="col-span-full">
-                <div className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Estado</span>
-                  <div className="flex rounded-xl bg-[var(--background-secondary)] p-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setDraft((d) => ({ ...d, esta_activo: true }))}
-                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${draft.esta_activo ? "bg-[var(--hover)] text-white" : "text-[var(--text-muted)]"}`}
-                    >
-                      Activo
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDraft((d) => ({ ...d, esta_activo: false, publico: false, destacado: false }))}
-                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${!draft.esta_activo ? "bg-neutral-700 text-white" : "text-[var(--text-muted)]"}`}
-                    >
-                      Inactivo
-                    </button>
-                  </div>
-                  {draft.esta_activo && (
-                    <>
-                      <span className="mx-1 h-5 w-px bg-[var(--border)]" />
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <span className="text-xs text-[var(--text-muted)]">Visible</span>
-                        <button
-                          type="button"
-                          onClick={() => setDraft((d) => ({ ...d, publico: !d.publico }))}
-                          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition ${draft.publico ? "bg-[var(--hover)]" : "bg-[var(--border)]"}`}
-                        >
-                          <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition ${draft.publico ? "translate-x-[18px]" : "translate-x-0.5"}`} />
-                        </button>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <span className="text-xs text-[var(--text-muted)]">Destacado</span>
-                        <button
-                          type="button"
-                          onClick={() => setDraft((d) => ({ ...d, destacado: !d.destacado }))}
-                          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition ${draft.destacado ? "bg-[var(--hover)]" : "bg-[var(--border)]"}`}
-                        >
-                          <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition ${draft.destacado ? "translate-x-[18px]" : "translate-x-0.5"}`} />
-                        </button>
-                      </label>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-            <Field label="Precio costo" error={fieldErrors.precioCosto}><input type="number" className={inputClassName} value={draft.precio_costo ?? 0} onChange={(e) => { setDraft((d) => ({ ...d, precio_costo: Number(e.target.value) })); setFieldErrors((prev) => ({ ...prev, precioCosto: "" })); }} /></Field>
-            <Field label="Precio venta" error={fieldErrors.precioVenta}><input type="number" className={inputClassName} value={draft.precio_venta} onChange={(e) => { setDraft((d) => ({ ...d, precio_venta: Number(e.target.value) })); setFieldErrors((prev) => ({ ...prev, precioVenta: "" })); }} /></Field>
-            <Field label="Puntos otorgados"><input type="number" className={inputClassName} value={draft.puntos_otorgados} onChange={(e) => { setDraft((d) => ({ ...d, puntos_otorgados: Number(e.target.value) })); setFieldErrors((prev) => ({ ...prev, puntosOtorgados: "" })); }} /></Field>
-            <Field label="Estado">
-              <select className={inputClassName} value={draft.esta_activo ? "activo" : "inactivo"} onChange={(e) => setDraft((d) => ({ ...d, esta_activo: e.target.value === "activo" }))}>
-                <option value="activo">Activo</option>
-                <option value="inactivo">Inactivo</option>
-              </select>
-            </Field>
-            <Field label="Visible en tienda">
-              <select className={inputClassName} value={draft.publico ? "si" : "no"} onChange={(e) => setDraft((d) => ({ ...d, publico: e.target.value === "si" }))}>
-                <option value="si">Si - Mostrar en la tienda publica</option>
-                <option value="no">No - Solo panel admin</option>
-              </select>
-            </Field>
-          </div>
+               <div className="col-span-full">
+                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-4">
+                   <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] shrink-0">Estado</span>
+                   <div className="flex rounded-xl bg-[var(--background-secondary)] p-0.5 shrink-0">
+                     <button
+                       type="button"
+                       onClick={() => setDraft((d) => ({ ...d, esta_activo: true }))}
+                       className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${draft.esta_activo ? "bg-[var(--hover)] text-white" : "text-[var(--text-muted)]"}`}
+                     >
+                       Activo
+                     </button>
+                     <button
+                       type="button"
+                       onClick={() => setDraft((d) => ({ ...d, esta_activo: false, publico: false, destacado: false }))}
+                       className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${!draft.esta_activo ? "bg-neutral-700 text-white" : "text-[var(--text-muted)]"}`}
+                     >
+                       Inactivo
+                     </button>
+                   </div>
+                   {draft.esta_activo && (
+                     <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                       <span className="hidden sm:inline mx-1 h-5 w-px bg-[var(--border)]" />
+                       <label className="flex items-center gap-2 cursor-pointer">
+                         <span className="text-xs text-[var(--text-muted)]">Visible</span>
+                         <button
+                           type="button"
+                           onClick={() => setDraft((d) => ({ ...d, publico: !d.publico }))}
+                           className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition ${draft.publico ? "bg-[var(--hover)]" : "bg-[var(--border)]"}`}
+                         >
+                           <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition ${draft.publico ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+                         </button>
+                       </label>
+                       <label className="flex items-center gap-2 cursor-pointer">
+                         <span className="text-xs text-[var(--text-muted)]">Destacado</span>
+                         <button
+                           type="button"
+                           onClick={() => setDraft((d) => ({ ...d, destacado: !d.destacado }))}
+                           className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition ${draft.destacado ? "bg-[var(--hover)]" : "bg-[var(--border)]"}`}
+                         >
+                           <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition ${draft.destacado ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+                         </button>
+                       </label>
+                     </div>
+                   )}
+                 </div>
+               </div>
+             </div>
+           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-6">
             <button type="button" onClick={() => setIsConfirmOpen(true)} disabled={Object.keys(fieldErrors).length > 0 || saving} className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50">
@@ -516,8 +509,8 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
   );
 }
 
-function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
-  return <label className="space-y-2"><span className="text-sm font-medium text-[var(--foreground)]">{label}{required && <span className="ml-1 text-[var(--destructive)]">*</span>}</span>{children}{error && <p className="flex items-center gap-1 text-[11px] text-[var(--destructive)]"><AlertCircle size={11} />{error}</p>}</label>;
+function Field({ label, required, error, className, children }: { label: string; required?: boolean; error?: string; className?: string; children: React.ReactNode }) {
+  return <label className={`space-y-2 ${className ?? ""}`}><span className="text-sm font-medium text-[var(--foreground)]">{label}{required && <span className="ml-1 text-[var(--destructive)]">*</span>}</span>{children}{error && <p className="flex items-center gap-1 text-[11px] text-[var(--destructive)]"><AlertCircle size={11} />{error}</p>}</label>;
 }
 
 function toDraft(item: Product): ProductDraft {

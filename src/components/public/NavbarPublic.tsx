@@ -12,9 +12,14 @@ type Props = {
   slug: string;
   basePath: string;
   brandName: string;
+  socialLinks?: {
+    instagram?: string | null;
+    facebook?: string | null;
+    tiktok?: string | null;
+  } | null;
 };
 
-export function NavbarPublic({ slug, basePath, brandName }: Props) {
+export function NavbarPublic({ slug, basePath, brandName, socialLinks }: Props) {
   const { isAuthenticated, isReady, role, logout } = useAuth();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -113,7 +118,11 @@ export function NavbarPublic({ slug, basePath, brandName }: Props) {
           {/* Logo */}
           <Link href={basePath} className="flex shrink-0 items-center gap-3">
             <img
-              src="https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981236/ZONA-FADE_nziudx.png"
+              src={
+                theme === "dark"
+                  ? "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1780970210/ChatGPT_Image_4_jun_2026_18_46_26_dlzo86.png"
+                  : "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981236/ZONA-FADE_nziudx.png"
+              }
               alt={brandName}
               className={`w-auto max-w-[180px] object-contain transition-all ${
                 scrolled ? "h-10 sm:h-12 md:h-14" : "h-12 sm:h-16 md:h-18"
@@ -282,7 +291,7 @@ export function NavbarPublic({ slug, basePath, brandName }: Props) {
               </MobileNavLink>
             </nav>
 
-            {/* Sección inferior con separador */}
+            {/* Mis Puntos */}
             <div className="px-5">
               <div className="border-t border-white/10 py-4 space-y-2">
                 <button
@@ -300,34 +309,6 @@ export function NavbarPublic({ slug, basePath, brandName }: Props) {
                     </span>
                   )}
                 </button>
-                {isReady && isAuthenticated ? (
-                  <>
-                    <Link
-                      href={panelHref}
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-2 py-2.5 text-sm font-semibold tracking-widest uppercase text-[var(--text-muted)] transition hover:text-[var(--foreground)]"
-                    >
-                      <GridIcon size={16} /> · Panel de control
-                    </Link>
-                    <button
-                      onClick={() => {
-                        logout();
-                        setMenuOpen(false);
-                      }}
-                      className="flex w-full items-center gap-2 py-2.5 text-sm font-semibold tracking-widest uppercase text-[var(--text-muted)] transition hover:text-red-500"
-                    >
-                      <LogoutIcon size={16} /> · Cerrar sesión
-                    </button>
-                  </>
-                ) : (
-                  <Link
-                    href={`/${slug}/login`}
-                    onClick={() => setMenuOpen(false)}
-                    className="flex w-full items-center gap-2 py-2.5 text-sm font-semibold tracking-widest uppercase text-[var(--text-muted)] transition hover:text-[var(--foreground)]"
-                  >
-                    <LockIcon size={16} /> · Admin
-                  </Link>
-                )}
               </div>
             </div>
           </div>
@@ -460,6 +441,32 @@ function XIcon({ size }: { size: number }) {
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+function InstagramIcon({ size }: { size: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+    </svg>
+  );
+}
+
+function FacebookIcon({ size }: { size: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+    </svg>
+  );
+}
+
+function TikTokIcon({ size }: { size: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.88-2.89 2.89 2.89 0 0 1 2.88-2.89 2.9 2.9 0 0 1 .78.11V9.4a6.29 6.29 0 0 0-.78-.05A6.25 6.25 0 0 0 2.74 15.6a6.25 6.25 0 0 0 6.25 6.25 6.25 6.25 0 0 0 6.25-6.25v-6.88a8.23 8.23 0 0 0 4.83 1.55V6.69h-.58z" />
     </svg>
   );
 }

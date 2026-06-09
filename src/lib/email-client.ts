@@ -1,70 +1,53 @@
 "use client";
 
+import emailjs from "@emailjs/browser";
+
+emailjs.init("wlLKvAYcMcUff-SVa");
+
 export async function sendConfirmationEmail(customerId: string, toEmail: string) {
   try {
-    const token = btoa(`${customerId}:confirm`);
-    const confirmUrl = `${window.location.origin}/api/email/confirm?id=${customerId}&token=${token}`;
-    await fetch("/api/email/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        to: toEmail,
-        subject: "Confirma tu correo - Aesthetix",
-        html: `
-          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-            <h2 style="color:#111">Confirma tu cuenta</h2>
-            <p>Gracias por registrarte en <strong>Aesthetix</strong>.</p>
-            <p>Haz clic en el botón para verificar tu correo:</p>
-            <a href="${confirmUrl}" style="display:inline-block;background:#111;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0">Confirmar correo</a>
-            <p style="color:#666;font-size:12px">Si no creaste esta cuenta, ignora este mensaje.</p>
-          </div>`,
-      }),
+    await emailjs.send("service_h3vf3lk", "template_5775tlq", {
+      to_email: toEmail,
+      subject: "Confirma tu correo - Aesthetix",
+      message: "Gracias por registrarte en Aesthetix. Tu cuenta ha sido creada.",
+      to_name: "Cliente",
+      from_name: "Aesthetix",
     });
   } catch {}
 }
 
 export async function sendPinResetEmail(customerId: string, toEmail: string, tempPin: string) {
   try {
-    await fetch("/api/email/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        to: toEmail,
-        subject: "Recuperación de PIN - Aesthetix",
-        html: `
-          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-            <h2 style="color:#111">Recuperación de PIN</h2>
-            <p>Has solicitado restablecer tu PIN de acceso.</p>
-            <p>Tu PIN temporal es:</p>
-            <div style="background:#f5f5f5;padding:16px;border-radius:8px;text-align:center;margin:16px 0">
-              <span style="font-size:28px;font-weight:bold;letter-spacing:8px;color:#111">${tempPin}</span>
-            </div>
-            <p style="color:#666;font-size:12px">Ingresa a la app con este PIN y cámbialo desde tu perfil.</p>
-          </div>`,
-      }),
+    await emailjs.send("service_h3vf3lk", "template_5775tlq", {
+      to_email: toEmail,
+      subject: "Recuperación de PIN - Aesthetix",
+      message: `Tu PIN temporal es: ${tempPin}. Ingresa a la app con este PIN.`,
+      to_name: "Cliente",
+      from_name: "Aesthetix",
     });
   } catch {}
 }
 
 export async function sendNewClientPinEmail(toEmail: string, nombres: string, pin: string) {
   try {
-    await fetch("/api/email/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        to: toEmail,
-        subject: "Tu cuenta ha sido creada - Aesthetix",
-        html: `
-          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-            <h2 style="color:#111">¡Bienvenido a Aesthetix, ${nombres}!</h2>
-            <p>Tu cuenta de cliente ha sido creada exitosamente.</p>
-            <p>Tu PIN de acceso es:</p>
-            <div style="background:#f5f5f5;padding:16px;border-radius:8px;text-align:center;margin:16px 0">
-              <span style="font-size:28px;font-weight:bold;letter-spacing:8px;color:#111">${pin}</span>
-            </div>
-            <p style="color:#666;font-size:12px">Usa tu DNI y este PIN para acceder a tus puntos y promociones.</p>
-          </div>`,
-      }),
+    await emailjs.send("service_h3vf3lk", "template_5775tlq", {
+      to_email: toEmail,
+      subject: "Tu cuenta ha sido creada - Aesthetix",
+      message: `Bienvenido a Aesthetix, ${nombres}. Tu PIN de acceso es: ${pin}`,
+      to_name: nombres,
+      from_name: "Aesthetix",
+    });
+  } catch {}
+}
+
+export async function sendVerificationEmail(toEmail: string, nombres: string, code: string) {
+  try {
+    await emailjs.send("service_h3vf3lk", "template_5775tlq", {
+      to_email: toEmail,
+      subject: "Código de verificación - Aesthetix",
+      message: `${nombres}, tu código de verificación es: ${code}. Ingresa este código en la app.`,
+      to_name: nombres,
+      from_name: "Aesthetix",
     });
   } catch {}
 }

@@ -5,6 +5,7 @@ import { useState, useCallback } from "react";
 import { Globe, Scissors } from "lucide-react";
 import { StoreStatus } from "@/components/public/store-status";
 import { useCart } from "@/contexts/cart-context";
+import { useTheme } from "@/contexts/theme-context";
 
 type Service = {
   id: string;
@@ -284,7 +285,7 @@ function ProductCarousel({ products }: { products: ProductItem[] }) {
   return (
     <div className="relative overflow-hidden" style={{ background: "var(--hover)" }}>
       <div
-        className="grid md:grid-cols-[1fr_1fr] gap-[1px] h-[400px] md:h-[440px]"
+        className="grid md:grid-cols-[1fr_1fr] gap-[1px] md:h-[440px]"
         style={{ background: "var(--hover)" }}
       >
         {/* Imagen */}
@@ -545,6 +546,7 @@ export default function LandingPage({
   const locales = localesProp.length > 0 ? localesProp : defaultLocales;
   const WA_NUMBER = "5491112345678";
   const WA_MESSAGE = encodeURIComponent("Hola, quiero reservar un turno.");
+  const { theme } = useTheme();
 
   return (
     <div className="space-y-20 pb-8">
@@ -609,7 +611,11 @@ export default function LandingPage({
           </div>
           <div className="w-full bg-[var(--background-secondary)]" style={{ height: 160 }}>
             <img
-              src="https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
+              src={
+                theme === "dark"
+                  ? "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1780970216/ChatGPT_Image_4_jun_2026_18_53_34_qwlk6n.png"
+                  : "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
+              }
               alt="For Men Castilla"
               style={{ height: 160, width: "100%", objectFit: "contain" }}
             />
@@ -671,7 +677,11 @@ export default function LandingPage({
               style={{ gridColumn: "1 / 2", gridRow: "2 / 3" }}
             >
               <img
-                src="https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
+                src={
+                  theme === "dark"
+                    ? "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1780970216/ChatGPT_Image_4_jun_2026_18_53_34_qwlk6n.png"
+                    : "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
+                }
                 alt="For Men Castilla"
                 style={{ height: 160, width: 160, objectFit: "contain" }}
               />
@@ -729,7 +739,7 @@ export default function LandingPage({
       <section id="servicios" className="space-y-6">
         <div className="space-y-2">
           <SectionLabel>Servicios</SectionLabel>
-          <h2 className="mt-2 text-2xl font-bold tracking-tight">
+          <h2 className="mt-2 text-xl md:text-2xl font-bold tracking-tight">
             Lo más solicitado
           </h2>
         </div>
@@ -742,8 +752,7 @@ export default function LandingPage({
             return (
               <article
                 key={service.id}
-                className="relative grid gap-[1px] transition group bg-[var(--background-secondary)]"
-                style={{ gridTemplateColumns: "auto 1fr auto" }}
+                className="relative grid gap-[1px] transition group bg-[var(--background-secondary)] grid-cols-[auto_1fr] md:grid-cols-[auto_1fr_auto]"
               >
                 {/* Barra lateral izquierda animada al hover */}
                 <div
@@ -752,8 +761,8 @@ export default function LandingPage({
                 />
 
                 {/* FOTO - columna 1 */}
-                <div className="flex items-center justify-center px-6 py-7">
-                  <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[var(--background)]">
+                <div className="flex items-center justify-center px-4 py-5 md:px-6 md:py-7">
+                  <div className="flex h-16 w-16 md:h-20 md:w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[var(--background)]">
                     {service.imagenUrl ? (
                       <img
                         src={service.imagenUrl}
@@ -767,7 +776,7 @@ export default function LandingPage({
                 </div>
 
                 {/* INFO - columna 2 */}
-                <div className="px-8 py-7">
+                <div className="px-4 py-5 md:px-8 md:py-7">
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-2">
                       <div className="flex items-center gap-3">
@@ -791,10 +800,19 @@ export default function LandingPage({
                       {service.duracion_minutos} min
                     </span>
                   </div>
+                  {/* Precio en mobile */}
+                  <div className="md:hidden mt-3 pt-3 border-t" style={{ borderColor: "var(--border)" }}>
+                    <span className="text-xs font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                      Desde{' '}
+                    </span>
+                    <span className="text-xl font-black tracking-tight" style={{ color: "var(--hover)" }}>
+                      S/{service.precio}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Precio — bloque derecho */}
-                <div className="flex flex-col items-center justify-center px-7 py-7 min-w-[100px] bg-[var(--background)]">
+                {/* Precio — bloque derecho (desktop) */}
+                <div className="hidden md:flex flex-col items-center justify-center px-7 py-7 min-w-[100px] bg-[var(--background)]">
                   <span className="text-xs font-semibold uppercase tracking-widest mb-1 text-[var(--text-muted)]">
                     Desde
                   </span>
@@ -937,7 +955,7 @@ export default function LandingPage({
         <section className="space-y-6">
           <div className="space-y-2">
             <SectionLabel>Equipo</SectionLabel>
-            <h2 className="mt-2 text-2xl font-bold tracking-tight">
+            <h2 className="mt-2 text-xl md:text-2xl font-bold tracking-tight">
               Nuestros barbers
             </h2>
           </div>
@@ -1040,7 +1058,7 @@ export default function LandingPage({
           <div className="flex items-end justify-between">
             <div className="space-y-2">
               <SectionLabel>Tienda</SectionLabel>
-              <h2 className="mt-2 text-2xl font-bold tracking-tight">
+            <h2 className="mt-2 text-xl md:text-2xl font-bold tracking-tight">
                 Productos destacados
               </h2>
             </div>

@@ -1045,100 +1045,120 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
       {/* List mode */}
       {mode === "list" && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {paginatedSales.length === 0 ? (
-              <div className="col-span-full flex flex-col items-center gap-3 py-16">
-                <FileText size={32} className="text-[var(--text-muted)]" />
-                <p className="text-sm text-[var(--text-muted)]">
-                  {query
-                    ? "No se encontraron ventas con ese filtro."
-                    : "No hay ventas registradas."}
-                </p>
-              </div>
-            ) : (
-              paginatedSales.map((sale, idx) => {
-                const numero = (page - 1) * pageSize + idx + 1;
-                const nombreCliente = sale.clientes
-                  ? `${sale.clientes.nombres} ${sale.clientes.apellidos}`
-                  : "Cliente ocasional";
+          <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)]">
+            <div className="overflow-x-auto touch-pan-x [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]">
+              {paginatedSales.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 py-16">
+                  <FileText size={32} className="text-[var(--text-muted)]" />
+                  <p className="text-sm text-[var(--text-muted)]">
+                    {query
+                      ? "No se encontraron ventas con ese filtro."
+                      : "No hay ventas registradas."}
+                  </p>
+                </div>
+              ) : (
+                <table className="w-full text-sm min-w-[900px]">
+                  <thead>
+                    <tr className="border-b border-[var(--border)] text-left">
+                      <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Cliente</th>
+                      <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Tipo</th>
+                      <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Fecha</th>
+                      <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-right whitespace-nowrap">Subtotal</th>
+                      <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-right whitespace-nowrap">Desc.</th>
+                      <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-right whitespace-nowrap">Total</th>
+                      <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap">Método</th>
+                      <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Puntos</th>
+                      <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center whitespace-nowrap">Estado</th>
+                      <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] whitespace-nowrap w-[300px]">Observaciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)]">
+                    {paginatedSales.map((sale, idx) => {
+                      const nombreCliente = sale.clientes
+                        ? `${sale.clientes.nombres} ${sale.clientes.apellidos}`
+                        : "Cliente ocasional";
 
-                return (
-                  <article
-                    key={sale.id}
-                    className="flex gap-4 rounded-3xl border-2 border-[var(--hover)]/15 bg-[var(--background-secondary)] p-5 shadow-md transition hover:-translate-y-0.5 hover:shadow-lg"
-                  >
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--hover)]/10 relative">
-                      <span className="text-[10px] font-bold text-[var(--hover)] absolute -top-1 -right-1 bg-[var(--background-secondary)] rounded-full w-4 h-4 flex items-center justify-center ring-1 ring-[var(--hover)]/20">{numero}</span>
-                      <FileText size={18} className="text-[var(--hover)]" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <p className="truncate text-sm font-semibold text-[var(--foreground)]">
-                          {nombreCliente}
-                        </p>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getTipoVentaClass(sale.tipo_venta)}`}>
-                            {formatTipoVenta(sale.tipo_venta)}
-                          </span>
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStatusClass(sale.estado)}`}>
-                            {getStatusLabel(sale.estado)}
-                          </span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-[var(--text-muted)] mb-2">{sale.creado_en.slice(0, 10)}</p>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--text-muted)]">
-                        <span>Sub S/{sale.subtotal.toFixed(2)}</span>
-                        <span>Desc -S/{sale.descuento.toFixed(2)}</span>
-                        <span className="font-bold text-[var(--foreground)]">Total S/{sale.total.toFixed(2)}</span>
-                      </div>
-                      <div className="mt-1.5 flex items-center gap-3 text-xs text-[var(--text-muted)]">
-                        <span className="rounded-full bg-[var(--background-secondary)] px-2 py-0.5 font-medium">{formatMetodoPago(sale.metodo_pago)}</span>
-                        {sale.puntos_ganados > 0 && (
-                          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600">
-                            +{sale.puntos_ganados} pts
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-2 border-t border-[var(--border)] pt-2">
-                        {editingObs === sale.id ? (
-                          <div className="space-y-2">
-                            <textarea
-                              className="w-full rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] px-3 py-2 text-xs text-[var(--foreground)] outline-none focus:border-[var(--foreground)] resize-none"
-                              rows={3}
-                              maxLength={250}
-                              value={editObsText}
-                              onChange={(e) => setEditObsText(e.target.value)}
-                              onKeyDown={(e) => { if (e.key === "Escape") setEditingObs(null); }}
-                              autoFocus
-                            />
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-[10px] text-[var(--text-muted)]">{editObsText.length}/250</span>
-                              <div className="flex gap-2">
-                                <button onClick={() => setEditingObs(null)} className="rounded-lg border border-[var(--border)] px-3 py-1 text-xs text-[var(--text-muted)] transition hover:bg-[var(--background-secondary)]">Cancelar</button>
-                                <button onClick={() => updateObservaciones(sale.id)} className="rounded-lg bg-emerald-500 px-3 py-1 text-xs text-white transition hover:bg-emerald-600">Guardar</button>
+                      return (
+                        <tr key={sale.id} className="transition hover:bg-[var(--background)]">
+                          <td className="px-4 py-4 font-medium text-[var(--foreground)] whitespace-nowrap">
+                            {nombreCliente}
+                          </td>
+                          <td className="px-4 py-4 text-center whitespace-nowrap">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getTipoVentaClass(sale.tipo_venta)}`}>
+                              {formatTipoVenta(sale.tipo_venta)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-[var(--text-muted)] whitespace-nowrap text-xs">
+                            {sale.creado_en.slice(0, 10)}
+                          </td>
+                          <td className="px-4 py-4 text-right text-[var(--text-muted)] whitespace-nowrap tabular-nums">
+                            S/{sale.subtotal.toFixed(2)}
+                          </td>
+                          <td className="px-4 py-4 text-right text-[var(--text-muted)] whitespace-nowrap tabular-nums">
+                            -S/{sale.descuento.toFixed(2)}
+                          </td>
+                          <td className="px-4 py-4 text-right font-semibold text-[var(--foreground)] whitespace-nowrap tabular-nums">
+                            S/{sale.total.toFixed(2)}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span className="rounded-full bg-[var(--background)] px-2 py-0.5 text-xs font-medium text-[var(--text-muted)]">
+                              {formatMetodoPago(sale.metodo_pago)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-center whitespace-nowrap">
+                            {sale.puntos_ganados > 0 ? (
+                              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">
+                                +{sale.puntos_ganados}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-[var(--text-muted)]">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-4 text-center whitespace-nowrap">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStatusClass(sale.estado)}`}>
+                              {getStatusLabel(sale.estado)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 max-w-[300px] w-[300px] whitespace-normal break-words leading-relaxed">
+                            {editingObs === sale.id ? (
+                              <div className="space-y-1.5">
+                                <textarea
+                                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] px-3 py-1.5 text-xs text-[var(--foreground)] outline-none focus:border-[var(--foreground)] resize-none"
+                                  rows={2}
+                                  maxLength={250}
+                                  value={editObsText}
+                                  onChange={(e) => setEditObsText(e.target.value)}
+                                  onKeyDown={(e) => { if (e.key === "Escape") setEditingObs(null); }}
+                                  autoFocus
+                                />
+                                <div className="flex items-center gap-1.5">
+                                  <button onClick={() => updateObservaciones(sale.id)} className="rounded-lg bg-emerald-500 px-2 py-0.5 text-[10px] text-white transition hover:bg-emerald-600">Guardar</button>
+                                  <button onClick={() => setEditingObs(null)} className="rounded-lg border border-[var(--border)] px-2 py-0.5 text-[10px] text-[var(--text-muted)] transition hover:bg-[var(--background-secondary)]">Cancelar</button>
+                                  <span className="text-[10px] text-[var(--text-muted)] ml-auto">{editObsText.length}/250</span>
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="relative">
-                            <p className="text-xs text-[var(--text-muted)] pr-6 whitespace-normal break-words">
-                              {sale.observaciones || "Sin observaciones"}
-                            </p>
-                            <button
-                              onClick={() => { setEditingObs(sale.id); setEditObsText(sale.observaciones || ""); }}
-                              className="absolute top-0 right-0 rounded-lg p-1 text-[var(--text-muted)] transition hover:text-[var(--foreground)] hover:bg-[var(--background-secondary)]"
-                              title="Editar observación"
-                            >
-                              <FileText size={12} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </article>
-                );
-              })
-            )}
+                            ) : (
+                              <div className="group flex items-start gap-1">
+                                 <span className="text-xs text-[var(--text-muted)] line-clamp-3 flex-1">
+                                  {sale.observaciones || "—"}
+                                </span>
+                                 <button
+                                   onClick={() => { setEditingObs(sale.id); setEditObsText(sale.observaciones || ""); }}
+                                   className="shrink-0 rounded p-1 text-[var(--text-muted)] opacity-70 hover:opacity-100 transition hover:text-[var(--foreground)] hover:bg-[var(--background)]"
+                                   title="Editar observación"
+                                 >
+                                   <FileText size={16} />
+                                 </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
           <Pagination
             page={page}

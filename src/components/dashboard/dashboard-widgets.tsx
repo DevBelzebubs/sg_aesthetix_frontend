@@ -180,9 +180,9 @@ function MonthlySalesDashboard({ data }: { data: MonthlySalesData }) {
         : "Hoy";
 
   return (
-    <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm">
+    <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-4 sm:p-6 shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
             Ventas
@@ -193,12 +193,12 @@ function MonthlySalesDashboard({ data }: { data: MonthlySalesData }) {
         </div>
 
         {/* Period selector */}
-        <div className="flex rounded-2xl border border-[var(--border)] bg-[var(--background)] p-1 gap-1">
+        <div className="flex rounded-2xl border border-[var(--border)] bg-[var(--background)] p-1 gap-1 w-full sm:w-auto">
           {(["mes", "semana", "dia"] as Periodo[]).map((p) => (
             <button
               key={p}
               onClick={() => setPeriodo(p)}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+              className={`flex-1 sm:flex-none rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 periodo === p
                   ? "bg-[var(--hover)] text-[var(--foreground)]"
                   : "text-[var(--text-muted)] hover:text-[var(--foreground)]"
@@ -239,7 +239,7 @@ function MonthlySalesDashboard({ data }: { data: MonthlySalesData }) {
 
       {/* Bar chart */}
       {filteredPoints.length > 0 ? (
-        <div>
+        <div className="overflow-x-auto -mx-4 px-4 sm:-mx-0 sm:px-0">
           {periodo === "dia" ? (
             /* Day view: show today's revenue prominently */
             <div className="flex items-end gap-4 py-4">
@@ -255,7 +255,7 @@ function MonthlySalesDashboard({ data }: { data: MonthlySalesData }) {
             </div>
           ) : (
             /* Month / Week: vertical column chart */
-            <div>
+            <div className="min-w-[300px]">
               <div className="relative h-44">
                 {/* Y-axis guide lines */}
                 <div className="absolute inset-0 flex flex-col justify-between pointer-events-none px-1">
@@ -331,67 +331,69 @@ function RevenueTrendWidget({ data }: { data: DailyPoint[] }) {
   const today = todayStr();
 
   return (
-    <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm">
+    <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-4 sm:p-6 shadow-sm overflow-hidden">
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
         Últimos 7 días
       </p>
-      <h2 className="mt-1 text-xl font-bold tracking-tight text-[var(--foreground)]">
+      <h2 className="mt-1 text-lg sm:text-xl font-bold tracking-tight text-[var(--foreground)]">
         Tendencia de ingresos
       </h2>
 
       {data.length > 0 && maxRevenue > 0 ? (
-        <div className="mt-5">
-          <div className="relative h-44">
-            {/* Y-axis guide lines */}
-            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none px-1">
-              <div className="border-t border-[var(--border)]/30 w-full" />
-              <div className="border-t border-[var(--border)]/30 w-full" />
-              <div className="border-t border-[var(--border)]/30 w-full" />
-              <div className="border-t border-[var(--border)]/30 w-full" />
-            </div>
+        <div className="mt-5 overflow-x-auto -mx-4 px-4 sm:-mx-0 sm:px-0">
+          <div className="min-w-[300px]">
+            <div className="relative h-44">
+              {/* Y-axis guide lines */}
+              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none px-1">
+                <div className="border-t border-[var(--border)]/30 w-full" />
+                <div className="border-t border-[var(--border)]/30 w-full" />
+                <div className="border-t border-[var(--border)]/30 w-full" />
+                <div className="border-t border-[var(--border)]/30 w-full" />
+              </div>
 
-            <div className="flex items-end gap-2 h-full px-1">
-              {data.map((day) => {
-                const pct = (day.revenue / maxRevenue) * 100;
-                const barH = Math.max(pct, day.revenue > 0 ? 3 : 0);
-                const isToday = day.date === today;
-                return (
-                  <div
-                    key={day.date}
-                    className="flex-1 flex flex-col items-center justify-end min-w-0"
-                    title={`${day.date}: S/${formatCurrency(day.revenue)}`}
-                  >
-                    {barH > 30 && (
-                      <span className="text-[10px] font-semibold text-[var(--foreground)] mb-1 whitespace-nowrap">
-                        S/{formatCurrency(day.revenue)}
-                      </span>
-                    )}
+              <div className="flex items-end gap-2 h-full px-1">
+                {data.map((day) => {
+                  const pct = (day.revenue / maxRevenue) * 100;
+                  const barH = Math.max(pct, day.revenue > 0 ? 3 : 0);
+                  const isToday = day.date === today;
+                  return (
                     <div
-                      className={`w-full rounded-t-sm transition-all duration-500 ${
-                        isToday
-                          ? "bg-[var(--hover)]"
-                          : day.revenue > 0
-                            ? "bg-[var(--hover)]/40"
-                            : "bg-[var(--hover)]/10"
-                      }`}
-                      style={{ height: `${barH}%`, minHeight: day.revenue > 0 ? 4 : 1 }}
-                    />
-                  </div>
-                );
-              })}
+                      key={day.date}
+                      className="flex-1 flex flex-col items-center justify-end min-w-0"
+                      title={`${day.date}: S/${formatCurrency(day.revenue)}`}
+                    >
+                      {barH > 30 && (
+                        <span className="text-[10px] font-semibold text-[var(--foreground)] mb-1 whitespace-nowrap">
+                          S/{formatCurrency(day.revenue)}
+                        </span>
+                      )}
+                      <div
+                        className={`w-full rounded-t-sm transition-all duration-500 ${
+                          isToday
+                            ? "bg-[var(--hover)]"
+                            : day.revenue > 0
+                              ? "bg-[var(--hover)]/40"
+                              : "bg-[var(--hover)]/10"
+                        }`}
+                        style={{ height: `${barH}%`, minHeight: day.revenue > 0 ? 4 : 1 }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
 
-          {/* X-axis labels */}
-          <div className="flex gap-2 px-1 mt-1.5">
-            {data.map((day) => (
-              <span
-                key={day.date}
-                className="flex-1 text-center text-[10px] text-[var(--text-muted)]"
-              >
-                {getDayName(day.date)}
-              </span>
-            ))}
+            {/* X-axis labels */}
+            <div className="flex gap-2 px-1 mt-1.5">
+              {data.map((day) => (
+                <span
+                  key={day.date}
+                  className="flex-1 text-center text-[10px] text-[var(--text-muted)]"
+                >
+                  {getDayName(day.date)}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       ) : (
@@ -409,11 +411,11 @@ function RevenueTrendWidget({ data }: { data: DailyPoint[] }) {
 
 function TopProductsWidget({ data }: { data: TopProduct[] }) {
   return (
-    <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm">
+    <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-4 sm:p-6 shadow-sm overflow-hidden">
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
         Este mes
       </p>
-      <h2 className="mt-1 text-xl font-bold tracking-tight text-[var(--foreground)]">
+      <h2 className="mt-1 text-lg sm:text-xl font-bold tracking-tight text-[var(--foreground)]">
         Más vendidos
       </h2>
 
@@ -425,13 +427,13 @@ function TopProductsWidget({ data }: { data: TopProduct[] }) {
             return (
               <div
                 key={`${product.descripcion}-${idx}`}
-                className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3"
+                className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 sm:flex-row sm:items-center sm:gap-3"
               >
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--hover)]/10 text-xs font-bold text-[var(--hover)] shrink-0">
                   {idx + 1}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-medium text-[var(--foreground)]">
+                  <p className="text-sm font-medium text-[var(--foreground)] break-words">
                     {product.descripcion}
                   </p>
                   <div className="mt-1 h-1.5 rounded-full bg-[var(--border)]/20 overflow-hidden">
@@ -441,7 +443,7 @@ function TopProductsWidget({ data }: { data: TopProduct[] }) {
                     />
                   </div>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-left sm:text-right shrink-0">
                   <p className="text-sm font-bold text-[var(--foreground)]">
                     S/{formatCurrency(product.total_revenue)}
                   </p>
@@ -469,7 +471,7 @@ function TopProductsWidget({ data }: { data: TopProduct[] }) {
 
 function LowStockWidget({ data }: { data: LowStockProduct[] }) {
   return (
-    <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm">
+    <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-4 sm:p-6 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
@@ -578,23 +580,23 @@ function AppointmentsWidget({
   const completadasPct = total > 0 ? (completadas / total) * 100 : 0;
 
   return (
-    <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm">
-      <div className="flex items-center justify-between">
+    <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-4 sm:p-6 shadow-sm overflow-hidden">
+      <div className="flex flex-col gap-4 mb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
             Citas
           </p>
-          <h2 className="mt-1 text-xl font-bold tracking-tight text-[var(--foreground)]">
+          <h2 className="mt-1 text-lg sm:text-xl font-bold tracking-tight text-[var(--foreground)]">
             {vista === "hoy" ? "Hoy" : "Esta semana"}
           </h2>
         </div>
 
-        <div className="flex rounded-2xl border border-[var(--border)] bg-[var(--background)] p-1 gap-1">
+        <div className="flex rounded-2xl border border-[var(--border)] bg-[var(--background)] p-1 gap-1 w-full sm:w-auto">
           {(["hoy", "semana"] as VistaCitas[]).map((v) => (
             <button
               key={v}
               onClick={() => setVista(v)}
-              className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
+              className={`flex-1 sm:flex-none rounded-xl px-4 py-2 text-xs font-semibold transition ${
                 vista === v
                   ? "bg-[var(--hover)] text-[var(--foreground)]"
                   : "text-[var(--text-muted)] hover:text-[var(--foreground)]"
