@@ -928,12 +928,11 @@ export default function LandingPage({
               <iframe
                 title="Ubicación del local"
                 src={`https://www.openstreetmap.org/export/embed.html?bbox=${locales[0].lng - 0.004},${locales[0].lat - 0.003},${locales[0].lng + 0.004},${locales[0].lat + 0.003}&layer=mapnik`}
-                className="h-full w-full border-0"
+                className="h-full w-full border-0 pointer-events-none"
                 style={{ filter: "grayscale(1) contrast(1.1)" }}
                 loading="lazy"
-                allowFullScreen
               />
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="absolute inset-0 flex items-center justify-center">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
