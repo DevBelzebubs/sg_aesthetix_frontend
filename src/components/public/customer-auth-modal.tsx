@@ -42,9 +42,6 @@ export function CustomerAuthModal() {
   const [regDni, setRegDni] = useState("");
   const [regTelefono, setRegTelefono] = useState("");
   const [regFechaNacimiento, setRegFechaNacimiento] = useState("");
-  const [regPin, setRegPin] = useState("");
-  const [regPinConfirm, setRegPinConfirm] = useState("");
-  const [regShowPin, setRegShowPin] = useState(false);
   const [regNuevoId, setRegNuevoId] = useState<string | null>(null);
   const [regNuevoNombres, setRegNuevoNombres] = useState("");
   const [regCodigo, setRegCodigo] = useState("");
@@ -81,7 +78,13 @@ export function CustomerAuthModal() {
         return;
       }
 
-      const { hash, salt } = await hashPin(regPin);
+      // Generate 4-digit PIN and 6-digit verification code
+      const nuevoPin = String(Math.floor(1000 + Math.random() * 9000));
+      const codigo = String(Math.floor(100000 + Math.random() * 900000));
+
+      const { hash: pinHash, salt: pinSalt } = await hashPin(nuevoPin);
+      const { hash: codeHash, salt: codeSalt } = await hashPin(codigo);
+
       const nuevo = await CustomersService.create({
         nombres: regNombres,
         apellidos: regApellidos,
@@ -89,37 +92,38 @@ export function CustomerAuthModal() {
         telefono: regTelefono,
         correoElectronico: regEmail,
         fechaNacimiento: regFechaNacimiento,
-        pinHash: hash,
-        pinSalt: salt,
+        pinHash,
+        pinSalt,
         emailConfirmado: false,
       });
 
-      // Generate 6-digit verification code
-      const codigo = String(Math.floor(100000 + Math.random() * 900000));
-      const { hash: codeHash, salt: codeSalt } = await hashPin(codigo);
       await CustomersService.update(nuevo.id, {
         codigoVerificacionHash: codeHash,
         codigoVerificacionSalt: codeSalt,
         codigoVerificacionExpira: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       });
 
-      // Send code via email
+      // Send email with PIN and verification code
       if (regEmail) {
         const emailRes = await fetch("/api/email/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             to: regEmail,
-            subject: "Verifica tu correo - Aesthetix",
+            subject: "Tu cuenta ha sido creada - Aesthetix",
             html: `
               <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-                <h2 style="color:#111">Verifica tu correo</h2>
-                <p>Gracias por registrarte en <strong>Aesthetix</strong>.</p>
+                <h2 style="color:#111">¡Bienvenido a Aesthetix!</h2>
+                <p>Gracias por registrarte, <strong>${regNombres}</strong>.</p>
+                <p>Tu PIN de acceso es:</p>
+                <div style="background:#f5f5f5;padding:16px;border-radius:8px;text-align:center;margin:16px 0">
+                  <span style="font-size:28px;font-weight:bold;letter-spacing:8px;color:#111">${nuevoPin}</span>
+                </div>
                 <p>Tu código de verificación es:</p>
                 <div style="background:#f5f5f5;padding:16px;border-radius:8px;text-align:center;margin:16px 0">
                   <span style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#111">${codigo}</span>
                 </div>
-                <p style="color:#666;font-size:12px">Este código expira en 10 minutos.</p>
+                <p style="color:#666;font-size:12px">El código de verificación expira en 10 minutos.</p>
               </div>`,
           }),
         });
@@ -319,8 +323,6 @@ export function CustomerAuthModal() {
     setRegDni("");
     setRegTelefono("");
     setRegFechaNacimiento("");
-    setRegPin("");
-    setRegPinConfirm("");
     setRegNuevoId(null);
     setRegNuevoNombres("");
     setRegCodigo("");
