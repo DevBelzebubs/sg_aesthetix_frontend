@@ -927,21 +927,12 @@ export default function LandingPage({
             <div className="relative min-h-[320px] overflow-hidden bg-[var(--background-secondary)] md:min-h-0">
               <iframe
                 title="Ubicación del local"
-                src={`https://www.openstreetmap.org/export/embed.html?bbox=${locales[0].lng - 0.004},${locales[0].lat - 0.003},${locales[0].lng + 0.004},${locales[0].lat + 0.003}&layer=mapnik`}
-                className="h-full w-full border-0 pointer-events-none"
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${locales[0].lng - 0.004},${locales[0].lat - 0.003},${locales[0].lng + 0.004},${locales[0].lat + 0.003}&layer=mapnik&marker=${locales[0].lat},${locales[0].lng}`}
+                className="h-full w-full border-0"
                 style={{ filter: "grayscale(1) contrast(1.1)" }}
                 loading="lazy"
+                allowFullScreen
               />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="#059669"
-                  className="h-10 w-10 drop-shadow-lg"
-                >
-                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                </svg>
-              </div>
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-6 py-5">
                 <div
                   className="mb-3 h-[2px] w-8"
