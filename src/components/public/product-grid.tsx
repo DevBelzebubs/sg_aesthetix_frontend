@@ -42,7 +42,7 @@ export function ProductGrid({ products, categories }: ProductGridProps) {
   const showGrouped = activeCategory === "Todos" && hasAnyCategory;
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6">
       <div className="flex flex-wrap gap-[2px]">
         {categories.map((cat) => (
           <button
@@ -66,12 +66,12 @@ export function ProductGrid({ products, categories }: ProductGridProps) {
           </p>
         </div>
       ) : showGrouped ? (
-        <div className="space-y-16">
+        <div className="space-y-10">
           {[...grouped.entries()].map(([category, catProducts]) => (
             <section key={category || "__sin_categoria"}>
               {category && (
                 <h2
-                  className="mb-6 text-2xl font-black uppercase tracking-tight text-[var(--foreground)]"
+                  className="mb-4 text-xl font-black uppercase tracking-tight text-[var(--foreground)]"
                   style={{ fontFamily: "'Bebas Neue', sans-serif" }}
                 >
                   {category}
