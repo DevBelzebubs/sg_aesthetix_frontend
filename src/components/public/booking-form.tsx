@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { AppointmentsService } from "@/services/appointments.service";
 import { CustomersService } from "@/services/customers.service";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
