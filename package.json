@@ -15,6 +15,7 @@
     "cf:create-r2-bucket": "npx wrangler r2 bucket create sgaesthetix-opennext-cache"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "bcryptjs": "^3.0.3",

@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
 import { CustomersService } from "@/services/customers.service";
 import { RewardsService } from "@/services/rewards.service";
-import { validateDni, validateEmail, validateEmailOptional, validatePhoneOptional, validateRequired, validatePassword } from "@/lib/validators";
+import { validateDni, validateEmail, validateRequired, validatePassword } from "@/lib/validators";
 import { hashPin, verifyPin } from "@/lib/pin";
 import { sendConfirmationEmail, sendPinResetEmail, sendVerificationEmail } from "@/lib/email-client";
 import { Toast } from "@/components/dashboard/toast";
@@ -39,8 +39,7 @@ export function CustomerAuthModal() {
   const [regApellidos, setRegApellidos] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regDni, setRegDni] = useState("");
-  const [regTelefono, setRegTelefono] = useState("");
-  const [regFechaNacimiento, setRegFechaNacimiento] = useState("");
+
   const [regPin, setRegPin] = useState("");
   const [regPinConfirm, setRegPinConfirm] = useState("");
   const [regShowPin, setRegShowPin] = useState(false);
@@ -54,9 +53,7 @@ export function CustomerAuthModal() {
     nombres: string;
     apellidos: string;
     dni: string;
-    telefono: string;
     email: string;
-    fechaNacimiento: string;
     pin: string;
     customerId: string;
   } | null>(null);
@@ -78,8 +75,7 @@ export function CustomerAuthModal() {
     setRegApellidos("");
     setRegEmail("");
     setRegDni("");
-    setRegTelefono("");
-    setRegFechaNacimiento("");
+
     setRegPin("");
     setRegPinConfirm("");
     setRegShowPin(false);
@@ -98,14 +94,12 @@ export function CustomerAuthModal() {
     const nameErr = validateRequired(regNombres, "Los nombres");
     const dniErr = validateDni(regDni);
     const emailErr = validateEmail(regEmail);
-    const phoneErr = validatePhoneOptional(regTelefono);
     const pinErr = validateRequired(regPin, "El PIN");
     if (regPin.length !== 6) errors.regPin = "El PIN debe tener 6 dígitos";
     if (regPin !== regPinConfirm) errors.regPinConfirm = "Los PINs no coinciden";
     if (nameErr) errors.nombres = nameErr;
     if (dniErr) errors.regDni = dniErr;
     if (emailErr) errors.regEmail = emailErr;
-    if (phoneErr) errors.regTelefono = phoneErr;
     if (pinErr) errors.regPin = pinErr;
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -128,9 +122,7 @@ export function CustomerAuthModal() {
         nombres: regNombres,
         apellidos: regApellidos,
         dni: regDni,
-        telefono: regTelefono,
         correoElectronico: regEmail,
-        fechaNacimiento: regFechaNacimiento,
         emailConfirmado: false,
         codigoVerificacion: code,
         codigoExpiracion: new Date(Date.now() + 15 * 60000).toISOString(),
@@ -141,9 +133,7 @@ export function CustomerAuthModal() {
         nombres: regNombres,
         apellidos: regApellidos,
         dni: regDni,
-        telefono: regTelefono,
         email: regEmail,
-        fechaNacimiento: regFechaNacimiento,
         pin: regPin,
         customerId: nuevo.id,
       });
@@ -633,31 +623,7 @@ export function CustomerAuthModal() {
                       </p>
                     )}
                   </label>
-                  <label className="space-y-1 block">
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Teléfono (opcional)</span>
-                    <input
-                      type="text"
-                      value={regTelefono}
-                      onChange={(e) => { setRegTelefono(e.target.value); setFieldErrors((prev) => ({ ...prev, regTelefono: "" })); }}
-                      placeholder="999 999 999"
-                      className={fieldClass}
-                    />
-                    {fieldErrors.regTelefono && (
-                      <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
-                        <AlertCircle size={11} />
-                        {fieldErrors.regTelefono}
-                      </p>
-                    )}
-                  </label>
-                  <label className="space-y-1 block">
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Fecha de nacimiento (opcional)</span>
-                    <input
-                      type="date"
-                      value={regFechaNacimiento}
-                      onChange={(e) => setRegFechaNacimiento(e.target.value)}
-                      className={fieldClass}
-                    />
-                  </label>
+
                   <label className="space-y-1 block">
                     <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
                       PIN (6 dígitos) <span className="text-[var(--destructive)]">*</span>
