@@ -231,7 +231,7 @@ export function CustomerAuthModal() {
         return;
       }
 
-      await CustomersService.update(customer.id, { intentosFallidos: 0, bloqueadoHasta: "" });
+      await CustomersService.update(customer.id, { intentosFallidos: 0 });
       await login(customer.id, customer.nombres);
 
       try {
