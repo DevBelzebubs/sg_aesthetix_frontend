@@ -120,7 +120,7 @@ export function NavbarPublic({ slug, basePath, brandName, socialLinks }: Props) 
             <img
               src={
                 theme === "dark"
-                  ? "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1780970210/ChatGPT_Image_4_jun_2026_18_46_26_dlzo86.png"
+                  ? "https://res.cloudinary.com/dxuk9bogw/image/upload/v1781334838/ChatGPT_Image_13_jun_2026_02_10_35_ibismb.png"
                   : "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981236/ZONA-FADE_nziudx.png"
               }
               alt={brandName}
