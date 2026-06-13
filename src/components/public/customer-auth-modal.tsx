@@ -110,7 +110,7 @@ export function CustomerAuthModal() {
       if (regEmail) {
         try {
           await emailjs.send("service_h3vf3lk", "template_nhrtjp9", {
-            to_email: regEmail,
+            email: regEmail,
             to_name: regNombres,
             from_name: "Aesthetix",
             subject: "Tu cuenta ha sido creada - Aesthetix",
