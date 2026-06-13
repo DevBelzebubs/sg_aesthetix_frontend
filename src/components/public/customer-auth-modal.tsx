@@ -109,7 +109,7 @@ export function CustomerAuthModal() {
       // Send email with PIN and verification code via EmailJS
       if (regEmail) {
         try {
-          await emailjs.send("service_h3vf3lk", "template_5775tlq", {
+          await emailjs.send("service_h3vf3lk", "template_nhrtjp9", {
             to_email: regEmail,
             to_name: regNombres,
             from_name: "Aesthetix",
