@@ -9,7 +9,10 @@ import { CustomersService } from "@/services/customers.service";
 import { RewardsService } from "@/services/rewards.service";
 import { validateDni, validateEmail, validateEmailOptional, validatePhoneOptional, validateRequired, validatePassword } from "@/lib/validators";
 import { hashPin, verifyPin } from "@/lib/pin";
+import emailjs from "@emailjs/browser";
 import { sendPinResetEmail } from "@/lib/email-client";
+
+emailjs.init("wlLKvAYcMcUff-SVa");
 
 type Tab = "cliente" | "registro" | "admin" | "olvide-pin";
 
@@ -103,33 +106,19 @@ export function CustomerAuthModal() {
         codigoVerificacionExpira: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       });
 
-      // Send email with PIN and verification code
+      // Send email with PIN and verification code via EmailJS
       if (regEmail) {
-        const emailRes = await fetch("/api/email/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: regEmail,
+        try {
+          await emailjs.send("service_h3vf3lk", "template_5775tlq", {
+            to_email: regEmail,
+            to_name: regNombres,
+            from_name: "Aesthetix",
             subject: "Tu cuenta ha sido creada - Aesthetix",
-            html: `
-              <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-                <h2 style="color:#111">¡Bienvenido a Aesthetix!</h2>
-                <p>Gracias por registrarte, <strong>${regNombres}</strong>.</p>
-                <p>Tu PIN de acceso es:</p>
-                <div style="background:#f5f5f5;padding:16px;border-radius:8px;text-align:center;margin:16px 0">
-                  <span style="font-size:28px;font-weight:bold;letter-spacing:8px;color:#111">${nuevoPin}</span>
-                </div>
-                <p>Tu código de verificación es:</p>
-                <div style="background:#f5f5f5;padding:16px;border-radius:8px;text-align:center;margin:16px 0">
-                  <span style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#111">${codigo}</span>
-                </div>
-                <p style="color:#666;font-size:12px">El código de verificación expira en 10 minutos.</p>
-              </div>`,
-          }),
-        });
-        if (!emailRes.ok) {
-          const errText = await emailRes.text();
-          console.error("[REGISTRO] Error al enviar código:", errText);
+            pin: nuevoPin,
+            codigo: codigo,
+          });
+        } catch (e) {
+          console.error("[REGISTRO] Error al enviar código por EmailJS:", e);
         }
       }
 
