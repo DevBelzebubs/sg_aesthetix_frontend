@@ -914,12 +914,12 @@ export function BookingForm({
                       Nombres <span className="text-[var(--destructive)]">*</span>
                     </span>
                     <input
-                      readOnly
                       type="text"
                       name="nombres"
                       value={formData.nombres}
+                      onChange={handleChange}
                       placeholder="Juan"
-                      className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
+                      className={inputClassName}
                     />
                     {fieldErrors.nombres && (
                       <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
@@ -933,12 +933,12 @@ export function BookingForm({
                       Apellidos <span className="text-[var(--destructive)]">*</span>
                     </span>
                     <input
-                      readOnly
                       type="text"
                       name="apellidos"
                       value={formData.apellidos}
+                      onChange={handleChange}
                       placeholder="Pérez"
-                      className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
+                      className={inputClassName}
                     />
                     {fieldErrors.apellidos && (
                       <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
@@ -956,14 +956,14 @@ export function BookingForm({
                       DNI <span className="text-[var(--destructive)]">*</span>
                     </span>
                     <input
-                      readOnly
                       type="text"
                       inputMode="numeric"
                       maxLength={8}
                       name="dni"
                       value={formData.dni}
+                      onChange={handleChange}
                       placeholder="12345678"
-                      className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
+                      className={inputClassName}
                     />
                   </label>
                   <label className="space-y-2">
@@ -971,12 +971,12 @@ export function BookingForm({
                       Teléfono <span className="text-[var(--destructive)]">*</span>
                     </span>
                     <input
-                      readOnly
                       type="tel"
                       name="phone"
                       value={formData.phone}
+                      onChange={handleChange}
                       placeholder="999 999 999"
-                      className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
+                      className={inputClassName}
                     />
                     {fieldErrors.phone && (
                       <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
@@ -993,12 +993,12 @@ export function BookingForm({
                     Email <span className="text-[var(--destructive)]">*</span>
                   </span>
                   <input
-                    readOnly
                     type="email"
                     name="email"
                     value={formData.email}
+                    onChange={handleChange}
                     placeholder="nombre@correo.com"
-                    className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
+                    className={inputClassName}
                   />
                   {fieldErrors.email && (
                     <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
