@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AlertCircle, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Toast } from "@/components/dashboard/toast";
 import { AppointmentsService } from "@/services/appointments.service";
 import { CustomersService } from "@/services/customers.service";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
-import { validateDni, validateDniOptional, validateEmail, validateEmailOptional, validateName, validateRequired } from "@/lib/validators";
+import { validateDni, validateDniOptional, validateEmail, validateEmailOptional, validateName, validatePhone, validateRequired } from "@/lib/validators";
 
 type BookingOption = {
   id: string;
@@ -68,8 +69,12 @@ const initialDraft: BookingDraft = {
 const fieldClass =
   "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-base text-[var(--foreground)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
 
+
 const selectClassName =
   "w-full border border-[var(--foreground)]/20 bg-[var(--background-secondary)] px-4 py-3.5 text-base text-[var(--foreground)] outline-none transition focus:border-black focus:ring-0 appearance-none cursor-pointer pr-10";
+
+const inputClassName =
+  "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-base text-[var(--foreground)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
 
 const calendarWeekdays = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
@@ -89,9 +94,11 @@ export function BookingForm({
   const [formData, setFormData] = useState<BookingDraft>(initialDraft);
 
   const { session: customerSession } = useCustomerAuth();
+  const hasLoadedCustomerRef = useRef(false);
 
   useEffect(() => {
-    if (!customerSession) return;
+    if (!customerSession || hasLoadedCustomerRef.current) return;
+    hasLoadedCustomerRef.current = true;
     setCustomerId(customerSession.id);
     (async () => {
       try {
@@ -118,6 +125,11 @@ export function BookingForm({
   const [error, setError] = useState("");
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error">("success");
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const monthOptions = useMemo(() => {
     const groupedMonths = new Map
@@ -266,27 +278,37 @@ export function BookingForm({
     }
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const validateBooking = () => {
     const errors: Record<string, string> = {};
-    const nameErr = validateName(formData.customerName);
-    const phoneErr = validatePhone9(formData.phone);
+    const nombresErr = validateName(formData.nombres, "Los nombres");
+    const apellidosErr = validateName(formData.apellidos, "Los apellidos");
+    const phoneErr = validatePhone(formData.phone);
     const emailErr = validateEmail(formData.email);
-    const dniErr = validateDniOptional(formData.dni);
+    const dniErr = validateDni(formData.dni);
     const serviceErr = validateRequired(formData.serviceId, "El servicio");
     const dateErr = validateRequired(formData.date, "La fecha");
     const timeErr = validateRequired(formData.time, "La hora");
-    if (nameErr) errors.customerName = nameErr;
+    if (nombresErr) errors.nombres = nombresErr;
+    if (apellidosErr) errors.apellidos = apellidosErr;
     if (phoneErr) errors.phone = phoneErr;
     if (emailErr) errors.email = emailErr;
     if (dniErr) errors.dni = dniErr;
     if (serviceErr) errors.serviceId = serviceErr;
     if (dateErr) errors.date = dateErr;
     if (timeErr) errors.time = timeErr;
+    return errors;
+  };
+
+  const handleConfirmClick = () => {
+    const errors = validateBooking();
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
     }
+    setShowConfirm(true);
+  };
+
+  const handleSubmit = async () => {
     setIsLoading(true);
     setError("");
 
@@ -314,6 +336,21 @@ export function BookingForm({
 
       await AppointmentsService.createPublic(payload);
       setIsSubmitted(true);
+      setShowConfirm(false);
+      setToastMessage("¡Reserva confirmada! Te esperamos.");
+      setToastType("success");
+      setToastOpen(true);
+      setTimeout(() => {
+        setFormData(initialDraft);
+        setCurrentStep(0);
+        setDni("");
+        setCustomerId(null);
+        setIsSubmitted(false);
+        setError("");
+        setFieldErrors({});
+        setStage("dni");
+        setToastOpen(false);
+      }, 2500);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al conectar con el servidor.");
     } finally {
@@ -348,8 +385,8 @@ export function BookingForm({
       )}
 
       {stage === "dni" && (
-        <form onSubmit={handleDniLookup} className="space-y-4">
-          <label className="space-y-1.5">
+        <form onSubmit={handleDniLookup} className="flex flex-col gap-6">
+          <label className="flex flex-col gap-1.5">
             <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
               Número de DNI <span className="text-[var(--destructive)]">*</span>
             </span>
@@ -360,7 +397,6 @@ export function BookingForm({
               value={dni}
               onChange={(e) => setDni(e.target.value.replace(/\D/g, ""))}
               placeholder="12345678"
-              maxLength={8}
               className={fieldClass}
             />
             {fieldErrors.dni && (
@@ -373,7 +409,7 @@ export function BookingForm({
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full rounded-xl bg-black px-8 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-6 w-full rounded-xl bg-black px-8 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
           >
             {isLoading ? "Buscando..." : "Buscar"}
           </button>
@@ -381,7 +417,7 @@ export function BookingForm({
       )}
 
       {stage === "register" && (
-        <form onSubmit={handleRegister} className="space-y-4">
+        <form onSubmit={handleRegister} className="animate-[fadeInUp_0.6s_ease-out] space-y-4">
           {/* Fila 1: Nombres + Apellidos */}
           <div className="grid grid-cols-2 gap-4">
             <label className="space-y-2">
@@ -486,7 +522,7 @@ export function BookingForm({
       )}
     </div>
   ) : (
-    <div className="grid gap-px bg-[var(--background)] xl:grid-cols-[1.2fr_0.72fr]">
+    <div className="animate-[fadeInUp_0.6s_ease-out] grid gap-px bg-[var(--background)] xl:grid-cols-[1.2fr_0.72fr]">
       <div className="bg-[var(--background-secondary)]">
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 bg-black px-8 py-10">
           <div>
@@ -719,11 +755,11 @@ export function BookingForm({
                 </div>
               </div>
 
-              <div className="grid grid-cols-7 gap-px bg-[var(--background)]">
+              <div className="grid grid-cols-7 gap-px bg-[var(--border)]">
                 {calendarWeekdays.map((wd) => (
                   <div
                     key={wd}
-                    className="bg-[var(--background-secondary)] py-2 text-center text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]"
+                    className="bg-[var(--background-secondary)] py-1.5 text-center text-[9px] font-semibold uppercase tracking-widest text-[var(--text-muted)]"
                   >
                     {wd}
                   </div>
@@ -750,18 +786,39 @@ export function BookingForm({
                         }));
                         setIsSubmitted(false);
                       }}
-                      className={`flex aspect-square items-center justify-center text-xs font-bold transition ${
+                      className={`flex h-9 items-center justify-center text-[11px] font-bold transition ${
                         isActive
-                          ? "bg-black text-white"
+                          ? "bg-[var(--hover)] text-white"
                           : isAvailable
-                            ? "bg-[var(--background-secondary)] text-[var(--foreground)] hover:opacity-75"
-                            : "bg-[var(--background-secondary)] text-[var(--text-muted)] cursor-default"
+                            ? "bg-[var(--background-secondary)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--hover)] hover:text-white hover:border-[var(--hover)]"
+                            : "bg-[var(--background-tertiary)] text-[var(--text-muted)] cursor-default"
                       }`}
                     >
                       {String(cell.dayNumber).padStart(2, "0")}
                     </button>
                   );
                 })}
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+                <div className="flex items-center gap-1.5">
+                  <div className="h-2.5 w-2.5 bg-[var(--hover)]" />
+                  <span className="text-[9px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                    Seleccionado
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="h-2.5 w-2.5 border border-[var(--border)] bg-[var(--background-secondary)]" />
+                  <span className="text-[9px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                    Disponible
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="h-2.5 w-2.5 bg-[var(--background-tertiary)]" />
+                  <span className="text-[9px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                    No disponible
+                  </span>
+                </div>
               </div>
 
               <p className="mt-3 text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
@@ -776,30 +833,67 @@ export function BookingForm({
               <div className="mb-5">
                 <p className="text-sm font-bold uppercase tracking-tight">Horario</p>
                 <p className="mt-1 text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
-                  Selecciona la hora que prefieras para tu cita.
+                  {selectedDate?.value === (() => {
+                    const n = new Date();
+                    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
+                  })()
+                    ? "Horarios disponibles a partir de la próxima hora."
+                    : "Selecciona la hora que prefieras para tu cita."}
                 </p>
               </div>
 
-              <div className="relative">
-                <select
-                  value={formData.time}
-                  onChange={(e) => {
-                    setFormData((c) => ({ ...c, time: e.target.value }));
-                    setIsSubmitted(false);
-                  }}
-                  className={selectClassName}
-                >
-                  {availableSlots.map((slot) => (
-                    <option key={slot} value={slot}>
-                      {slot}
-                    </option>
-                  ))}
-                </select>
-                <ChevronRight
-                  size={16}
-                  className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-[var(--text-muted)]"
-                />
-              </div>
+              {(() => {
+                const now = new Date();
+                const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+                const isToday = selectedDate?.value === todayStr;
+                const minTime = new Date(now.getTime() + 30 * 60 * 1000);
+
+                const slotsWithStatus = availableSlots.map((slot) => {
+                  const [h, m] = slot.split(":").map(Number);
+                  const slotTime = new Date();
+                  slotTime.setHours(h, m, 0, 0);
+                  const isEnabled = !isToday || slotTime >= minTime;
+                  return { slot, isEnabled };
+                });
+
+                const hasEnabled = slotsWithStatus.some((s) => s.isEnabled);
+
+                if (isToday && !hasEnabled) {
+                  return (
+                    <div className="rounded-xl border border-[var(--destructive-border)] bg-[var(--destructive-hover)] px-4 py-3 text-xs text-[var(--destructive)]">
+                      No hay horarios disponibles para hoy. Elige otro día.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 md:grid-cols-6">
+                    {slotsWithStatus.map(({ slot, isEnabled }) => {
+                      const isActive = formData.time === slot;
+                      return (
+                        <button
+                          key={slot}
+                          type="button"
+                          disabled={!isEnabled}
+                          onClick={() => {
+                            setFormData((c) => ({ ...c, time: slot }));
+                            setIsSubmitted(false);
+                          }}
+                          className={`rounded-lg border px-2 py-2.5 text-[11px] font-semibold uppercase tracking-wider transition ${
+                            isActive
+                              ? "border-[var(--hover)] bg-[var(--hover)] text-white"
+                              : isEnabled
+                                ? "border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] hover:border-[var(--hover)] hover:text-[var(--hover)]"
+                                : "border-transparent bg-[var(--background-tertiary)] text-[var(--text-muted)] opacity-40 cursor-not-allowed line-through"
+                          }`}
+                        >
+                          {slot}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -817,31 +911,41 @@ export function BookingForm({
                 <div className="grid grid-cols-2 gap-4">
                   <label className="space-y-2">
                     <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                      Nombres
+                      Nombres <span className="text-[var(--destructive)]">*</span>
                     </span>
                     <input
-                      required
+                      readOnly
                       type="text"
                       name="nombres"
                       value={formData.nombres}
-                      onChange={handleChange}
                       placeholder="Juan"
-                      className={inputClassName}
+                      className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
                     />
+                    {fieldErrors.nombres && (
+                      <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                        <AlertCircle size={11} />
+                        {fieldErrors.nombres}
+                      </p>
+                    )}
                   </label>
                   <label className="space-y-2">
                     <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                      Apellidos
+                      Apellidos <span className="text-[var(--destructive)]">*</span>
                     </span>
                     <input
-                      required
+                      readOnly
                       type="text"
                       name="apellidos"
                       value={formData.apellidos}
-                      onChange={handleChange}
                       placeholder="Pérez"
-                      className={inputClassName}
+                      className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
                     />
+                    {fieldErrors.apellidos && (
+                      <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                        <AlertCircle size={11} />
+                        {fieldErrors.apellidos}
+                      </p>
+                    )}
                   </label>
                 </div>
 
@@ -849,49 +953,59 @@ export function BookingForm({
                 <div className="grid grid-cols-2 gap-4">
                   <label className="space-y-2">
                     <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                      DNI <span className="text-[var(--text-muted)]">(opcional)</span>
+                      DNI <span className="text-[var(--destructive)]">*</span>
                     </span>
                     <input
+                      readOnly
                       type="text"
                       inputMode="numeric"
                       maxLength={8}
                       name="dni"
                       value={formData.dni}
-                      onChange={(e) => setFormData((c) => ({ ...c, dni: e.target.value.replace(/\D/g, "") }))}
                       placeholder="12345678"
-                      className={inputClassName}
+                      className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
                     />
                   </label>
                   <label className="space-y-2">
                     <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                      Teléfono
+                      Teléfono <span className="text-[var(--destructive)]">*</span>
                     </span>
                     <input
-                      required
+                      readOnly
                       type="tel"
                       name="phone"
                       value={formData.phone}
-                      onChange={handleChange}
                       placeholder="999 999 999"
-                      className={inputClassName}
+                      className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
                     />
+                    {fieldErrors.phone && (
+                      <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                        <AlertCircle size={11} />
+                        {fieldErrors.phone}
+                      </p>
+                    )}
                   </label>
                 </div>
 
                 {/* Fila 3: Email */}
                 <label className="space-y-2">
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                    Email
+                    Email <span className="text-[var(--destructive)]">*</span>
                   </span>
                   <input
-                    required
+                    readOnly
                     type="email"
                     name="email"
                     value={formData.email}
-                    onChange={handleChange}
                     placeholder="nombre@correo.com"
-                    className={inputClassName}
+                    className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
                   />
+                  {fieldErrors.email && (
+                    <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                      <AlertCircle size={11} />
+                      {fieldErrors.email}
+                    </p>
+                  )}
                 </label>
               </div>
             </div>
@@ -925,15 +1039,74 @@ export function BookingForm({
               </button>
             ) : (
               <button
-                type="submit"
+                type="button"
+                onClick={handleConfirmClick}
                 disabled={isLoading || isSubmitted}
                 className="bg-black px-8 py-2.5 text-[10px] font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-75 disabled:opacity-40"
               >
-                {isLoading ? "Procesando..." : isSubmitted ? "¡Confirmado!" : "Confirmar turno"}
+                {isSubmitted ? "¡Confirmado!" : "Confirmar turno"}
               </button>
             )}
           </div>
         </form>
+
+        {/* Modal de confirmación */}
+        {showConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-500" onClick={() => setShowConfirm(false)} />
+            <div className="animate-[fadeInUp_0.6s_ease-out] relative w-full max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] p-8 shadow-2xl">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                Confirma tu reserva
+              </p>
+              <h2 className="mt-2 text-2xl font-bold tracking-tight">
+                ¿Deseas confirmar?
+              </h2>
+              <div className="mt-6 space-y-3 text-sm">
+                <div className="flex justify-between border-b border-[var(--border)] pb-2">
+                  <span className="text-[var(--text-muted)]">Servicio</span>
+                  <span className="font-bold">{selectedService?.name}</span>
+                </div>
+                <div className="flex justify-between border-b border-[var(--border)] pb-2">
+                  <span className="text-[var(--text-muted)]">Profesional</span>
+                  <span className="font-bold">{selectedBarber?.name || "Sin preferencia"}</span>
+                </div>
+                <div className="flex justify-between border-b border-[var(--border)] pb-2">
+                  <span className="text-[var(--text-muted)]">Fecha</span>
+                  <span className="font-bold">{selectedDate?.label}</span>
+                </div>
+                <div className="flex justify-between border-b border-[var(--border)] pb-2">
+                  <span className="text-[var(--text-muted)]">Hora</span>
+                  <span className="font-bold">{formData.time}</span>
+                </div>
+                <div className="flex justify-between border-b border-[var(--border)] pb-2">
+                  <span className="text-[var(--text-muted)]">Cliente</span>
+                  <span className="font-bold">{formData.nombres} {formData.apellidos}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--text-muted)]">Inversión</span>
+                  <span className="font-bold text-[var(--hover)]">{selectedService?.price}</span>
+                </div>
+              </div>
+              <div className="mt-8 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(false)}
+                  className="flex-1 rounded-xl border border-[var(--border)] px-4 py-3 text-[10px] font-bold uppercase tracking-[0.15em] transition hover:bg-[var(--background)]"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isLoading}
+                  className="flex-1 rounded-xl bg-black px-4 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-75 disabled:opacity-40"
+                >
+                  {isLoading ? "Procesando..." : "Sí, confirmar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <aside className="bg-[var(--background-secondary)]">
@@ -969,6 +1142,7 @@ export function BookingForm({
           </div>
         </div>
       </aside>
+      <Toast message={toastMessage} type={toastType} open={toastOpen} onClose={() => setToastOpen(false)} />
     </div>
   );
 }

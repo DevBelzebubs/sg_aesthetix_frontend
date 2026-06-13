@@ -5,7 +5,8 @@ import { getThemeSettingsByTenantId } from "@/lib/theme/get-theme-settings";
 import { resolveTenantBySlug } from "@/lib/tenant/resolve-tenant";
 import { TapeDecor } from "@/components/tape-decor";
 import { PublicLayoutShell } from "@/components/public/public-layout-shell";
-import { createClient } from "@/lib/supabase/client";
+import { FooterLogo } from "@/components/public/footer-logo";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 type PublicLandingLayoutProps = {
   children: ReactNode;
@@ -31,6 +32,22 @@ export default async function PublicLandingLayout({
   const { slug } = await params;
   const tenant = await resolveTenantBySlug(slug);
   const theme = await getThemeSettingsByTenantId(tenant.tenantId);
+  const supabase = await createServerSupabase();
+
+  const { data: localesData } = await supabase
+    .from("locales")
+    .select("nombre, direccion, telefono, maps_url, lat, lng")
+    .order("orden", { ascending: true })
+    .limit(1);
+
+  const { data: usersData } = await supabase
+    .from("usuarios")
+    .select("instagram, facebook, tiktok")
+    .not("instagram", "is", null)
+    .limit(1);
+
+  const locale = localesData?.[0];
+  const socialUser = usersData?.[0];
 
   const themeVariables: CSSProperties = {
     ["--tenant-primary" as string]: theme.primaryColor,
@@ -38,16 +55,6 @@ export default async function PublicLandingLayout({
   };
 
   const basePath = `/${tenant.slug}`;
-
-  const supabase = createClient();
-  const { data: localesData } = await supabase
-    .from("locales")
-    .select("direccion, telefono")
-    .order("orden", { ascending: true });
-  const locales = (localesData ?? []).map((l) => ({
-    address: l.direccion,
-    phone: l.telefono,
-  }));
 
   const footer = (
     <footer className="mt-auto px-6 pb-8 max-w-[1400px] mx-auto w-full">
@@ -63,11 +70,7 @@ export default async function PublicLandingLayout({
         {/* Marca + tagline */}
         <div className="flex flex-col gap-3 max-w-xs">
           <Link href={basePath} className="flex items-center gap-3">
-            <img
-              src="https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
-              alt={theme.brandName}
-              className="h-[80px] w-auto scale-150"
-            />
+            <FooterLogo brandName={theme.brandName} />
           </Link>
           <p className="text-sm text-[var(--text-muted)] leading-relaxed">
             Cortes de precisión, ambiente cuidado y reserva online sin
@@ -207,7 +210,8 @@ export default async function PublicLandingLayout({
         basePath={basePath}
         brandName={theme.brandName}
         footer={footer}
-        locales={locales}
+        locale={locale}
+        socialLinks={socialUser}
       >
         {children}
       </PublicLayoutShell>

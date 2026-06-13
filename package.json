@@ -15,12 +15,15 @@
     "cf:create-r2-bucket": "npx wrangler r2 bucket create sgaesthetix-opennext-cache"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
+    "@emailjs/nodejs": "^5.0.2",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "bcryptjs": "^3.0.3",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.7.0",
     "next": "^15.5.19",
+    "pdf-lib": "^1.17.1",
     "postcss": "^8.5.8",
     "qrcode.react": "^4.2.0",
     "react": "19.2.4",

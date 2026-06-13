@@ -1,11 +1,14 @@
-import { resend, FROM_EMAIL } from "@/lib/email/resend";
-import { complaintCopyEmailHtml } from "@/lib/email/templates/complaint-copy";
-import { adminNotificationEmailHtml } from "@/lib/email/templates/admin-notification";
+import emailjs from "@emailjs/nodejs";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID!;
+const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY!;
+const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY!;
+const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID!;
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://tu-barberia.com";
 function apiHeaders(key: string) {
   return {
     "Content-Type": "application/json",
@@ -33,6 +36,7 @@ export async function POST(request: Request) {
       pedidoConsumidor,
     } = body;
 
+    // Validaciones de campos obligatorios
     if (!tenantSlug || !tipo || !nombres || !apellidos || !email || !descripcion) {
       return Response.json(
         { error: "Faltan campos obligatorios: tenantSlug, tipo, nombres, apellidos, email, descripcion" },
@@ -98,63 +102,33 @@ export async function POST(request: Request) {
 
     const tenantName = tenantSlug.replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
 
-    const consumerEmailHtml = complaintCopyEmailHtml({
-      numeroReclamo,
-      nombres,
-      apellidos,
-      tipo,
-      descripcion,
-      fecha,
-      tenantName,
-    });
-
-    const emailPromises: Promise<unknown>[] = [];
-
-    emailPromises.push(
-      resend.emails.send({
-        from: FROM_EMAIL,
-        to: email,
-        subject: `Copia de su ${tipo} - Libro de Reclamaciones - ${tenantName}`,
-        html: consumerEmailHtml,
-      }),
-    );
-
-    if (SERVICE_KEY) {
-      const adminRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/usuarios?rol=eq.admin&esta_activo=eq.true&select=correo_electronico`,
-        { headers: apiHeaders(SERVICE_KEY) },
-      );
-      const admins = await adminRes.json();
-
-      if (Array.isArray(admins) && admins.length > 0) {
-        const adminEmails = admins
-          .map((a: Record<string, unknown>) => a.correo_electronico as string)
-          .filter(Boolean);
-
-        if (adminEmails.length > 0) {
-          const adminHtml = adminNotificationEmailHtml({
-            numeroReclamo,
-            nombres,
-            apellidos,
-            tipo,
-            email,
-            telefono: telefono || undefined,
-            tenantSlug,
-          });
-
-          emailPromises.push(
-            resend.emails.send({
-              from: FROM_EMAIL,
-              to: adminEmails,
-              subject: `Nuevo ${tipo} - Libro de Reclamaciones - ${tenantName}`,
-              html: adminHtml,
-            }),
-          );
-        }
+    const linkDescarga = `${APP_URL}/${tenantSlug}/libro-reclamaciones/download?id=${complaint.id}`;
+    await emailjs.send(
+      EMAILJS_SERVICE_ID,
+      EMAILJS_TEMPLATE_ID,
+      {
+        numeroReclamo,
+        tipo: tipo === "reclamo" ? "Reclamo" : "Queja",
+        nombres,
+        apellidos,
+        dni: dni || "No especificado",
+        domicilio: domicilio || "No especificado",
+        telefono: telefono || "No especificado",
+        email,
+        bienContratado: bienContratado || "No especificado",
+        montoReclamado: montoReclamado ? Number(montoReclamado).toFixed(2) : "0.00",
+        descripcion,
+        pedidoConsumidor: pedidoConsumidor || "No especificado",
+        fecha,
+        tenantName,
+        to_email: email,
+        link_descarga: linkDescarga,
+      },
+      {
+        publicKey: EMAILJS_PUBLIC_KEY,
+        privateKey: EMAILJS_PRIVATE_KEY,
       }
-    }
-
-    await Promise.allSettled(emailPromises);
+    );
 
     return Response.json({
       success: true,
