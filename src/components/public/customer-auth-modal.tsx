@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { AlertCircle, X, Mail } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AlertCircle, CheckCircle2, X, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
@@ -53,6 +53,31 @@ export function CustomerAuthModal() {
   // Forgot PIN fields
   const [forgotDni, setForgotDni] = useState("");
   const [forgotEmail, setForgotEmail] = useState("");
+
+  // Profile editing
+  const [isEditing, setIsEditing] = useState(false);
+  const [editNombres, setEditNombres] = useState("");
+  const [editApellidos, setEditApellidos] = useState("");
+  const [editTelefono, setEditTelefono] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+
+  useEffect(() => {
+    if (!session || tab !== "cliente") return;
+    (async () => {
+      try {
+        const all = await CustomersService.getAll();
+        const found = all.find((c) => c.id === session.id);
+        if (found) {
+          setEditNombres(found.nombres);
+          setEditApellidos(found.apellidos ?? "");
+          setEditTelefono(found.telefono ?? "");
+          setEditEmail(found.correoElectronico ?? "");
+        }
+      } catch {}
+    })();
+  }, [session, tab, profileSaved]);
 
   if (!modalOpen) return null;
 
@@ -151,7 +176,8 @@ export function CustomerAuthModal() {
 
       await login(regNuevoId, regNuevoNombres);
       try { await RewardsService.claimWelcomeReward(regNuevoId); } catch {}
-      closeModal();
+      setTab("cliente");
+      resetRegisterForm();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al verificar el código");
     } finally {
@@ -255,6 +281,27 @@ export function CustomerAuthModal() {
     }
   };
 
+  const handleSaveProfile = async () => {
+    if (!session) return;
+    setSavingProfile(true);
+    setError("");
+    try {
+      await CustomersService.update(session.id, {
+        nombres: editNombres.trim(),
+        apellidos: editApellidos.trim(),
+        telefono: editTelefono.trim(),
+        correoElectronico: editEmail.trim(),
+      });
+      setProfileSaved(true);
+      setIsEditing(false);
+      setTimeout(() => setProfileSaved(false), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al guardar");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const errors: Record<string, string> = {};
@@ -325,7 +372,7 @@ export function CustomerAuthModal() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={closeModal} />
-      <div className="relative w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] shadow-2xl">
+      <div className="relative w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] shadow-2xl">
         <button
           type="button"
           onClick={closeModal}
@@ -358,19 +405,86 @@ export function CustomerAuthModal() {
 
         {/* Session / Login / Register / Forgot PIN / Admin */}
         {session && tab === "cliente" ? (
-          <div className="px-6 py-8 text-center space-y-4">
-            <p className="text-sm text-neutral-500">Bienvenido, <strong>{session.nombres}</strong></p>
-            <p className="text-4xl font-black tracking-tight">{session.puntosDisponibles}</p>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-              Puntos disponibles
-            </p>
-            <div className="flex gap-2">
+          <div className="px-6 py-6 space-y-5">
+            <div className="text-center">
+              <p className="text-sm text-[var(--text-muted)]">
+                Bienvenido, <strong>{session.nombres}</strong>
+              </p>
+              <p className="mt-2 text-4xl font-black tracking-tight">{session.puntosDisponibles}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                Puntos disponibles
+              </p>
+            </div>
+
+            {profileSaved && (
+              <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-50 px-4 py-3 text-xs text-emerald-700">
+                <CheckCircle2 size={14} />
+                Perfil actualizado
+              </div>
+            )}
+
+            {error && (
+              <div className="flex items-center gap-2 rounded-xl border border-[var(--destructive-border)] bg-[var(--destructive-hover)] px-4 py-3 text-xs text-[var(--destructive)]">
+                <AlertCircle size="14" className="shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {isEditing ? (
+              <div className="space-y-3 border-t border-[var(--border)] pt-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)]">
+                  Editar perfil
+                </p>
+                <label className="space-y-1 block">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Nombres</span>
+                  <input type="text" value={editNombres} onChange={(e) => setEditNombres(e.target.value)} className={fieldClass} />
+                </label>
+                <label className="space-y-1 block">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Apellidos</span>
+                  <input type="text" value={editApellidos} onChange={(e) => setEditApellidos(e.target.value)} className={fieldClass} />
+                </label>
+                <label className="space-y-1 block">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Teléfono</span>
+                  <input type="tel" value={editTelefono} onChange={(e) => setEditTelefono(e.target.value)} className={fieldClass} />
+                </label>
+                <label className="space-y-1 block">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Email</span>
+                  <input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className={fieldClass} />
+                </label>
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    className="flex-1 rounded-xl border border-[var(--border)] px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.15em] transition hover:bg-[var(--background)]"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveProfile}
+                    disabled={savingProfile}
+                    className="flex-1 rounded-xl bg-black px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.15em] text-white transition hover:opacity-80 disabled:opacity-40"
+                  >
+                    {savingProfile ? "Guardando..." : "Guardar"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="flex gap-2 border-t border-[var(--border)] pt-4">
               <button
                 type="button"
                 onClick={() => { refreshPoints(); }}
                 className="flex-1 rounded-xl border border-[var(--border)] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] transition hover:bg-[var(--background)]"
               >
                 Actualizar
+              </button>
+              <button
+                type="button"
+                onClick={() => { setIsEditing(true); setError(""); }}
+                className="flex-1 rounded-xl border border-[var(--border)] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] transition hover:bg-[var(--background)]"
+              >
+                Perfil
               </button>
               <button
                 type="button"
