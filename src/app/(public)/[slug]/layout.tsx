@@ -131,13 +131,6 @@ export default async function PublicLandingLayout({
               >
                 Reservar turno
               </Link>
-              <Link
-                href={`${basePath}#reservas`}
-                className="hover:text-[var(--foreground)] transition-colors"
-              >
-                Horarios disponibles
-              </Link>
-    
             </div>
           </div>
 
