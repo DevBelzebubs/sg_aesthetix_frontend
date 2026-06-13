@@ -24,15 +24,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
     }
 
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!serviceKey) {
-      return NextResponse.json({ error: "Error de configuración del servidor" }, { status: 500 });
-    }
-
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const apiKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     const headers = {
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
+      apikey: apiKey,
+      Authorization: `Bearer ${apiKey}`,
     };
 
     const res = await fetch(
