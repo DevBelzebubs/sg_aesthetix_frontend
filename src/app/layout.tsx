@@ -1,10 +1,5 @@
 import type { Metadata } from "next";
-import {
-  Archivo_Narrow,
-  Hanken_Grotesk,
-  Geist,
-  Geist_Mono,
-} from "next/font/google";
+import { Archivo_Narrow, Hanken_Grotesk } from "next/font/google";
 import { AppProviders } from "@/components/providers/app-providers";
 import "./globals.css";
 
@@ -15,16 +10,6 @@ const archivoNarrow = Archivo_Narrow({
 
 const hankenGrotesk = Hanken_Grotesk({
   variable: "--font-hanken-grotesk",
-  subsets: ["latin"],
-});
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
@@ -41,7 +26,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${archivoNarrow.variable} ${hankenGrotesk.variable} ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${archivoNarrow.variable} ${hankenGrotesk.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <AppProviders>{children}</AppProviders>

@@ -1,7 +1,7 @@
 import LandingPage from "./landing-page";
-import { createClient } from "@/lib/supabase/client";
+import { createServerSupabase } from "@/lib/supabase/server";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 type BarberRow = {
   id: string;
@@ -25,8 +25,7 @@ type LocationRow = {
   lng: number;
 };
 
-async function fetchBarbers() {
-  const supabase = createClient();
+async function fetchBarbers(supabase: Awaited<ReturnType<typeof createServerSupabase>>) {
   const { data: rows } = await supabase
     .from("usuarios")
     .select("id, nombres, apellidos, telefono, imagen_url, instagram, facebook, tiktok")
@@ -59,8 +58,7 @@ async function fetchBarbers() {
   return barbers;
 }
 
-async function fetchLocales() {
-  const supabase = createClient();
+async function fetchLocales(supabase: Awaited<ReturnType<typeof createServerSupabase>>) {
   const { data } = await supabase
     .from("locales")
     .select("*")
@@ -83,7 +81,7 @@ export default async function Page({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const supabase = createClient();
+  const supabase = await createServerSupabase();
 
   const [serviciosRes, productosRes, galeriaRes, barbers, locales] = await Promise.all([
     supabase
@@ -105,8 +103,8 @@ export default async function Page({
       .eq("destacado", true)
       .order("orden", { ascending: true })
       .limit(4),
-    fetchBarbers(),
-    fetchLocales(),
+    fetchBarbers(supabase),
+    fetchLocales(supabase),
   ]);
 
   const services = (serviciosRes.data ?? []).map((s) => ({
