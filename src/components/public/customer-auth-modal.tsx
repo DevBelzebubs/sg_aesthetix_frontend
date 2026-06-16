@@ -355,35 +355,21 @@ export function CustomerAuthModal() {
     setLoading(true);
     setError("");
     try {
-      let { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Credenciales incorrectas");
 
-      if (authError || !authData.session) {
-        const res = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
-        const result = await res.json();
-        if (!res.ok) throw new Error(result.error || "Credenciales incorrectas");
-
-        const second = await supabase.auth.signInWithPassword({ email, password });
-        authData = second.data;
-        authError = second.error;
-      }
-
-      if (authError || !authData?.session) {
-        setError("Credenciales incorrectas");
-        return;
-      }
-
-      const { data: usuario } = await supabase
-        .from("usuarios")
-        .select("rol")
-        .eq("auth_user_id", authData.session.user.id)
-        .single();
+      await supabase.auth.setSession({
+        access_token: result.accessToken,
+        refresh_token: result.refreshToken,
+      });
 
       closeModal();
-      router.push(usuario?.rol === "empleado" ? "/empleado" : "/admin");
+      router.push(result.rol === "empleado" ? "/empleado" : "/admin");
     } catch {
       setError("Error al conectar");
     } finally {
