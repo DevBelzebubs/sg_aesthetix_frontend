@@ -22,6 +22,7 @@ function mapRowToEmployee(row: EmployeeRow, specialties: string[]): Employee {
     instagram: row.instagram ?? "",
     facebook: row.facebook ?? "",
     tiktok: row.tiktok ?? "",
+    public: row.public ?? false,
   };
 }
 
@@ -92,6 +93,7 @@ export const EmployeesService = {
     instagram?: string;
     facebook?: string;
     tiktok?: string;
+    public?: boolean;
   }  ): Promise<Employee> {
     const supabase = createClient();
     const clave_hash = data.clave_hash ? await bcrypt.hash(data.clave_hash, 10) : "";
@@ -109,6 +111,7 @@ export const EmployeesService = {
         instagram: data.instagram || null,
         facebook: data.facebook || null,
         tiktok: data.tiktok || null,
+        public: data.public ?? false,
       })
       .select()
       .single();
@@ -140,6 +143,7 @@ export const EmployeesService = {
       instagram?: string;
       facebook?: string;
       tiktok?: string;
+      public?: boolean;
     },
   ): Promise<Employee> {
     const supabase = createClient();
@@ -154,6 +158,7 @@ export const EmployeesService = {
     if (data.instagram !== undefined) updateData.instagram = data.instagram || null;
     if (data.facebook !== undefined) updateData.facebook = data.facebook || null;
     if (data.tiktok !== undefined) updateData.tiktok = data.tiktok || null;
+    if (data.public !== undefined) updateData.public = data.public;
     const { error } = await supabase.from("usuarios").update(updateData).eq("id", id);
     if (error) throw new Error(error.message);
     if (data.servicio_ids !== undefined) {

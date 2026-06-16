@@ -12,6 +12,7 @@ type BarberRow = {
   instagram: string | null;
   facebook: string | null;
   tiktok: string | null;
+  public: boolean | null;
 };
 
 type LocationRow = {
@@ -28,8 +29,9 @@ type LocationRow = {
 async function fetchBarbers(supabase: Awaited<ReturnType<typeof createServerSupabase>>) {
   const { data: rows } = await supabase
     .from("usuarios")
-    .select("id, nombres, apellidos, telefono, imagen_url, instagram, facebook, tiktok")
+    .select("id, nombres, apellidos, telefono, imagen_url, instagram, facebook, tiktok, public")
     .eq("esta_activo", true)
+    .eq("public", true)
     .order("creado_en", { ascending: true });
 
   if (!rows) return [];

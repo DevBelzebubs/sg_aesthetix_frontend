@@ -115,6 +115,11 @@ export default async function EmpleadoDetailPage({ params }: EmpleadoDetailPageP
                 }`}>
                   {employee.status}
                 </span>
+                {employee.public && (
+                  <span className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-blue-500/10 text-blue-500">
+                    Público
+                  </span>
+                )}
               </div>
 
               {(employee.specialties.length > 0 || employee.weeklyLoad || employee.commission) && (
