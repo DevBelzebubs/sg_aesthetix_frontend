@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ProductCard } from "@/components/public/product-card";
+import { Pagination } from "@/components/dashboard/pagination";
 
 type Product = {
   id: string;
@@ -30,13 +31,25 @@ function groupByCategory(products: Product[]): Map<string, Product[]> {
 
 export function ProductGrid({ products, categories }: ProductGridProps) {
   const [activeCategory, setActiveCategory] = useState("Todos");
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
 
   const filtered =
     activeCategory === "Todos"
       ? products
       : products.filter((p) => p.categoriaNombre === activeCategory);
 
-  const grouped = groupByCategory(filtered);
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const paginatedFiltered = filtered.slice(
+    (page - 1) * pageSize,
+    page * pageSize,
+  );
+
+  const grouped = groupByCategory(paginatedFiltered);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeCategory]);
 
   const hasAnyCategory = products.some((p) => p.categoriaNombre);
   const showGrouped = activeCategory === "Todos" && hasAnyCategory;
@@ -104,7 +117,7 @@ export function ProductGrid({ products, categories }: ProductGridProps) {
           className="grid gap-[2px] sm:grid-cols-2 lg:grid-cols-3"
           style={{ background: "var(--background)" }}
         >
-          {filtered.map((product, index) => (
+          {paginatedFiltered.map((product, index) => (
             <ProductCard
               key={product.id}
               productId={product.id}
@@ -119,6 +132,10 @@ export function ProductGrid({ products, categories }: ProductGridProps) {
             />
           ))}
         </div>
+      )}
+
+      {filtered.length > pageSize && (
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
       )}
     </div>
   );

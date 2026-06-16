@@ -21,7 +21,7 @@ export const ConfiguracionService = {
     const supabase = createClient();
     const { data, error } = await supabase
       .from("configuracion_puntos")
-      .select("*")
+      .select("id, minimo_canje, esta_activo, promocion_activa")
       .maybeSingle();
 
     if (error) throw new Error(error.message);
