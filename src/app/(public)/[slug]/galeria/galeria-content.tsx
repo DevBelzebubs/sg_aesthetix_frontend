@@ -60,18 +60,21 @@ export function GaleriaContent({
               <img
                 src={photo.imagen_url ?? ""}
                 alt={photo.titulo ?? ""}
-                className="h-full w-full object-cover brightness-90 saturate-[0.85] transition duration-500 group-hover:scale-105 group-hover:brightness-75 group-hover:saturate-100"
+                className="h-full w-full object-cover brightness-90 saturate-[0.85] transition duration-500 group-hover:scale-105 group-hover:brightness-50 group-hover:saturate-100"
               />
 
-              <div className="absolute inset-0 flex flex-col justify-between p-5 opacity-0 transition duration-300 group-hover:opacity-100">
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-4 pt-12">
+                <span className="inline-flex w-fit items-center gap-2 bg-[var(--tenant-primary)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-white">
+                  {photo.titulo}
+                </span>
+              </div>
+
+              <div className="absolute inset-0 flex-col justify-between p-5 opacity-0 transition duration-300 group-hover:opacity-100 max-sm:hidden hidden sm:flex">
                 <span
-                  className="self-end font-black leading-none text-white/20"
+                  className="self-end font-black leading-none text-white/40"
                   style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "56px" }}
                 >
                   {String(index + 1 + (page - 1) * pageSize).padStart(2, "0")}
-                </span>
-                <span className="inline-flex w-fit items-center gap-2 bg-[var(--tenant-primary)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white">
-                  {photo.titulo}
                 </span>
               </div>
             </article>

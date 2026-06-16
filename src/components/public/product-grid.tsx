@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ProductCard } from "@/components/public/product-card";
 import { Pagination } from "@/components/dashboard/pagination";
+import { Toast } from "@/components/dashboard/toast";
+import type { ToastType } from "@/components/dashboard/toast";
 
 type Product = {
   id: string;
@@ -33,6 +35,15 @@ export function ProductGrid({ products, categories }: ProductGridProps) {
   const [activeCategory, setActiveCategory] = useState("Todos");
   const pageSize = 10;
   const [page, setPage] = useState(1);
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<ToastType>("success");
+
+  const handleNotify = useCallback((message: string) => {
+    setToastMessage(message);
+    setToastType("success");
+    setToastOpen(true);
+  }, []);
 
   const filtered =
     activeCategory === "Todos"
@@ -104,8 +115,8 @@ export function ProductGrid({ products, categories }: ProductGridProps) {
                     puntos={product.puntos_otorgados ?? 0}
                     imagenUrl={product.imagen_url ?? undefined}
                     categoriaNombre={product.categoriaNombre}
-                    featured={index === 0}
                     index={index}
+                    onNotify={handleNotify}
                   />
                 ))}
               </div>
@@ -127,8 +138,8 @@ export function ProductGrid({ products, categories }: ProductGridProps) {
               puntos={product.puntos_otorgados ?? 0}
               imagenUrl={product.imagen_url ?? undefined}
               categoriaNombre={product.categoriaNombre}
-              featured={index === 0}
               index={index}
+              onNotify={handleNotify}
             />
           ))}
         </div>
@@ -137,6 +148,8 @@ export function ProductGrid({ products, categories }: ProductGridProps) {
       {filtered.length > pageSize && (
         <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
       )}
+
+      <Toast message={toastMessage} type={toastType} open={toastOpen} onClose={() => setToastOpen(false)} duration={2500} position="top-right" />
     </div>
   );
 }

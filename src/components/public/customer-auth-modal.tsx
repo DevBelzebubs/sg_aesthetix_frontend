@@ -7,12 +7,10 @@ import { createClient } from "@/lib/supabase/client";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
 import { CustomersService } from "@/services/customers.service";
 import { RewardsService } from "@/services/rewards.service";
-import { validateDni, validateEmail, validateEmailOptional, validatePhoneOptional, validateRequired, validatePassword } from "@/lib/validators";
+import { validateDni, validateEmail, validatePhone, validateRequired, validatePassword, validateDateOfBirth } from "@/lib/validators";
 import { hashPin, verifyPin } from "@/lib/pin";
-import emailjs from "@emailjs/browser";
-import { sendPinResetEmail } from "@/lib/email-client";
 
-emailjs.init("wlLKvAYcMcUff-SVa");
+import { sendPinResetEmail } from "@/lib/email-client";
 
 type Tab = "cliente" | "registro" | "admin" | "olvide-pin";
 
@@ -34,7 +32,7 @@ export function CustomerAuthModal() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Customer login fields
-  const [dni, setDni] = useState("");
+
   const [loginPin, setLoginPin] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -48,10 +46,11 @@ export function CustomerAuthModal() {
   const [regNuevoId, setRegNuevoId] = useState<string | null>(null);
   const [regNuevoNombres, setRegNuevoNombres] = useState("");
   const [regCodigo, setRegCodigo] = useState("");
-  const [regStep, setRegStep] = useState<"form" | "verify">("form");
+  const [regStep, setRegStep] = useState<"form" | "verify" | "set-pin">("form");
+  const [regPin, setRegPin] = useState("");
+  const [regConfirmPin, setRegConfirmPin] = useState("");
 
   // Forgot PIN fields
-  const [forgotDni, setForgotDni] = useState("");
   const [forgotEmail, setForgotEmail] = useState("");
 
   // Profile editing
@@ -85,13 +84,17 @@ export function CustomerAuthModal() {
     e.preventDefault();
     const errors: Record<string, string> = {};
     const nameErr = validateRequired(regNombres, "Los nombres");
+    const apellidoErr = validateRequired(regApellidos, "Los apellidos");
     const dniErr = validateDni(regDni);
-    const emailErr = validateEmailOptional(regEmail);
-    const phoneErr = validatePhoneOptional(regTelefono);
+    const emailErr = validateEmail(regEmail);
+    const phoneErr = validatePhone(regTelefono);
+    const dobErr = validateDateOfBirth(regFechaNacimiento);
     if (nameErr) errors.nombres = nameErr;
+    if (apellidoErr) errors.apellidos = apellidoErr;
     if (dniErr) errors.regDni = dniErr;
     if (emailErr) errors.regEmail = emailErr;
     if (phoneErr) errors.regTelefono = phoneErr;
+    if (dobErr) errors.regFechaNacimiento = dobErr;
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
@@ -106,11 +109,9 @@ export function CustomerAuthModal() {
         return;
       }
 
-      // Generate 4-digit PIN and 6-digit verification code
-      const nuevoPin = String(Math.floor(1000 + Math.random() * 9000));
+      // Generate 6-digit verification code
       const codigo = String(Math.floor(100000 + Math.random() * 900000));
 
-      const { hash: pinHash, salt: pinSalt } = await hashPin(nuevoPin);
       const { hash: codeHash, salt: codeSalt } = await hashPin(codigo);
 
       const nuevo = await CustomersService.create({
@@ -120,8 +121,6 @@ export function CustomerAuthModal() {
         telefono: regTelefono,
         correoElectronico: regEmail,
         fechaNacimiento: regFechaNacimiento,
-        pinHash,
-        pinSalt,
         emailConfirmado: false,
       });
 
@@ -131,19 +130,28 @@ export function CustomerAuthModal() {
         codigoVerificacionExpira: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       });
 
-      // Send email with PIN and verification code via EmailJS
+      // Send email with verification code only
       if (regEmail) {
         try {
-          await emailjs.send("service_h3vf3lk", "template_nhrtjp9", {
-            email: regEmail,
-            to_name: regNombres,
-            from_name: "Aesthetix",
-            subject: "Tu cuenta ha sido creada - Aesthetix",
-            pin: nuevoPin,
-            codigo: codigo,
+          await fetch("/api/email/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              to: regEmail,
+              subject: "Verifica tu correo - ZonaFade",
+              html: `
+                <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+                  <h2 style="color:#111">¡Bienvenido a ZonaFade, ${regNombres}!</h2>
+                  <p>Gracias por registrarte. Tu código de verificación es:</p>
+                  <div style="background:#f5f5f5;padding:16px;border-radius:8px;text-align:center;margin:16px 0">
+                    <span style="font-size:28px;font-weight:bold;letter-spacing:8px;color:#111">${codigo}</span>
+                  </div>
+                  <p style="color:#666;font-size:12px">Ingresa este código en la app para activar tu cuenta.</p>
+                </div>`,
+            }),
           });
         } catch (e) {
-          console.error("[REGISTRO] Error al enviar código por EmailJS:", e);
+          console.error("[REGISTRO] Error al enviar código:", e);
         }
       }
 
@@ -174,12 +182,34 @@ export function CustomerAuthModal() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Código incorrecto");
 
-      await login(regNuevoId, regNuevoNombres);
-      try { await RewardsService.claimWelcomeReward(regNuevoId); } catch {}
+      setRegStep("set-pin");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al verificar el código");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSetPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errors: Record<string, string> = {};
+    if (!regPin || regPin.length < 4) errors.pin = "El PIN debe tener al menos 4 dígitos";
+    if (regPin !== regConfirmPin) errors.confirmPin = "Los PIN no coinciden";
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const { hash, salt } = await hashPin(regPin);
+      await CustomersService.updatePin(regNuevoId!, hash, salt);
+      await login(regNuevoId!, regNuevoNombres);
+      try { await RewardsService.claimWelcomeReward(regNuevoId!); } catch {}
       setTab("cliente");
       resetRegisterForm();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al verificar el código");
+      setError(err instanceof Error ? err.message : "Error al configurar el PIN");
     } finally {
       setLoading(false);
     }
@@ -189,9 +219,7 @@ export function CustomerAuthModal() {
     e.preventDefault();
     const errors: Record<string, string> = {};
     const emailErr = validateEmail(email);
-    const dniErr = validateDni(dni);
     if (emailErr) errors.email = emailErr;
-    if (dniErr) errors.dni = dniErr;
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
@@ -200,8 +228,8 @@ export function CustomerAuthModal() {
     setError("");
 
     try {
-      const customer = await CustomersService.findByDni(dni);
-      if (!customer) { setError("DNI no registrado"); setLoading(false); return; }
+      const customer = await CustomersService.findByEmail(email);
+      if (!customer) { setError("Correo no registrado"); setLoading(false); return; }
 
       if (customer.bloqueadoHasta && new Date(customer.bloqueadoHasta) > new Date()) {
         const minutos = Math.ceil((new Date(customer.bloqueadoHasta).getTime() - Date.now()) / 60000);
@@ -254,15 +282,15 @@ export function CustomerAuthModal() {
 
   const handleForgotPin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!forgotDni || !forgotEmail) return;
+    if (!forgotEmail) return;
     setLoading(true);
     setError("");
     setSuccessMsg("");
 
     try {
-      const customer = await CustomersService.findByDni(forgotDni);
-      if (!customer || !customer.correoElectronico || customer.correoElectronico.toLowerCase() !== forgotEmail.toLowerCase()) {
-        setError("DNI y/o correo no coinciden con ningún cliente.");
+      const customer = await CustomersService.findByEmail(forgotEmail);
+      if (!customer) {
+        setError("Correo no registrado.");
         setLoading(false);
         return;
       }
@@ -272,7 +300,6 @@ export function CustomerAuthModal() {
       await CustomersService.updatePin(customer.id, hash, salt);
       await sendPinResetEmail(customer.id, forgotEmail, tempPin);
       setSuccessMsg("Se ha enviado un PIN temporal a tu correo. Revisa tu bandeja de entrada.");
-      setForgotDni("");
       setForgotEmail("");
     } catch {
       setError("Error al procesar la solicitud.");
@@ -362,6 +389,8 @@ export function CustomerAuthModal() {
     setRegNuevoId(null);
     setRegNuevoNombres("");
     setRegCodigo("");
+    setRegPin("");
+    setRegConfirmPin("");
     setRegStep("form");
     setError("");
     setFieldErrors({});
@@ -437,19 +466,19 @@ export function CustomerAuthModal() {
                 </p>
                 <label className="space-y-1 block">
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Nombres</span>
-                  <input type="text" value={editNombres} onChange={(e) => setEditNombres(e.target.value)} className={fieldClass} />
+                  <input type="text" value={editNombres} onChange={(e) => setEditNombres(e.target.value)} maxLength={100} className={fieldClass} />
                 </label>
                 <label className="space-y-1 block">
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Apellidos</span>
-                  <input type="text" value={editApellidos} onChange={(e) => setEditApellidos(e.target.value)} className={fieldClass} />
+                  <input type="text" value={editApellidos} onChange={(e) => setEditApellidos(e.target.value)} maxLength={100} className={fieldClass} />
                 </label>
                 <label className="space-y-1 block">
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Teléfono</span>
-                  <input type="tel" value={editTelefono} onChange={(e) => setEditTelefono(e.target.value)} className={fieldClass} />
+                  <input type="tel" value={editTelefono} onChange={(e) => setEditTelefono(e.target.value)} maxLength={15} className={fieldClass} />
                 </label>
                 <label className="space-y-1 block">
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Email</span>
-                  <input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className={fieldClass} />
+                  <input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} maxLength={100} className={fieldClass} />
                 </label>
                 <div className="flex gap-2 pt-2">
                   <button
@@ -498,7 +527,7 @@ export function CustomerAuthModal() {
         ) : tab === "cliente" ? (
           <form onSubmit={handleCustomerLogin} className="px-6 py-8 space-y-4">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center mb-4">
-              Ingresa con tu DNI y email
+              Ingresa con tu correo y PIN
             </p>
 
             {error && (
@@ -517,31 +546,13 @@ export function CustomerAuthModal() {
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, email: "" })); }}
                 placeholder="nombre@correo.com"
+                maxLength={100}
                 className={fieldClass}
               />
               {fieldErrors.email && (
                 <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
                   <AlertCircle size={11} />
                   {fieldErrors.email}
-                </p>
-              )}
-            </label>
-            <label className="space-y-1.5 block">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                DNI <span className="text-[var(--destructive)]">*</span>
-              </span>
-              <input
-                type="text"
-                value={dni}
-                onChange={(e) => { setDni(e.target.value); setFieldErrors((prev) => ({ ...prev, dni: "" })); }}
-                placeholder="12345678"
-                maxLength={8}
-                className={fieldClass}
-              />
-              {fieldErrors.dni && (
-                <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
-                  <AlertCircle size={11} />
-                  {fieldErrors.dni}
                 </p>
               )}
             </label>
@@ -625,6 +636,78 @@ export function CustomerAuthModal() {
                 Volver al formulario
               </button>
             </form>
+          ) : regStep === "set-pin" ? (
+            <form onSubmit={handleSetPin} className="px-6 py-8 space-y-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center mb-2">
+                Crea tu PIN de acceso
+              </p>
+
+              {error && (
+                <div className="flex items-center gap-2 rounded-xl border border-[var(--destructive-border)] bg-[var(--destructive-hover)] px-4 py-3 text-xs text-[var(--destructive)]">
+                  <AlertCircle size="14" className="shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <p className="text-sm text-[var(--text-muted)] text-center mb-4">
+                Elige un PIN de 4 dígitos para acceder a tu cuenta.
+              </p>
+
+              <label className="space-y-1.5 block">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                  PIN <span className="text-[var(--destructive)]">*</span>
+                </span>
+                <input
+                  type="password"
+                  value={regPin}
+                  onChange={(e) => { setRegPin(e.target.value.replace(/\D/g, "").slice(0, 4)); setFieldErrors((prev) => ({ ...prev, pin: "" })); }}
+                  placeholder="••••"
+                  maxLength={4}
+                  className={fieldClass}
+                  autoFocus
+                />
+                {fieldErrors.pin && (
+                  <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                    <AlertCircle size={11} />
+                    {fieldErrors.pin}
+                  </p>
+                )}
+              </label>
+              <label className="space-y-1.5 block">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                  Confirmar PIN <span className="text-[var(--destructive)]">*</span>
+                </span>
+                <input
+                  type="password"
+                  value={regConfirmPin}
+                  onChange={(e) => { setRegConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 4)); setFieldErrors((prev) => ({ ...prev, confirmPin: "" })); }}
+                  placeholder="••••"
+                  maxLength={4}
+                  className={fieldClass}
+                />
+                {fieldErrors.confirmPin && (
+                  <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                    <AlertCircle size={11} />
+                    {fieldErrors.confirmPin}
+                  </p>
+                )}
+              </label>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-xl bg-black px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {loading ? "Configurando..." : "Crear cuenta"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { resetRegisterForm(); }}
+                className="w-full text-center text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--foreground)] transition"
+              >
+                Volver al inicio
+              </button>
+            </form>
           ) : (
             <form onSubmit={handleRegister} className="px-6 py-8 space-y-4">
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center mb-2">
@@ -647,6 +730,7 @@ export function CustomerAuthModal() {
                   value={regNombres}
                   onChange={(e) => { setRegNombres(e.target.value); setFieldErrors((prev) => ({ ...prev, nombres: "" })); }}
                   placeholder="Tus nombres"
+                  maxLength={100}
                   className={fieldClass}
                 />
                 {fieldErrors.nombres && (
@@ -657,14 +741,23 @@ export function CustomerAuthModal() {
                 )}
               </label>
               <label className="space-y-1 block">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Apellidos</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                  Apellidos <span className="text-[var(--destructive)]">*</span>
+                </span>
                 <input
                   type="text"
                   value={regApellidos}
-                  onChange={(e) => setRegApellidos(e.target.value)}
+                  onChange={(e) => { setRegApellidos(e.target.value); setFieldErrors((prev) => ({ ...prev, apellidos: "" })); }}
                   placeholder="Tus apellidos"
+                  maxLength={100}
                   className={fieldClass}
                 />
+                {fieldErrors.apellidos && (
+                  <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                    <AlertCircle size={11} />
+                    {fieldErrors.apellidos}
+                  </p>
+                )}
               </label>
               <label className="space-y-1 block">
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
@@ -686,12 +779,15 @@ export function CustomerAuthModal() {
                 )}
               </label>
               <label className="space-y-1 block">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Email (opcional)</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                  Email <span className="text-[var(--destructive)]">*</span>
+                </span>
                 <input
                   type="email"
                   value={regEmail}
                   onChange={(e) => { setRegEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, regEmail: "" })); }}
                   placeholder="correo@ejemplo.com"
+                  maxLength={100}
                   className={fieldClass}
                 />
                 {fieldErrors.regEmail && (
@@ -702,12 +798,15 @@ export function CustomerAuthModal() {
                 )}
               </label>
               <label className="space-y-1 block">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Teléfono (opcional)</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                  Teléfono <span className="text-[var(--destructive)]">*</span>
+                </span>
                 <input
                   type="text"
                   value={regTelefono}
                   onChange={(e) => { setRegTelefono(e.target.value); setFieldErrors((prev) => ({ ...prev, regTelefono: "" })); }}
                   placeholder="999 999 999"
+                  maxLength={15}
                   className={fieldClass}
                 />
                 {fieldErrors.regTelefono && (
@@ -718,13 +817,21 @@ export function CustomerAuthModal() {
                 )}
               </label>
               <label className="space-y-1 block">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Fecha de nacimiento (opcional)</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                  Fecha de nacimiento <span className="text-[var(--destructive)]">*</span>
+                </span>
                 <input
                   type="date"
                   value={regFechaNacimiento}
-                  onChange={(e) => setRegFechaNacimiento(e.target.value)}
+                  onChange={(e) => { setRegFechaNacimiento(e.target.value); setFieldErrors((prev) => ({ ...prev, regFechaNacimiento: "" })); }}
                   className={fieldClass}
                 />
+                {fieldErrors.regFechaNacimiento && (
+                  <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                    <AlertCircle size={11} />
+                    {fieldErrors.regFechaNacimiento}
+                  </p>
+                )}
               </label>
               <button
                 type="submit"
@@ -757,6 +864,7 @@ export function CustomerAuthModal() {
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, adminEmail: "" })); }}
                 placeholder="admin@correo.com"
+                maxLength={100}
                 className={fieldClass}
               />
               {fieldErrors.adminEmail && (
@@ -775,6 +883,7 @@ export function CustomerAuthModal() {
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, adminPassword: "" })); }}
                 placeholder="••••••••"
+                maxLength={72}
                 className={fieldClass}
               />
               {fieldErrors.adminPassword && (
