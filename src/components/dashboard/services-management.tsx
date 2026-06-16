@@ -50,6 +50,7 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
   const [services, setServices] = useState<Service[]>([]);
   const [inactiveServices, setInactiveServices] = useState<Service[]>([]);
   const [showInactive, setShowInactive] = useState(false);
+  const [loadingInactive, setLoadingInactive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState("");
@@ -82,14 +83,14 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
 
   useEffect(() => {
     if (!showInactive) return;
-    setLoading(true);
+    setLoadingInactive(true);
     supabase
       .from("servicios")
       .select("*")
       .eq("esta_activo", false)
       .order("nombre", { ascending: true })
       .then(({ data }) => setInactiveServices(data ?? []))
-      .finally(() => setLoading(false));
+      .finally(() => setLoadingInactive(false));
   }, [showInactive]);
 
   const servicesForList = showInactive ? inactiveServices : services;
@@ -267,7 +268,7 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => { setShowInactive((v) => !v); setQuery(""); setPage(1); }}
+              onClick={() => { setShowInactive((v) => !v); setPage(1); }}
               className={`inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-4 py-2 text-sm font-semibold text-[var(--destructive)] transition ${
                 showInactive
                   ? "bg-[var(--destructive-hover)]"

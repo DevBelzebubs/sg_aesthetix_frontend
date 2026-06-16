@@ -53,6 +53,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
   const [inactiveCustomers, setInactiveCustomers] = useState<CustomerRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInactive, setShowInactive] = useState(false);
+  const [loadingInactive, setLoadingInactive] = useState(false);
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<"list" | "edit">("list");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -96,7 +97,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
 
   useEffect(() => {
     if (!showInactive) return;
-    setLoading(true);
+    setLoadingInactive(true);
     (async () => {
       const { data } = await supabase
         .from("clientes")
@@ -120,7 +121,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
           })),
         );
       }
-      setLoading(false);
+      setLoadingInactive(false);
     })();
   }, [showInactive]);
 
@@ -318,7 +319,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => { setShowInactive((v) => !v); setQuery(""); setPage(1); }}
+              onClick={() => { setShowInactive((v) => !v); setPage(1); }}
               className={`inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-4 py-2 text-sm font-semibold text-[var(--destructive)] transition ${
                 showInactive
                   ? "bg-[var(--destructive-hover)]"
@@ -431,7 +432,11 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
       {/* Papelera */}
       {mode === "list" && showInactive && (
         <>
-          {paginatedInactive.length === 0 ? (
+          {loadingInactive ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="h-4 w-4 animate-pulse rounded-full bg-[var(--text-muted)]" />
+            </div>
+          ) : paginatedInactive.length === 0 ? (
             <div className="col-span-full flex flex-col items-center gap-3 py-16">
               <Trash2 size={32} className="text-[var(--text-muted)]" />
               <p className="text-sm text-[var(--text-muted)]">
