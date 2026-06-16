@@ -140,34 +140,58 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
       return;
     }
     setSaving(true);
-    if (mode === "edit" && selectedId) {
-      await supabase.from("servicios").update({
-        ...draft,
+    try {
+      const payload = {
+        nombre: draft.nombre,
+        descripcion: draft.descripcion,
+        precio: draft.precio,
+        duracion_minutos: draft.duracion_minutos,
+        puntos_otorgados: draft.puntos_otorgados,
+        imagen_url: draft.imagen_url,
+        esta_activo: draft.esta_activo,
         actualizado_en: new Date().toISOString(),
-      }).eq("id", selectedId);
-    } else if (mode === "create") {
-      await supabase.from("servicios").insert({
-        ...draft,
-        creado_en: new Date().toISOString(),
-        actualizado_en: new Date().toISOString(),
-      });
+      };
+      if (mode === "edit" && selectedId) {
+        const { error } = await supabase.from("servicios").update(payload).eq("id", selectedId);
+        if (error) throw error;
+      } else if (mode === "create") {
+        const { error } = await supabase.from("servicios").insert({
+          ...payload,
+          creado_en: new Date().toISOString(),
+        });
+        if (error) throw error;
+      }
+      await fetchActiveServices();
+      setMode("list");
+      setSelectedId(null);
+      setDraft(emptyDraft);
+      setIsConfirmOpen(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error al guardar el servicio";
+      setToastMessage(msg);
+      setToastType("error");
+      setToastOpen(true);
+    } finally {
+      setSaving(false);
     }
-    await fetchActiveServices();
-    setSaving(false);
-    setMode("list");
-    setSelectedId(null);
-    setDraft(emptyDraft);
-    setIsConfirmOpen(false);
   }
 
   async function deleteService() {
     if (!selectedId) return;
-    await supabase.from("servicios").delete().eq("id", selectedId);
-    setSelectedId(null);
-    setDraft(emptyDraft);
-    setMode("list");
-    await fetchActiveServices();
-    setIsDeleteOpen(false);
+    try {
+      const { error } = await supabase.from("servicios").delete().eq("id", selectedId);
+      if (error) throw error;
+      setSelectedId(null);
+      setDraft(emptyDraft);
+      setMode("list");
+      await fetchActiveServices();
+      setIsDeleteOpen(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error al eliminar el servicio";
+      setToastMessage(msg);
+      setToastType("error");
+      setToastOpen(true);
+    }
   }
 
   const handleDeactivateFromCard = async () => {

@@ -118,7 +118,11 @@ export function NavbarPublic({ slug, basePath, brandName, socialLinks }: Props) 
           {/* Logo */}
           <Link href={basePath} className="flex shrink-0 items-center gap-3">
             <img
-              src="https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981236/ZONA-FADE_nziudx.png"
+              src={
+                theme === "dark"
+                  ? "https://res.cloudinary.com/dxuk9bogw/image/upload/v1781334838/ChatGPT_Image_13_jun_2026_02_10_35_ibismb.png"
+                  : "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981236/ZONA-FADE_nziudx.png"
+              }
               alt={brandName}
               className={`w-auto max-w-[180px] object-contain transition-all ${
                 scrolled ? "h-10 sm:h-12 md:h-14" : "h-12 sm:h-16 md:h-18"
@@ -287,7 +291,7 @@ export function NavbarPublic({ slug, basePath, brandName, socialLinks }: Props) 
               </MobileNavLink>
             </nav>
 
-            {/* Sección inferior con separador */}
+            {/* Mis Puntos */}
             <div className="px-5">
               <div className="border-t border-white/10 py-4 space-y-2">
                 <button
@@ -305,34 +309,6 @@ export function NavbarPublic({ slug, basePath, brandName, socialLinks }: Props) 
                     </span>
                   )}
                 </button>
-                {isReady && isAuthenticated ? (
-                  <>
-                    <Link
-                      href={panelHref}
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-2 py-2.5 text-sm font-semibold tracking-widest uppercase text-[var(--text-muted)] transition hover:text-[var(--foreground)]"
-                    >
-                      <GridIcon size={16} /> · Panel de control
-                    </Link>
-                    <button
-                      onClick={() => {
-                        logout();
-                        setMenuOpen(false);
-                      }}
-                      className="flex w-full items-center gap-2 py-2.5 text-sm font-semibold tracking-widest uppercase text-[var(--text-muted)] transition hover:text-red-500"
-                    >
-                      <LogoutIcon size={16} /> · Cerrar sesión
-                    </button>
-                  </>
-                ) : (
-                  <Link
-                    href={`/${slug}/login`}
-                    onClick={() => setMenuOpen(false)}
-                    className="flex w-full items-center gap-2 py-2.5 text-sm font-semibold tracking-widest uppercase text-[var(--text-muted)] transition hover:text-[var(--foreground)]"
-                  >
-                    <LockIcon size={16} /> · Admin
-                  </Link>
-                )}
               </div>
             </div>
           </div>

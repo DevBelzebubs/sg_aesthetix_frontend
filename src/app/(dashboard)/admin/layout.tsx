@@ -31,23 +31,53 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/contexts/theme-context";
 
-const navigation = [
-  { href: "/admin", label: "Resumen", icon: LayoutDashboard },
-  { href: "/admin/agenda", label: "Agenda", icon: Calendar },
-  { href: "/admin/empleados", label: "Empleados", icon: Users },
-  { href: "/admin/clientes", label: "Clientes", icon: User },
-  { href: "/admin/locales", label: "Locales", icon: MapPin },
-  { href: "/admin/servicios", label: "Servicios", icon: Scissors },
-  { href: "/admin/inventario", label: "Productos", icon: Boxes },
-  { href: "/admin/ventas", label: "Ventas", icon: ShoppingCart },
-  { href: "/admin/fidelizacion", label: "Fidelizacion", icon: Star },
-  { href: "/admin/galeria", label: "Galeria", icon: Image },
-  { href: "/admin/categoria-productos", label: "Cat. Productos", icon: Tag },
-  { href: "/admin/categoria-servicios", label: "Cat. Servicios", icon: Folder },
-  { href: "/admin/movimientos-inventario", label: "Mov. Inventario", icon: ArrowDownToLine },
-  { href: "/admin/ingreso-mercaderia", label: "Ingr. Mercaderia", icon: PackagePlus },
-  { href: "/admin/libro-reclamaciones", label: "Libro Reclamaciones", icon: BookOpen },
-  { href: "/admin/configuracion/puntos", label: "Config. Puntos", icon: Settings },
+type NavGroup = {
+  label: string;
+  items: { href: string; label: string; icon: typeof LayoutDashboard }[];
+};
+
+const navGroups: NavGroup[] = [
+  {
+    label: "PANEL",
+    items: [
+      { href: "/admin", label: "Resumen", icon: LayoutDashboard },
+      { href: "/admin/agenda", label: "Agenda", icon: Calendar },
+    ],
+  },
+  {
+    label: "OPERACIONES",
+    items: [
+      { href: "/admin/servicios", label: "Servicios", icon: Scissors },
+      { href: "/admin/categoria-servicios", label: "Cat. Servicios", icon: Folder },
+      { href: "/admin/empleados", label: "Empleados", icon: Users },
+      { href: "/admin/locales", label: "Locales", icon: MapPin },
+    ],
+  },
+  {
+    label: "INVENTARIO Y LOGÍSTICA",
+    items: [
+      { href: "/admin/inventario", label: "Productos", icon: Boxes },
+      { href: "/admin/categoria-productos", label: "Cat. Productos", icon: Tag },
+      { href: "/admin/ingreso-mercaderia", label: "Ingreso Mercadería", icon: PackagePlus },
+      { href: "/admin/movimientos-inventario", label: "Mov. Inventario", icon: ArrowDownToLine },
+    ],
+  },
+  {
+    label: "VENTAS Y CLIENTES",
+    items: [
+      { href: "/admin/ventas", label: "Ventas", icon: ShoppingCart },
+      { href: "/admin/fidelizacion", label: "Fidelización", icon: Star },
+      { href: "/admin/clientes", label: "Clientes", icon: User },
+    ],
+  },
+  {
+    label: "CONTROL EMPRESA",
+    items: [
+      { href: "/admin/galeria", label: "Galería", icon: Image },
+      { href: "/admin/libro-reclamaciones", label: "Libro Reclamaciones", icon: BookOpen },
+      { href: "/admin/configuracion/puntos", label: "Config. Puntos", icon: Settings },
+    ],
+  },
 ];
 
 function Sidebar({ onClose }: { onClose?: () => void }) {
@@ -80,30 +110,39 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
         </div>
       </div>
 
-      <nav className="mt-4 flex-1 space-y-1">
-        {navigation.map((item) => {
-          const active =
-            item.href === "/admin"
-              ? pathname === item.href
-              : pathname === item.href || pathname.startsWith(`${item.href}/`);
-          const Icon = item.icon;
+      <nav className="mt-6 flex-1 space-y-6">
+        {navGroups.map((group) => (
+          <div key={group.label}>
+            <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--text-muted)]">
+              {group.label}
+            </p>
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const active =
+                  item.href === "/admin"
+                    ? pathname === item.href
+                    : pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const Icon = item.icon;
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onClose}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
-                active
-                  ? "bg-[var(--hover)] text-white shadow-sm"
-                  : "text-[var(--text-muted)] hover:bg-[var(--background)] hover:text-[var(--foreground)]"
-              }`}
-            >
-              <Icon size={18} />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onClose}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
+                      active
+                        ? "bg-[var(--hover)] text-white shadow-sm"
+                        : "text-[var(--text-muted)] hover:bg-[var(--background)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    <Icon size={18} />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       <div className="mt-4 space-y-1 border-t border-transparent/10 pt-4">

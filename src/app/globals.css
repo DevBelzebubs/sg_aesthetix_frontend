@@ -19,7 +19,6 @@
   --destructive-hover: #FEF2F2;
   --font-headline: var(--font-archivo-narrow);
   --font-body: var(--font-hanken-grotesk);
-  --font-label: var(--font-geist-sans);
 }
 
 .dark {
@@ -60,7 +59,6 @@
   --color-destructive-hover: var(--destructive-hover);
   --font-headline: var(--font-headline);
   --font-body: var(--font-body);
-  --font-label: var(--font-label);
 }
 
 body {

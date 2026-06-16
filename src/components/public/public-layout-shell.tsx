@@ -1,10 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { NavbarPublic } from "@/components/public/NavbarPublic";
 import { CartDrawer } from "@/components/public/cart-drawer";
 import { CustomerAuthModal } from "@/components/public/customer-auth-modal";
+import { PublicProviders } from "@/components/providers/public-providers";
 
 type Props = {
   children: ReactNode;
@@ -36,7 +38,7 @@ export function PublicLayoutShell({ children, slug, basePath, brandName, footer,
   }
 
   return (
-    <>
+    <PublicProviders>
       {/* ── TOP BAR ─────────────────────────────────────────── */}
       <div
         className="hidden sm:flex items-center justify-center px-4 sm:px-6"
@@ -91,6 +93,6 @@ export function PublicLayoutShell({ children, slug, basePath, brandName, footer,
       {footer}
       <CartDrawer />
       <CustomerAuthModal />
-    </>
+    </PublicProviders>
   );
 }

@@ -5,6 +5,7 @@ import { useState, useCallback } from "react";
 import { Globe, Scissors } from "lucide-react";
 import { StoreStatus } from "@/components/public/store-status";
 import { useCart } from "@/contexts/cart-context";
+import { useTheme } from "@/contexts/theme-context";
 
 type Service = {
   id: string;
@@ -284,7 +285,7 @@ function ProductCarousel({ products }: { products: ProductItem[] }) {
   return (
     <div className="relative overflow-hidden" style={{ background: "var(--hover)" }}>
       <div
-        className="grid md:grid-cols-[1fr_1fr] gap-[1px] h-[400px] md:h-[440px]"
+        className="grid md:grid-cols-[1fr_1fr] gap-[1px] md:h-[440px]"
         style={{ background: "var(--hover)" }}
       >
         {/* Imagen */}
@@ -545,6 +546,7 @@ export default function LandingPage({
   const locales = localesProp.length > 0 ? localesProp : defaultLocales;
   const WA_NUMBER = "5491112345678";
   const WA_MESSAGE = encodeURIComponent("Hola, quiero reservar un turno.");
+  const { theme } = useTheme();
 
   return (
     <div className="space-y-20 pb-8">
@@ -609,7 +611,11 @@ export default function LandingPage({
           </div>
           <div className="w-full bg-[var(--background-secondary)]" style={{ height: 160 }}>
             <img
-              src="https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
+              src={
+                theme === "dark"
+                  ? "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1780970216/ChatGPT_Image_4_jun_2026_18_53_34_qwlk6n.png"
+                  : "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
+              }
               alt="For Men Castilla"
               style={{ height: 160, width: "100%", objectFit: "contain" }}
             />
@@ -671,7 +677,11 @@ export default function LandingPage({
               style={{ gridColumn: "1 / 2", gridRow: "2 / 3" }}
             >
               <img
-                src="https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
+                src={
+                  theme === "dark"
+                    ? "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1780970216/ChatGPT_Image_4_jun_2026_18_53_34_qwlk6n.png"
+                    : "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
+                }
                 alt="For Men Castilla"
                 style={{ height: 160, width: 160, objectFit: "contain" }}
               />
@@ -917,22 +927,12 @@ export default function LandingPage({
             <div className="relative min-h-[320px] overflow-hidden bg-[var(--background-secondary)] md:min-h-0">
               <iframe
                 title="Ubicación del local"
-                src={`https://www.openstreetmap.org/export/embed.html?bbox=${locales[0].lng - 0.004},${locales[0].lat - 0.003},${locales[0].lng + 0.004},${locales[0].lat + 0.003}&layer=mapnik`}
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${locales[0].lng - 0.004},${locales[0].lat - 0.003},${locales[0].lng + 0.004},${locales[0].lat + 0.003}&layer=mapnik&marker=${locales[0].lat},${locales[0].lng}`}
                 className="h-full w-full border-0"
                 style={{ filter: "grayscale(1) contrast(1.1)" }}
                 loading="lazy"
                 allowFullScreen
               />
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="#059669"
-                  className="h-10 w-10 drop-shadow-lg"
-                >
-                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                </svg>
-              </div>
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-6 py-5">
                 <div
                   className="mb-3 h-[2px] w-8"

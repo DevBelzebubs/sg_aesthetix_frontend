@@ -15,17 +15,23 @@
     "cf:create-r2-bucket": "npx wrangler r2 bucket create sgaesthetix-opennext-cache"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
+    "@emailjs/nodejs": "^5.0.2",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "bcryptjs": "^3.0.3",
-    "framer-motion": "^12.40.0",
+
     "lucide-react": "^1.7.0",
-    "next": "^16.2.7",
+    "next": "^15.5.19",
+    "pdf-lib": "^1.17.1",
     "postcss": "^8.5.8",
     "qrcode.react": "^4.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "resend": "^6.12.4"
+  },
+  "optionalDependencies": {
+    "@ast-grep/napi-linux-x64-gnu": "0.40.5"
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "^1.19.11",
@@ -34,7 +40,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "^16.2.7",
+    "eslint-config-next": "^15.5.19",
     "tailwindcss": "^4.2.2",
     "typescript": "^5",
     "wrangler": "^4.98.0"

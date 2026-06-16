@@ -69,6 +69,7 @@ const initialDraft: BookingDraft = {
 const fieldClass =
   "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-base text-[var(--foreground)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
 
+
 const selectClassName =
   "w-full border border-[var(--foreground)]/20 bg-[var(--background-secondary)] px-4 py-3.5 text-base text-[var(--foreground)] outline-none transition focus:border-black focus:ring-0 appearance-none cursor-pointer pr-10";
 
@@ -279,14 +280,16 @@ export function BookingForm({
 
   const validateBooking = () => {
     const errors: Record<string, string> = {};
-    const nameErr = validateName(formData.nombres);
+    const nombresErr = validateName(formData.nombres, "Los nombres");
+    const apellidosErr = validateName(formData.apellidos, "Los apellidos");
     const phoneErr = validatePhone(formData.phone);
     const emailErr = validateEmail(formData.email);
     const dniErr = validateDni(formData.dni);
     const serviceErr = validateRequired(formData.serviceId, "El servicio");
     const dateErr = validateRequired(formData.date, "La fecha");
     const timeErr = validateRequired(formData.time, "La hora");
-    if (nameErr) errors.nombres = nameErr;
+    if (nombresErr) errors.nombres = nombresErr;
+    if (apellidosErr) errors.apellidos = apellidosErr;
     if (phoneErr) errors.phone = phoneErr;
     if (emailErr) errors.email = emailErr;
     if (dniErr) errors.dni = dniErr;
@@ -911,26 +914,38 @@ export function BookingForm({
                       Nombres <span className="text-[var(--destructive)]">*</span>
                     </span>
                     <input
-                      readOnly
                       type="text"
                       name="nombres"
                       value={formData.nombres}
+                      onChange={handleChange}
                       placeholder="Juan"
-                      className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
+                      className={inputClassName}
                     />
+                    {fieldErrors.nombres && (
+                      <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                        <AlertCircle size={11} />
+                        {fieldErrors.nombres}
+                      </p>
+                    )}
                   </label>
                   <label className="space-y-2">
                     <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
                       Apellidos <span className="text-[var(--destructive)]">*</span>
                     </span>
                     <input
-                      readOnly
                       type="text"
                       name="apellidos"
                       value={formData.apellidos}
+                      onChange={handleChange}
                       placeholder="Pérez"
-                      className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
+                      className={inputClassName}
                     />
+                    {fieldErrors.apellidos && (
+                      <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                        <AlertCircle size={11} />
+                        {fieldErrors.apellidos}
+                      </p>
+                    )}
                   </label>
                 </div>
 
@@ -941,14 +956,14 @@ export function BookingForm({
                       DNI <span className="text-[var(--destructive)]">*</span>
                     </span>
                     <input
-                      readOnly
                       type="text"
                       inputMode="numeric"
                       maxLength={8}
                       name="dni"
                       value={formData.dni}
+                      onChange={handleChange}
                       placeholder="12345678"
-                      className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
+                      className={inputClassName}
                     />
                   </label>
                   <label className="space-y-2">
@@ -956,13 +971,19 @@ export function BookingForm({
                       Teléfono <span className="text-[var(--destructive)]">*</span>
                     </span>
                     <input
-                      readOnly
                       type="tel"
                       name="phone"
                       value={formData.phone}
+                      onChange={handleChange}
                       placeholder="999 999 999"
-                      className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
+                      className={inputClassName}
                     />
+                    {fieldErrors.phone && (
+                      <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                        <AlertCircle size={11} />
+                        {fieldErrors.phone}
+                      </p>
+                    )}
                   </label>
                 </div>
 
@@ -972,13 +993,19 @@ export function BookingForm({
                     Email <span className="text-[var(--destructive)]">*</span>
                   </span>
                   <input
-                    readOnly
                     type="email"
                     name="email"
                     value={formData.email}
+                    onChange={handleChange}
                     placeholder="nombre@correo.com"
-                    className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
+                    className={inputClassName}
                   />
+                  {fieldErrors.email && (
+                    <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
+                      <AlertCircle size={11} />
+                      {fieldErrors.email}
+                    </p>
+                  )}
                 </label>
               </div>
             </div>

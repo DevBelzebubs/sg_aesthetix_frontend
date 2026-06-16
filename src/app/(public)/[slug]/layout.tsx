@@ -5,6 +5,7 @@ import { getThemeSettingsByTenantId } from "@/lib/theme/get-theme-settings";
 import { resolveTenantBySlug } from "@/lib/tenant/resolve-tenant";
 import { TapeDecor } from "@/components/tape-decor";
 import { PublicLayoutShell } from "@/components/public/public-layout-shell";
+import { FooterLogo } from "@/components/public/footer-logo";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 type PublicLandingLayoutProps = {
@@ -69,11 +70,7 @@ export default async function PublicLandingLayout({
         {/* Marca + tagline */}
         <div className="flex flex-col gap-3 max-w-xs">
           <Link href={basePath} className="flex items-center gap-3">
-            <img
-              src="https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
-              alt={theme.brandName}
-              className="h-[80px] w-auto scale-150"
-            />
+            <FooterLogo brandName={theme.brandName} />
           </Link>
           <p className="text-sm text-[var(--text-muted)] leading-relaxed">
             Cortes de precisión, ambiente cuidado y reserva online sin
@@ -134,13 +131,6 @@ export default async function PublicLandingLayout({
               >
                 Reservar turno
               </Link>
-              <Link
-                href={`${basePath}#reservas`}
-                className="hover:text-[var(--foreground)] transition-colors"
-              >
-                Horarios disponibles
-              </Link>
-    
             </div>
           </div>
 
