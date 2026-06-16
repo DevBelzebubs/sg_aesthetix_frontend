@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2, X, Mail } from "lucide-react";
+import { AlertCircle, CheckCircle2, KeyRound, X, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
@@ -59,6 +59,9 @@ export function CustomerAuthModal() {
   const [editApellidos, setEditApellidos] = useState("");
   const [editTelefono, setEditTelefono] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editPin, setEditPin] = useState("");
+  const [editConfirmPin, setEditConfirmPin] = useState("");
+  const [showPinFields, setShowPinFields] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
 
@@ -193,7 +196,7 @@ export function CustomerAuthModal() {
   const handleSetPin = async (e: React.FormEvent) => {
     e.preventDefault();
     const errors: Record<string, string> = {};
-    if (!regPin || regPin.length < 4) errors.pin = "El PIN debe tener al menos 4 dígitos";
+    if (!regPin || regPin.length !== 6) errors.pin = "El PIN debe tener exactamente 6 dígitos";
     if (regPin !== regConfirmPin) errors.confirmPin = "Los PIN no coinciden";
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -319,6 +322,15 @@ export function CustomerAuthModal() {
         telefono: editTelefono.trim(),
         correoElectronico: editEmail.trim(),
       });
+
+      if (editPin.length === 6 && editPin === editConfirmPin) {
+        const { hash, salt } = await hashPin(editPin);
+        await CustomersService.updatePin(session.id, hash, salt);
+      }
+
+      setEditPin("");
+      setEditConfirmPin("");
+      setShowPinFields(false);
       setProfileSaved(true);
       setIsEditing(false);
       setTimeout(() => setProfileSaved(false), 2000);
@@ -480,10 +492,30 @@ export function CustomerAuthModal() {
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Email</span>
                   <input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} maxLength={100} className={fieldClass} />
                 </label>
+                <button
+                  type="button"
+                  onClick={() => { setShowPinFields((v) => !v); setEditPin(""); setEditConfirmPin(""); }}
+                  className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.15em] text-amber-600 transition hover:text-amber-500"
+                >
+                  <KeyRound size={14} />
+                  {showPinFields ? "Ocultar cambio de PIN" : "Cambiar PIN"}
+                </button>
+                {showPinFields && (
+                  <>
+                    <label className="space-y-1 block">
+                      <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Nuevo PIN</span>
+                      <input type="password" value={editPin} onChange={(e) => setEditPin(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="6 dígitos" inputMode="numeric" maxLength={6} className={fieldClass} autoComplete="new-password" />
+                    </label>
+                    <label className="space-y-1 block">
+                      <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Confirmar PIN</span>
+                      <input type="password" value={editConfirmPin} onChange={(e) => setEditConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="Repetir PIN" inputMode="numeric" maxLength={6} className={fieldClass} autoComplete="new-password" />
+                    </label>
+                  </>
+                )}
                 <div className="flex gap-2 pt-2">
                   <button
                     type="button"
-                    onClick={() => setIsEditing(false)}
+                    onClick={() => { setIsEditing(false); setShowPinFields(false); }}
                     className="flex-1 rounded-xl border border-[var(--border)] px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.15em] transition hover:bg-[var(--background)]"
                   >
                     Cancelar
@@ -563,9 +595,9 @@ export function CustomerAuthModal() {
               <input
                 type="password"
                 value={loginPin}
-                onChange={(e) => { setLoginPin(e.target.value); setFieldErrors((prev) => ({ ...prev, loginPin: "" })); }}
-                placeholder="••••"
-                maxLength={4}
+                onChange={(e) => { setLoginPin(e.target.value.replace(/\D/g, "").slice(0, 6)); setFieldErrors((prev) => ({ ...prev, loginPin: "" })); }}
+                placeholder="••••••"
+                maxLength={6}
                 className={fieldClass}
               />
               {fieldErrors.loginPin && (
@@ -650,7 +682,7 @@ export function CustomerAuthModal() {
               )}
 
               <p className="text-sm text-[var(--text-muted)] text-center mb-4">
-                Elige un PIN de 4 dígitos para acceder a tu cuenta.
+                Elige un PIN de 6 dígitos para acceder a tu cuenta.
               </p>
 
               <label className="space-y-1.5 block">
@@ -660,8 +692,8 @@ export function CustomerAuthModal() {
                 <input
                   type="password"
                   value={regPin}
-                  onChange={(e) => { setRegPin(e.target.value.replace(/\D/g, "").slice(0, 4)); setFieldErrors((prev) => ({ ...prev, pin: "" })); }}
-                  placeholder="••••"
+                  onChange={(e) => { setRegPin(e.target.value.replace(/\D/g, "").slice(0, 6)); setFieldErrors((prev) => ({ ...prev, pin: "" })); }}
+                  placeholder="••••••"
                   maxLength={4}
                   className={fieldClass}
                   autoFocus

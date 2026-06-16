@@ -267,7 +267,7 @@ function ClientRightbar({
   async function handleCreate() {
     if (!newClient.nombres) return;
     setSaving(true);
-    const generatedPin = newClient.pin || String(Math.floor(1000 + Math.random() * 9000));
+    const generatedPin = newClient.pin || String(Math.floor(100000 + Math.random() * 900000));
     const { hash, salt } = await hashPin(generatedPin);
     const payload: Record<string, unknown> = {
       nombres: newClient.nombres,
@@ -345,7 +345,7 @@ function ClientRightbar({
                </div>
 
                {/* Fila 4: PIN */}
-               <Field label="PIN (4 dígitos, opcional - se genera automático)">
+               <Field label="PIN (6 dígitos, opcional - se genera automático)">
                  <input className={inputClassName} value={newClient.pin} onChange={(e) => setNewClient((c) => ({ ...c, pin: e.target.value.replace(/\D/g, "").slice(0, 6) }))} placeholder="Dejar vacío para auto-generar" inputMode="numeric" />
                </Field>
 
