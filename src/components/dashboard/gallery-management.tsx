@@ -459,7 +459,7 @@ export function GalleryManagement({ totalEstilos, totalPublicados, totalDestacad
         onConfirm={handleDeactivateFromCard}
       />
 
-      <Toast message={toastMessage} type={toastType} open={toastOpen} onClose={() => setToastOpen(false)} />
+      <Toast message={toastMessage} type={toastType} open={toastOpen} onClose={() => setToastOpen(false)} position="top-right" />
     </>
   );
 }

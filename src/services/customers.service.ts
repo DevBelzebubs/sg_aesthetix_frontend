@@ -23,6 +23,7 @@ function mapRowToCustomer(row: Record<string, unknown>): Customer {
     codigoVerificacionHash: row.codigo_verificacion_hash as string | undefined,
     codigoVerificacionSalt: row.codigo_verificacion_salt as string | undefined,
     codigoVerificacionExpira: row.codigo_verificacion_expira as string | undefined,
+    esFrecuente: row.es_frecuente as boolean | undefined,
   };
 }
 
@@ -107,6 +108,7 @@ export const CustomersService = {
         pin_hash: data.pinHash || null,
         pin_salt: data.pinSalt || null,
         email_confirmado: data.emailConfirmado ?? false,
+        es_frecuente: data.esFrecuente ?? false,
       })
       .select()
       .single();

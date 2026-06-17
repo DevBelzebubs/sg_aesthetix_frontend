@@ -42,7 +42,7 @@ export const RewardsService = {
       .from("transacciones_puntos")
       .select("id")
       .eq("cuenta_puntos_id", cuentaId)
-      .eq("tipo", "cumpleaños")
+      .eq("tipo", "acumulacion")
       .gte("creado_en", `${year}-01-01`)
       .lte("creado_en", `${year}-12-31`)
       .maybeSingle();
@@ -55,7 +55,7 @@ export const RewardsService = {
       .from("transacciones_puntos")
       .insert({
         cuenta_puntos_id: cuentaId,
-        tipo: "cumpleaños",
+        tipo: "acumulacion",
         puntos: BIRTHDAY_POINTS,
         saldo_anterior: puntosDisponibles,
         saldo_nuevo: puntosDisponibles + BIRTHDAY_POINTS,
@@ -175,7 +175,7 @@ export const RewardsService = {
     const precio = (servicio ? (servicio as Record<string, unknown>).precio : 30) as number;
     const puntos = Math.max(1, Math.floor(precio));
 
-    await this.addPoints(clienteId, puntos, "cita", `Puntos por corte completado (S/${precio})`);
+    await this.addPoints(clienteId, puntos, "acumulacion", `Puntos por corte completado (S/${precio})`);
   },
 
   async getCuentaPuntosByClienteId(clienteId: string): Promise<CuentaPuntos | null> {
