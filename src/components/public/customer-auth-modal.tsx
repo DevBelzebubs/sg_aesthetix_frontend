@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
 import { CustomersService } from "@/services/customers.service";
-import { RewardsService } from "@/services/rewards.service";
 import { validateDni, validateEmail, validatePhone, validateRequired, validatePassword, validateDateOfBirth } from "@/lib/validators";
 import { hashPin, verifyPin } from "@/lib/pin";
 
@@ -208,7 +207,6 @@ export function CustomerAuthModal() {
       const { hash, salt } = await hashPin(regPin);
       await CustomersService.updatePin(regNuevoId!, hash, salt);
       await login(regNuevoId!, regNuevoNombres);
-      try { await RewardsService.claimWelcomeReward(regNuevoId!); } catch {}
       setTab("cliente");
       resetRegisterForm();
     } catch (err) {
@@ -264,17 +262,6 @@ export function CustomerAuthModal() {
 
       await CustomersService.update(customer.id, { intentosFallidos: 0 });
       await login(customer.id, customer.nombres);
-
-      try {
-        const cuenta = await RewardsService.getCuentaPuntosByClienteId(customer.id);
-        const yaTieneBienvenida = cuenta
-          ? (await RewardsService.getTransacciones(cuenta.id)).some((t) => t.tipo === "bienvenida")
-          : false;
-        if (!yaTieneBienvenida) {
-          await RewardsService.claimWelcomeReward(customer.id);
-        }
-      } catch {}
-
       closeModal();
     } catch {
       setError("Error al iniciar sesión");

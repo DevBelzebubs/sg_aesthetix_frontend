@@ -163,36 +163,4 @@ export const CustomersService = {
       .eq("id", id);
     if (error) throw new Error(error.message);
   },
-
-  async getPendingPromociones(): Promise<Customer[]> {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("clientes")
-      .select("*")
-      .eq("promocion_estado", "pendiente")
-      .order("promocion_creado_en", { ascending: false });
-
-    if (error) throw new Error(error.message);
-    return (data ?? []).map((row) => mapRowToCustomer(row as Record<string, unknown>));
-  },
-
-  async approvePromocion(id: string): Promise<void> {
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("clientes")
-      .update({ promocion_estado: "aprobado" })
-      .eq("id", id);
-
-    if (error) throw new Error(error.message);
-  },
-
-  async rejectPromocion(id: string): Promise<void> {
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("clientes")
-      .update({ promocion_estado: "rechazado" })
-      .eq("id", id);
-
-    if (error) throw new Error(error.message);
-  },
 };

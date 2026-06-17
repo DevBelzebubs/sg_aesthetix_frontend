@@ -19,23 +19,13 @@ export default async function Page({
   const { slug } = await params;
   const supabase = await createServerSupabase();
 
-  const [configRes, recompensasRes] = await Promise.all([
-    supabase
-      .from("configuracion_puntos")
-      .select("promocion_activa")
-      .maybeSingle(),
-    supabase
-      .from("recompensas_puntos")
-      .select("id, nombre, descripcion, puntos_requeridos, imagen_url")
-      .eq("esta_activo", true)
-      .order("puntos_requeridos", { ascending: true }),
-  ]);
+  const { data: recompensasData } = await supabase
+    .from("recompensas_puntos")
+    .select("id, nombre, descripcion, puntos_requeridos, imagen_url")
+    .eq("esta_activo", true)
+    .order("puntos_requeridos", { ascending: true });
 
-  const promocionActiva =
-    (configRes.data as { promocion_activa: boolean } | null)
-      ?.promocion_activa ?? true;
-
-  const recompensas = ((recompensasRes.data ?? []) as RecompensaRow[]).map(
+  const recompensas = ((recompensasData ?? []) as RecompensaRow[]).map(
     (r) => ({
       id: r.id,
       nombre: r.nombre,
@@ -48,7 +38,6 @@ export default async function Page({
   return (
     <PromocionContent
       slug={slug}
-      promocionActiva={promocionActiva}
       recompensas={recompensas}
     />
   );

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
 import { Pagination } from "@/components/dashboard/pagination";
-import Link from "next/link";
 
 type RecompensaItem = {
   id: string;
@@ -15,11 +14,9 @@ type RecompensaItem = {
 
 export function PromocionContent({
   slug,
-  promocionActiva,
   recompensas,
 }: {
   slug: string;
-  promocionActiva: boolean;
   recompensas: RecompensaItem[];
 }) {
   const { openModal, session } = useCustomerAuth();
@@ -36,25 +33,6 @@ export function PromocionContent({
       setPage(1);
     }
   }, [recompensas.length, page, pageSize]);
-
-  if (!promocionActiva) {
-    return (
-      <section className="mx-auto max-w-lg px-4 py-16">
-        <div className="mb-10 text-center">
-          <h1 className="text-4xl font-bold tracking-tight">Promoción no disponible</h1>
-          <p className="mt-2 text-base leading-relaxed text-[var(--text-muted)]">
-            Esta promoción no está activa en este momento. Vuelve más tarde.
-          </p>
-          <Link
-            href={`/${slug}`}
-            className="mt-8 inline-block border border-[var(--border)] px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)] transition hover:border-[var(--hover)] hover:text-[var(--hover)]"
-          >
-            Volver al inicio
-          </Link>
-        </div>
-      </section>
-    );
-  }
 
   return (
     <section className="space-y-10 pt-8">
