@@ -9,12 +9,17 @@ export async function POST(request: Request) {
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const apiKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
     const userRes = await fetch(
       `${supabaseUrl}/rest/v1/usuarios?correo_electronico=eq.${encodeURIComponent(email)}&select=*`,
-      { headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` } },
+      { headers: { apikey: apiKey, Authorization: `Bearer ${apiKey}` } },
     );
+
+    if (!userRes.ok) {
+      return Response.json({ error: "Credenciales incorrectas" }, { status: 401 });
+    }
+
     const usuarios = await userRes.json();
 
     if (!usuarios?.length) {
