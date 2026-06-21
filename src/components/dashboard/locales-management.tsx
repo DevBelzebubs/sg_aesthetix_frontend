@@ -1,11 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, ArrowLeft, Globe, Loader2, MapPin, PencilLine, Plus, Search, Trash2, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, ExternalLink, Globe, Loader2, MapPin, PencilLine, Plus, Search, Trash2, X } from "lucide-react";
 import { validateRequired, validatePhoneOptional, validateUrl } from "@/lib/validators";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { LocalesService, type Locale } from "@/services/locales.service";
+
+function extractCoordsFromMapsUrl(url: string): { lat: string; lng: string } | null {
+  const match = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (match) return { lat: match[1], lng: match[2] };
+  const placeMatch = url.match(/\/place\/[^/]+\/(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (placeMatch) return { lat: placeMatch[1], lng: placeMatch[2] };
+  return null;
+}
 
 type LocaleDraft = {
   nombre: string;
@@ -308,37 +316,80 @@ export default function LocalesManagement() {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="col-span-full">
-              <Field label="Nombre" required error={fieldErrors.nombre}>
-                <input className={inputClassName} value={draft.nombre} onChange={(e) => { setDraft((c) => ({ ...c, nombre: e.target.value })); setFieldErrors((prev) => ({ ...prev, nombre: "" })); }} placeholder="San Borja" />
-              </Field>
-            </div>
-            <div className="col-span-full">
-              <Field label="Direccion" required error={fieldErrors.direccion}>
-                <input className={inputClassName} value={draft.direccion} onChange={(e) => { setDraft((c) => ({ ...c, direccion: e.target.value })); setFieldErrors((prev) => ({ ...prev, direccion: "" })); }} placeholder="Av. Aviacion 3464 · San Borja" />
-              </Field>
-            </div>
-            <Field label="Horario" error={fieldErrors.horario}>
-              <input className={inputClassName} value={draft.horario} onChange={(e) => { setDraft((c) => ({ ...c, horario: e.target.value })); setFieldErrors((prev) => ({ ...prev, horario: "" })); }} placeholder="Lun – Sab · 8:00 AM – 8:00 PM" />
-            </Field>
-            <Field label="Telefono" error={fieldErrors.telefono}>
-              <input className={inputClassName} value={draft.telefono} onChange={(e) => { setDraft((c) => ({ ...c, telefono: e.target.value })); setFieldErrors((prev) => ({ ...prev, telefono: "" })); }} placeholder="+51 999 999 999" />
-            </Field>
-            <Field label="URL Google Maps" error={fieldErrors.maps_url}>
-              <input className={inputClassName} value={draft.maps_url} onChange={(e) => { setDraft((c) => ({ ...c, maps_url: e.target.value })); setFieldErrors((prev) => ({ ...prev, maps_url: "" })); }} placeholder="https://maps.google.com/?q=..." />
-            </Field>
-            <div className="grid gap-4 md:grid-cols-2 col-span-full">
-              <Field label="Latitud" required error={fieldErrors.lat}>
-                <input className={inputClassName} value={draft.lat} onChange={(e) => { setDraft((c) => ({ ...c, lat: e.target.value })); setFieldErrors((prev) => ({ ...prev, lat: "" })); }} placeholder="-12.0943" type="number" step="any" />
-              </Field>
-              <Field label="Longitud" required error={fieldErrors.lng}>
-                <input className={inputClassName} value={draft.lng} onChange={(e) => { setDraft((c) => ({ ...c, lng: e.target.value })); setFieldErrors((prev) => ({ ...prev, lng: "" })); }} placeholder="-77.0073" type="number" step="any" />
-              </Field>
-            </div>
-            <Field label="Orden" error={fieldErrors.orden}>
-              <input className={inputClassName} value={draft.orden} onChange={(e) => { setDraft((c) => ({ ...c, orden: Number(e.target.value) })); setFieldErrors((prev) => ({ ...prev, orden: "" })); }} type="number" min={1} />
-            </Field>
+          <div className="grid gap-6">
+            {/* Ubicación */}
+            <Section title="Ubicación">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="col-span-full">
+                  <Field label="Nombre" required error={fieldErrors.nombre}>
+                    <input className={inputClassName} value={draft.nombre} onChange={(e) => { setDraft((c) => ({ ...c, nombre: e.target.value })); setFieldErrors((prev) => ({ ...prev, nombre: "" })); }} placeholder="San Borja" />
+                  </Field>
+                </div>
+                <div className="col-span-full">
+                  <Field label="Dirección" required error={fieldErrors.direccion}>
+                    <input className={inputClassName} value={draft.direccion} onChange={(e) => { setDraft((c) => ({ ...c, direccion: e.target.value })); setFieldErrors((prev) => ({ ...prev, direccion: "" })); }} placeholder="Av. Canadá · San Borja" />
+                  </Field>
+                </div>
+                <div className="col-span-full">
+                  <Field label="URL Google Maps" error={fieldErrors.maps_url}>
+                    <input
+                      className={inputClassName}
+                      value={draft.maps_url}
+                      onChange={(e) => {
+                        const url = e.target.value;
+                        setDraft((c) => ({ ...c, maps_url: url }));
+                        setFieldErrors((prev) => ({ ...prev, maps_url: "" }));
+                        const coords = extractCoordsFromMapsUrl(url);
+                        if (coords && !draft.lat && !draft.lng) {
+                          setDraft((c) => ({ ...c, ...coords }));
+                        }
+                      }}
+                      placeholder="https://maps.google.com/maps?q=..."
+                    />
+                  </Field>
+                </div>
+                <Field label="Latitud" required error={fieldErrors.lat}>
+                  <input className={inputClassName} value={draft.lat} onChange={(e) => { setDraft((c) => ({ ...c, lat: e.target.value })); setFieldErrors((prev) => ({ ...prev, lat: "" })); }} placeholder="-12.0943" type="number" step="any" />
+                </Field>
+                <Field label="Longitud" required error={fieldErrors.lng}>
+                  <input className={inputClassName} value={draft.lng} onChange={(e) => { setDraft((c) => ({ ...c, lng: e.target.value })); setFieldErrors((prev) => ({ ...prev, lng: "" })); }} placeholder="-77.0073" type="number" step="any" />
+                </Field>
+                {draft.lat && draft.lng && (
+                  <div className="col-span-full">
+                    <a
+                      href={`https://www.google.com/maps?q=${draft.lat},${draft.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] transition hover:text-[var(--foreground)]"
+                    >
+                      <ExternalLink size={14} />
+                      Ver en Google Maps
+                    </a>
+                  </div>
+                )}
+              </div>
+            </Section>
+
+            {/* Contacto y horario */}
+            <Section title="Contacto y horario">
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Teléfono" error={fieldErrors.telefono}>
+                  <input className={inputClassName} value={draft.telefono} onChange={(e) => { setDraft((c) => ({ ...c, telefono: e.target.value })); setFieldErrors((prev) => ({ ...prev, telefono: "" })); }} placeholder="+51 999 999 999" />
+                </Field>
+                <Field label="Horario" error={fieldErrors.horario}>
+                  <input className={inputClassName} value={draft.horario} onChange={(e) => { setDraft((c) => ({ ...c, horario: e.target.value })); setFieldErrors((prev) => ({ ...prev, horario: "" })); }} placeholder="Lun – Sab · 8:00 AM – 8:00 PM" />
+                </Field>
+              </div>
+            </Section>
+
+            {/* Configuración */}
+            <Section title="Configuración">
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Orden" error={fieldErrors.orden}>
+                  <input className={inputClassName} value={draft.orden} onChange={(e) => { setDraft((c) => ({ ...c, orden: Number(e.target.value) })); setFieldErrors((prev) => ({ ...prev, orden: "" })); }} type="number" min={1} />
+                </Field>
+              </div>
+            </Section>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-6">
@@ -391,6 +442,15 @@ export default function LocalesManagement() {
         onConfirm={handleDelete}
       />
     </>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">{title}</p>
+      {children}
+    </div>
   );
 }
 
