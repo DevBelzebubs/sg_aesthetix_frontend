@@ -291,8 +291,63 @@ export function CustomerAuthModal() {
       await adminLogin({ email, password, slug: "" });
       closeModal();
       router.push(role === "empleado" ? "/empleado" : "/admin");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al conectar");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCustomerLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errors: Record<string, string> = {};
+    const emailErr = validateEmail(email);
+    if (emailErr) errors.email = emailErr;
+    if (!loginPin || loginPin.length !== 6) errors.loginPin = "El PIN debe tener 6 dígitos";
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const customer = await CustomersService.findByEmail(email);
+      if (!customer) {
+        setError("Correo no registrado.");
+        setLoading(false);
+        return;
+      }
+      if (!customer.pinHash || !customer.pinSalt) {
+        setError("Esta cuenta no tiene PIN configurado.");
+        setLoading(false);
+        return;
+      }
+      if (customer.bloqueadoHasta && new Date(customer.bloqueadoHasta) > new Date()) {
+        setError("Cuenta bloqueada temporalmente. Intenta más tarde.");
+        setLoading(false);
+        return;
+      }
+      const valido = await verifyPin(loginPin, customer.pinSalt, customer.pinHash);
+      if (!valido) {
+        const nuevosIntentos = (customer.intentosFallidos ?? 0) + 1;
+        const updateData: Record<string, unknown> = { intentosFallidos: nuevosIntentos };
+        if (nuevosIntentos >= MAX_INTENTOS) {
+          updateData.bloqueadoHasta = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+        }
+        await CustomersService.update(customer.id, updateData as any);
+        setError(
+          nuevosIntentos >= MAX_INTENTOS
+            ? "Demasiados intentos. Cuenta bloqueada por 15 minutos."
+            : `PIN incorrecto. Intento ${nuevosIntentos} de ${MAX_INTENTOS}.`,
+        );
+        setLoading(false);
+        return;
+      }
+      await CustomersService.updatePin(customer.id, customer.pinHash, customer.pinSalt);
+      await customerLogin(customer.id, customer.nombres);
+      closeModal();
     } catch {
-      setError("Error al conectar");
+      setError("Error al iniciar sesión");
     } finally {
       setLoading(false);
     }
