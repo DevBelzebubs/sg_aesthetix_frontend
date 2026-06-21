@@ -15,6 +15,40 @@ export async function POST(request: Request) {
     console.log("[LOGIN] supabaseUrl:", supabaseUrl?.slice(0, 20) + "...");
 
     if (!serviceKey) {
+      // Fallback: try signup with anon key
+      await fetch(
+        `${supabaseUrl}/auth/v1/signup`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: anonKey,
+          },
+          body: JSON.stringify({ email, password, data: { role: "empleado" } }),
+        },
+      );
+      const signInRes = await fetch(
+        `${supabaseUrl}/auth/v1/token?grant_type=password`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", apikey: anonKey },
+          body: JSON.stringify({ email, password }),
+        },
+      );
+      const signInData = await signInRes.json();
+      if (signInRes.ok && signInData?.access_token) {
+        const userRes2 = await fetch(
+          `${supabaseUrl}/rest/v1/usuarios?correo_electronico=eq.${encodeURIComponent(email)}&select=rol`,
+          { headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` } },
+        );
+        const usuarios2 = await userRes2.json();
+        return Response.json({
+          success: true,
+          accessToken: signInData.access_token,
+          refreshToken: signInData.refresh_token,
+          rol: usuarios2?.[0]?.rol || "empleado",
+        });
+      }
       return Response.json({ error: "Falta SUPABASE_SERVICE_ROLE_KEY en .env" }, { status: 500 });
     }
 
