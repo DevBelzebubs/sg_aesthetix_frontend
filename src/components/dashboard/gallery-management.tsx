@@ -30,6 +30,7 @@ export function GalleryManagement({ totalEstilos, totalPublicados, totalDestacad
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [inactiveGallery, setInactiveGallery] = useState<GalleryItem[]>([]);
   const [showInactive, setShowInactive] = useState(false);
+  const [loadingInactive, setLoadingInactive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState("");
@@ -58,13 +59,13 @@ export function GalleryManagement({ totalEstilos, totalPublicados, totalDestacad
 
   useEffect(() => {
     if (!showInactive) return;
-    setLoading(true);
+    setLoadingInactive(true);
     const fetchInactive = async () => {
       try {
         const { data } = await supabase.from("galeria_cortes").select("*").eq("esta_activo", false).order("orden", { ascending: true });
         setInactiveGallery(data ?? []);
       } finally {
-        setLoading(false);
+        setLoadingInactive(false);
       }
     };
     fetchInactive();
@@ -198,7 +199,7 @@ export function GalleryManagement({ totalEstilos, totalPublicados, totalDestacad
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => { setShowInactive((v) => !v); setQuery(""); setPage(1); }}
+              onClick={() => { setShowInactive((v) => !v); setPage(1); }}
               className={`inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-4 py-2 text-sm font-semibold text-[var(--destructive)] transition ${
                 showInactive ? "bg-[var(--destructive-hover)]" : "hover:bg-[var(--destructive-hover)]"
               }`}
@@ -458,7 +459,7 @@ export function GalleryManagement({ totalEstilos, totalPublicados, totalDestacad
         onConfirm={handleDeactivateFromCard}
       />
 
-      <Toast message={toastMessage} type={toastType} open={toastOpen} onClose={() => setToastOpen(false)} />
+      <Toast message={toastMessage} type={toastType} open={toastOpen} onClose={() => setToastOpen(false)} position="top-right" />
     </>
   );
 }

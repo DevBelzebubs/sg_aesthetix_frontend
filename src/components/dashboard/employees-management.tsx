@@ -25,6 +25,7 @@ const emptyDraft: EmployeeDraft = {
   instagram: "",
   facebook: "",
   tiktok: "",
+  public: false,
 };
 
 const inputClassName =
@@ -40,6 +41,7 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [inactiveEmployees, setInactiveEmployees] = useState<Employee[]>([]);
   const [showInactive, setShowInactive] = useState(false);
+  const [loadingInactive, setLoadingInactive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -80,11 +82,11 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
 
   useEffect(() => {
     if (!showInactive) return;
-    setLoading(true);
+    setLoadingInactive(true);
     EmployeesService.getInactivos()
       .then(setInactiveEmployees)
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => setLoadingInactive(false));
   }, [showInactive]);
 
   const handleRestoreEmployee = async (id: string) => {
@@ -217,6 +219,7 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
           instagram: draft.instagram || undefined,
           facebook: draft.facebook || undefined,
           tiktok: draft.tiktok || undefined,
+          public: draft.public,
         });
         setEmployees((current) => [created, ...current]);
       } else if (mode === "edit" && selectedId) {
@@ -231,6 +234,7 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
           instagram: draft.instagram || undefined,
           facebook: draft.facebook || undefined,
           tiktok: draft.tiktok || undefined,
+          public: draft.public,
         });
         setEmployees((current) =>
           current.map((emp) => (emp.id === selectedId ? updated : emp)),
@@ -318,7 +322,7 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => { setShowInactive((v) => !v); setQuery(""); setPage(1); }}
+              onClick={() => { setShowInactive((v) => !v); setPage(1); }}
               className={`inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-4 py-2 text-sm font-semibold text-[var(--destructive)] transition ${
                 showInactive
                   ? "bg-[var(--destructive-hover)]"
@@ -438,6 +442,13 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
                               : "bg-[var(--destructive)]/10 text-[var(--destructive)]"
                           }`}>
                             {employee.status}
+                          </span>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            employee.public
+                              ? "bg-blue-500/10 text-blue-500"
+                              : "bg-neutral-500/10 text-neutral-500"
+                          }`}>
+                            {employee.public ? "Público" : "No público"}
                           </span>
                         </div>
                       </div>
@@ -722,6 +733,26 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
                     </button>
                   </div>
                 </div>
+                <div className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                  <Globe size={18} className="text-[var(--text-muted)] shrink-0" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] shrink-0">Mostrar en público</span>
+                  <div className="flex rounded-xl bg-[var(--background-secondary)] p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setDraft((d) => ({ ...d, public: true }))}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${draft.public ? "bg-blue-500 text-white" : "text-[var(--text-muted)]"}`}
+                    >
+                      Visible
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDraft((d) => ({ ...d, public: false }))}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${!draft.public ? "bg-neutral-700 text-white" : "text-[var(--text-muted)]"}`}
+                    >
+                      Oculto
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {passwordError && (
@@ -843,5 +874,6 @@ function toDraft(employee?: Employee): EmployeeDraft {
     instagram: employee.instagram ?? "",
     facebook: employee.facebook ?? "",
     tiktok: employee.tiktok ?? "",
+    public: employee.public,
   };
 }

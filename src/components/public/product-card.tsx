@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useCart } from "@/contexts/cart-context";
 
 type ProductCardProps = {
@@ -11,8 +10,8 @@ type ProductCardProps = {
   imagenUrl?: string;
   categoriaNombre: string;
   puntos: number;
-  featured?: boolean;
   index: number;
+  onNotify: (message: string) => void;
 };
 
 export function ProductCard({
@@ -23,35 +22,33 @@ export function ProductCard({
   puntos,
   imagenUrl,
   categoriaNombre,
-  featured = false,
-  index,
+  onNotify,
 }: ProductCardProps) {
-  const { addItem, items } = useCart();
-  const [added, setAdded] = useState(false);
+  const { addItem, removeItem, updateQuantity, items } = useCart();
 
   const cartItem = items.find((i) => i.productId === productId);
   const cantidadEnCarrito = cartItem?.cantidad ?? 0;
 
   const handleAdd = () => {
     addItem({ productId, nombre, precio, cantidad: 1, imagenUrl });
-    setAdded(true);
-    setTimeout(() => setAdded(false), 1500);
+    onNotify(`${nombre} agregado al carrito`);
+  };
+
+  const handleRemove = () => {
+    if (cantidadEnCarrito === 0) return;
+    const nuevaCantidad = cantidadEnCarrito - 1;
+    if (nuevaCantidad === 0) {
+      removeItem(productId);
+    } else {
+      updateQuantity(productId, nuevaCantidad);
+    }
+    onNotify(`1 unidad de ${nombre} quitada`);
   };
 
   return (
-    <article
-      className={`group relative flex flex-col justify-between p-5 transition hover:-translate-y-px ${
-        featured
-          ? "bg-neutral-900 text-white"
-          : "bg-[var(--background-secondary)]"
-      }`}
-    >
+    <article className="group relative flex flex-col justify-between bg-[var(--background-secondary)] p-5 transition hover:-translate-y-px">
       <div className="space-y-4">
-        <p
-          className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${
-            featured ? "text-[var(--tenant-primary)]" : "text-[var(--text-muted)]"
-          }`}
-        >
+        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--text-muted)]">
           {categoriaNombre}
         </p>
 
@@ -64,19 +61,13 @@ export function ProductCard({
         )}
 
         <h2
-          className={`font-black uppercase tracking-tight ${
-            featured ? "text-white" : "text-[var(--foreground)]"
-          }`}
+          className="font-black uppercase tracking-tight text-[var(--foreground)]"
           style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(18px,2.2vw,24px)" }}
         >
           {nombre}
         </h2>
 
-        <p
-          className={`text-sm font-light leading-relaxed ${
-            featured ? "text-white/55" : "text-[var(--text-muted)]"
-          }`}
-        >
+        <p className="text-sm font-light leading-relaxed text-[var(--text-muted)]">
           {descripcion}
         </p>
       </div>
@@ -84,19 +75,13 @@ export function ProductCard({
       <div className="mt-5 flex items-end justify-between">
         <div>
           <span
-            className={`font-black leading-none ${
-              featured ? "text-white" : "text-[var(--tenant-primary)]"
-            }`}
+            className="font-black leading-none text-[var(--tenant-primary)]"
             style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "32px" }}
           >
             S/{precio}
           </span>
           {puntos > 0 && (
-            <p
-              className={`mt-1 text-[10px] font-semibold uppercase tracking-widest ${
-                featured ? "text-white/40" : "text-[var(--text-muted)]"
-              }`}
-            >
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
               +{puntos} pts
             </p>
           )}
@@ -104,22 +89,25 @@ export function ProductCard({
 
         <div className="flex items-center gap-2">
           {cantidadEnCarrito > 0 && (
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--foreground)]/10 text-[10px] font-bold">
-              {cantidadEnCarrito}
-            </span>
+            <>
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--foreground)]/10 text-[10px] font-bold text-[var(--foreground)]">
+                {cantidadEnCarrito}
+              </span>
+              <button
+              type="button"
+              onClick={handleRemove}
+              className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--destructive)] transition hover:opacity-70"
+            >
+              Quitar
+            </button>
+            </>
           )}
           <button
             type="button"
             onClick={handleAdd}
-            className={`px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.15em] transition ${
-              added
-                ? "bg-emerald-500 text-white"
-                : featured
-                  ? "bg-[var(--foreground)] text-[var(--background)] hover:bg-[var(--foreground)]/80"
-                  : "bg-[var(--foreground)] text-[var(--background)] hover:bg-[var(--foreground)]/75"
-            }`}
+            className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.15em] bg-[var(--foreground)] text-[var(--background)] transition hover:bg-[var(--foreground)]/75"
           >
-            {added ? "✓ Agregado" : "Agregar"}
+            Agregar
           </button>
         </div>
       </div>

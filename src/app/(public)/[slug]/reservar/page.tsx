@@ -53,7 +53,11 @@ export default async function ReservarPage({ params }: ReservarPageProps) {
   const { slug } = await params;
   const supabase = await createServerSupabase();
 
-  const [{ data: serviciosData }, { data: usuariosData }] = await Promise.all([
+  const today = new Date();
+  const availableDates = buildAvailableDates(today, 10);
+  const dateStrs = availableDates.map((d) => d.value);
+
+  const [{ data: serviciosData }, { data: usuariosData }, { data: reservasData }] = await Promise.all([
     supabase
       .from("servicios")
       .select("id, nombre, precio, duracion_minutos, imagen_url")
@@ -64,12 +68,18 @@ export default async function ReservarPage({ params }: ReservarPageProps) {
       .select("id, nombres, apellidos, rol, imagen_url")
       .in("rol", ["admin", "empleado"])
       .eq("esta_activo", true),
+    supabase
+      .from("reservas")
+      .select("usuario_id, fecha_reserva, hora_inicio, hora_fin")
+      .in("fecha_reserva", dateStrs)
+      .neq("estado", "cancelada"),
   ]);
 
   const services = (serviciosData ?? []).map((s) => ({
     id: s.id,
     name: s.nombre,
     duration: `${s.duracion_minutos} min`,
+    durationMinutes: s.duracion_minutos,
     price: `S/${s.precio}`,
     imageUrl: (s as Record<string, unknown>).imagen_url as string | null,
   }));
@@ -81,8 +91,12 @@ export default async function ReservarPage({ params }: ReservarPageProps) {
     imageUrl: (u as Record<string, unknown>).imagen_url as string | null,
   }));
 
-  const today = new Date();
-  const availableDates = buildAvailableDates(today, 10);
+  const existingReservations = (reservasData ?? []).map((r) => ({
+    empleadoId: r.usuario_id,
+    fecha: r.fecha_reserva,
+    horaInicio: r.hora_inicio,
+    horaFin: r.hora_fin,
+  }));
 
   return (
     <section className="space-y-6 pt-8">
@@ -92,6 +106,7 @@ export default async function ReservarPage({ params }: ReservarPageProps) {
         barbers={barbers}
         availableDates={availableDates}
         availableSlots={availableSlots}
+        existingReservations={existingReservations}
       />
 
       <div className="pt-8 pb-12">

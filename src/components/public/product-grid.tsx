@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ProductCard } from "@/components/public/product-card";
+import { Pagination } from "@/components/dashboard/pagination";
+import { Toast } from "@/components/dashboard/toast";
+import type { ToastType } from "@/components/dashboard/toast";
 
 type Product = {
   id: string;
@@ -30,13 +33,34 @@ function groupByCategory(products: Product[]): Map<string, Product[]> {
 
 export function ProductGrid({ products, categories }: ProductGridProps) {
   const [activeCategory, setActiveCategory] = useState("Todos");
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<ToastType>("success");
+
+  const handleNotify = useCallback((message: string) => {
+    setToastMessage(message);
+    setToastType("success");
+    setToastOpen(true);
+  }, []);
 
   const filtered =
     activeCategory === "Todos"
       ? products
       : products.filter((p) => p.categoriaNombre === activeCategory);
 
-  const grouped = groupByCategory(filtered);
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const paginatedFiltered = filtered.slice(
+    (page - 1) * pageSize,
+    page * pageSize,
+  );
+
+  const grouped = groupByCategory(paginatedFiltered);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeCategory]);
 
   const hasAnyCategory = products.some((p) => p.categoriaNombre);
   const showGrouped = activeCategory === "Todos" && hasAnyCategory;
@@ -91,8 +115,8 @@ export function ProductGrid({ products, categories }: ProductGridProps) {
                     puntos={product.puntos_otorgados ?? 0}
                     imagenUrl={product.imagen_url ?? undefined}
                     categoriaNombre={product.categoriaNombre}
-                    featured={index === 0}
                     index={index}
+                    onNotify={handleNotify}
                   />
                 ))}
               </div>
@@ -104,7 +128,7 @@ export function ProductGrid({ products, categories }: ProductGridProps) {
           className="grid gap-[2px] sm:grid-cols-2 lg:grid-cols-3"
           style={{ background: "var(--background)" }}
         >
-          {filtered.map((product, index) => (
+          {paginatedFiltered.map((product, index) => (
             <ProductCard
               key={product.id}
               productId={product.id}
@@ -114,12 +138,18 @@ export function ProductGrid({ products, categories }: ProductGridProps) {
               puntos={product.puntos_otorgados ?? 0}
               imagenUrl={product.imagen_url ?? undefined}
               categoriaNombre={product.categoriaNombre}
-              featured={index === 0}
               index={index}
+              onNotify={handleNotify}
             />
           ))}
         </div>
       )}
+
+      {filtered.length > pageSize && (
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+      )}
+
+      <Toast message={toastMessage} type={toastType} open={toastOpen} onClose={() => setToastOpen(false)} duration={2500} position="top-right" />
     </div>
   );
 }

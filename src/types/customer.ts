@@ -19,6 +19,7 @@ export interface Customer {
   codigoVerificacionHash?: string;
   codigoVerificacionSalt?: string;
   codigoVerificacionExpira?: string;
+  esFrecuente?: boolean;
 }
 
 export interface CreateCustomerPayload {
@@ -33,6 +34,7 @@ export interface CreateCustomerPayload {
   pinHash?: string;
   pinSalt?: string;
   emailConfirmado?: boolean;
+  esFrecuente?: boolean;
 }
 
 export interface UpdateCustomerPayload {
@@ -52,4 +54,5 @@ export interface UpdateCustomerPayload {
   codigoVerificacionHash?: string | null;
   codigoVerificacionSalt?: string | null;
   codigoVerificacionExpira?: string | null;
+  esFrecuente?: boolean;
 }

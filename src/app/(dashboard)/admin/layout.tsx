@@ -75,7 +75,7 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/admin/galeria", label: "Galería", icon: Image },
       { href: "/admin/libro-reclamaciones", label: "Libro Reclamaciones", icon: BookOpen },
-      { href: "/admin/configuracion/puntos", label: "Config. Puntos", icon: Settings },
+
     ],
   },
 ];

@@ -37,7 +37,6 @@ export default async function PublicLandingLayout({
   const { data: localesData } = await supabase
     .from("locales")
     .select("nombre, direccion, telefono, maps_url, lat, lng")
-    .order("orden", { ascending: true })
     .limit(1);
 
   const { data: usersData } = await supabase

@@ -61,6 +61,7 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
   const [inactiveInventory, setInactiveInventory] = useState<Product[]>([]);
   const [categories, setCategories] = useState<{ id: number; nombre: string }[]>([]);
   const [showInactive, setShowInactive] = useState(false);
+  const [loadingInactive, setLoadingInactive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState("");
@@ -102,7 +103,7 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
 
   useEffect(() => {
     if (!showInactive) return;
-    setLoading(true);
+    setLoadingInactive(true);
     const fetchInactive = async () => {
       try {
         const { data } = await supabase
@@ -112,7 +113,7 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
           .order("nombre", { ascending: true });
         setInactiveInventory(data ?? []);
       } finally {
-        setLoading(false);
+        setLoadingInactive(false);
       }
     };
     fetchInactive();
@@ -243,7 +244,7 @@ export function InventoryManagement({ totalProductos, totalActivos, porReponer }
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => { setShowInactive((v) => !v); setQuery(""); setPage(1); }}
+              onClick={() => { setShowInactive((v) => !v); setPage(1); }}
               className={`inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-4 py-2 text-sm font-semibold text-[var(--destructive)] transition ${
                 showInactive
                   ? "bg-[var(--destructive-hover)]"
