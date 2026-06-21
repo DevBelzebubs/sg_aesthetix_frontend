@@ -9,7 +9,6 @@ function mapRowToCustomer(row: Record<string, unknown>): Customer {
     dni: row.dni as string | undefined,
     telefono: row.telefono as string | undefined,
     correoElectronico: row.correo_electronico as string | undefined,
-    authUserId: row.auth_user_id as string | undefined,
     estaActivo: row.esta_activo as boolean,
     createdAt: row.creado_en as string | undefined,
     promocionEstado: row.promocion_estado as string | undefined,
@@ -101,7 +100,6 @@ export const CustomersService = {
         telefono: data.telefono || null,
         correo_electronico: data.correoElectronico || null,
         esta_activo: true,
-        auth_user_id: data.authUserId || null,
         promocion_estado: data.promocionEstado || null,
         promocion_creado_en: data.promocionEstado ? new Date().toISOString() : null,
         fecha_nacimiento: data.fechaNacimiento || null,
@@ -125,7 +123,6 @@ export const CustomersService = {
     if (data.apellidos !== undefined) updateData.apellidos = data.apellidos;
     if (data.telefono !== undefined) updateData.telefono = data.telefono;
     if (data.correoElectronico !== undefined) updateData.correo_electronico = data.correoElectronico;
-    if (data.authUserId !== undefined) updateData.auth_user_id = data.authUserId;
     if (data.promocionEstado !== undefined) updateData.promocion_estado = data.promocionEstado;
     if (data.fechaNacimiento !== undefined) updateData.fecha_nacimiento = data.fechaNacimiento;
     if (data.pinHash !== undefined) updateData.pin_hash = data.pinHash;

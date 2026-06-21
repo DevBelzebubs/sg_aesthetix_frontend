@@ -2,31 +2,31 @@
 
 import { useEffect, useState } from "react";
 import { EmployeeWorkspace } from "@/components/dashboard/employee-workspace";
+import { useAuth } from "@/hooks/useAuth";
 import { createClient } from "@/lib/supabase/client";
 
 export default function EmpleadoCitasPage() {
+  const { userId, isReady, isAuthenticated } = useAuth();
   const supabase = createClient();
   const [data, setData] = useState<{ name: string; id: string } | null>(null);
 
   useEffect(() => {
     async function load() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.id) {
-        const { data: usuario } = await supabase
-          .from("usuarios")
-          .select("id, nombres, apellidos")
-          .eq("auth_user_id", session.user.id)
-          .single();
-        if (usuario) {
-          setData({
-            name: `${usuario.nombres} ${(usuario.apellidos as string) ?? ""}`.trim(),
-            id: usuario.id as string,
-          });
-        }
+      if (!userId) return;
+      const { data: usuario } = await supabase
+        .from("usuarios")
+        .select("id, nombres, apellidos")
+        .eq("id", userId)
+        .single();
+      if (usuario) {
+        setData({
+          name: `${usuario.nombres} ${(usuario.apellidos as string) ?? ""}`.trim(),
+          id: usuario.id as string,
+        });
       }
     }
-    load();
-  }, [supabase]);
+    if (isReady && isAuthenticated) load();
+  }, [isReady, isAuthenticated, userId, supabase]);
 
   if (!data) {
     return (

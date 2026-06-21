@@ -18,7 +18,7 @@ const navigation = [
 export default function EmployeeLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
-  const { isReady, isAuthenticated, role, logout } = useAuth();
+  const { isReady, isAuthenticated, role, logout, userId } = useAuth();
   const router = useRouter();
   const supabase = createClient();
   const [userName, setUserName] = useState("");
@@ -31,20 +31,18 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function loadName() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.id) {
-        const { data } = await supabase
-          .from("usuarios")
-          .select("nombres, apellidos")
-          .eq("auth_user_id", session.user.id)
-          .single();
-        if (data) {
-          setUserName(`${data.nombres} ${data.apellidos ?? ""}`.trim());
-        }
+      if (!userId) return;
+      const { data } = await supabase
+        .from("usuarios")
+        .select("nombres, apellidos")
+        .eq("id", userId)
+        .single();
+      if (data) {
+        setUserName(`${data.nombres} ${data.apellidos ?? ""}`.trim());
       }
     }
     if (isReady && isAuthenticated) loadName();
-  }, [isReady, isAuthenticated, supabase]);
+  }, [isReady, isAuthenticated, userId, supabase]);
 
   if (!isReady) {
     return (

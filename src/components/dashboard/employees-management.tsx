@@ -223,20 +223,6 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
           public: draft.public,
         });
         setEmployees((current) => [created, ...current]);
-        try {
-          const res = await fetch("/api/auth/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: draft.correo_electronico, password, role: "empleado" }),
-          });
-          const data = await res.json();
-          if (data?.auth_user_id) {
-            const supabase = createClient();
-            await supabase.from("usuarios").update({ auth_user_id: data.auth_user_id }).eq("id", created.id);
-          }
-        } catch {
-          console.warn("No se pudo crear el usuario en Auth, pero el empleado fue creado.");
-        }
       } else if (mode === "edit" && selectedId) {
         const updated = await EmployeesService.update(selectedId, {
           nombres: draft.nombres,

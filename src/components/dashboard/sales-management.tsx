@@ -9,6 +9,7 @@ import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { Toast } from "@/components/dashboard/toast";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { hashPin } from "@/lib/pin";
 import { sendNewClientPinEmail } from "@/lib/email-client";
 import { RewardsService } from "@/services/rewards.service";
@@ -561,7 +562,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
   const [editObsText, setEditObsText] = useState("");
 
   // ---- current user ----
-  const [userId, setUserId] = useState<string | null>(null);
+  const { userId } = useAuth();
 
   // ------------------------------------------------------------------
   // Data fetching
@@ -572,7 +573,6 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
     fetchProductos();
     fetchServicios();
     fetchClientes();
-    fetchUser();
   }, []);
 
   async function fetchSales() {
@@ -611,21 +611,6 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
       .eq("esta_activo", true)
       .order("nombres");
     setClientes((data as ClientOption[]) ?? []);
-  }
-
-  async function fetchUser() {
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) return;
-
-    const authUserId = data.session.user.id;
-
-    const { data: usuario } = await supabase
-      .from("usuarios")
-      .select("id")
-      .eq("auth_user_id", authUserId)
-      .maybeSingle();
-
-    if (usuario) setUserId((usuario as Record<string, unknown>).id as string);
   }
 
   // ------------------------------------------------------------------

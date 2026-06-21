@@ -15,7 +15,6 @@ function mapRowToEmployee(row: EmployeeRow, specialties: string[]): Employee {
     specialties,
     weeklyLoad: "",
     commission: "",
-    auth_user_id: row.auth_user_id,
     creadoEn: row.creado_en ?? "",
     actualizadoEn: row.actualizado_en ?? "",
     imagenUrl: row.imagen_url ?? null,
@@ -63,19 +62,6 @@ export const EmployeesService = {
       .eq("id", id)
       .single();
     if (error) throw new Error(error.message);
-    if (!row) return null;
-    const specialties = await fetchSpecialties((row as EmployeeRow).id);
-    return mapRowToEmployee(row as EmployeeRow, specialties);
-  },
-
-  async getByAuthUserId(authUserId: string): Promise<Employee | null> {
-    const supabase = createClient();
-    const { data: row, error } = await supabase
-      .from("usuarios")
-      .select("*")
-      .eq("auth_user_id", authUserId)
-      .single();
-    if (error) return null;
     if (!row) return null;
     const specialties = await fetchSpecialties((row as EmployeeRow).id);
     return mapRowToEmployee(row as EmployeeRow, specialties);

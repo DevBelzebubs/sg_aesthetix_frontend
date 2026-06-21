@@ -5,7 +5,6 @@ export interface Customer {
   dni?: string;
   telefono?: string;
   correoElectronico?: string;
-  authUserId?: string;
   estaActivo: boolean;
   createdAt?: string;
   promocionEstado?: string;
@@ -28,7 +27,6 @@ export interface CreateCustomerPayload {
   dni?: string;
   telefono?: string;
   correoElectronico?: string;
-  authUserId?: string;
   promocionEstado?: string;
   fechaNacimiento?: string;
   pinHash?: string;
@@ -38,7 +36,6 @@ export interface CreateCustomerPayload {
 }
 
 export interface UpdateCustomerPayload {
-  authUserId?: string;
   dni?: string;
   nombres?: string;
   apellidos?: string;

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, KeyRound, X, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
 import { CustomersService } from "@/services/customers.service";
 import { validateDni, validateEmail, validatePhone, validateRequired, validatePassword, validateDateOfBirth } from "@/lib/validators";
@@ -19,9 +19,9 @@ const fieldClass =
   "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--foreground)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
 
 export function CustomerAuthModal() {
-  const { session, modalOpen, closeModal, login, logout, refreshPoints } = useCustomerAuth();
+  const { session, modalOpen, closeModal, login: customerLogin, logout: customerLogout, refreshPoints } = useCustomerAuth();
+  const { login: adminLogin, role } = useAuth();
   const router = useRouter();
-  const supabase = createClient();
 
   const [tab, setTab] = useState<Tab>("cliente");
   const [email, setEmail] = useState("");
@@ -206,63 +206,9 @@ export function CustomerAuthModal() {
     try {
       const { hash, salt } = await hashPin(regPin);
       await CustomersService.updatePin(regNuevoId!, hash, salt);
-      await login(regNuevoId!, regNuevoNombres);
-      setTab("cliente");
+      await customerLogin(regNuevoId!, regNuevoNombres);
+      setSuccessMsg("Cuenta verificada. Bienvenido.");
       resetRegisterForm();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al configurar el PIN");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCustomerLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const errors: Record<string, string> = {};
-    const emailErr = validateEmail(email);
-    if (emailErr) errors.email = emailErr;
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
-      return;
-    }
-    setLoading(true);
-    setError("");
-
-    try {
-      const customer = await CustomersService.findByEmail(email);
-      if (!customer) { setError("Correo no registrado"); setLoading(false); return; }
-
-      if (customer.bloqueadoHasta && new Date(customer.bloqueadoHasta) > new Date()) {
-        const minutos = Math.ceil((new Date(customer.bloqueadoHasta).getTime() - Date.now()) / 60000);
-        setError(`Cuenta bloqueada. Intenta de nuevo en ${minutos} minuto(s).`);
-        setLoading(false);
-        return;
-      }
-
-      if (!customer.pinHash || !customer.pinSalt) {
-        setError("Esta cuenta no tiene PIN configurado. Contacta al administrador.");
-        setLoading(false);
-        return;
-      }
-
-      const valid = await verifyPin(loginPin, customer.pinSalt, customer.pinHash);
-      if (!valid) {
-        const intentos = (customer.intentosFallidos ?? 0) + 1;
-        if (intentos >= MAX_INTENTOS) {
-          const bloqueo = new Date(Date.now() + 15 * 60000).toISOString();
-          await CustomersService.update(customer.id, { intentosFallidos: intentos, bloqueadoHasta: bloqueo });
-          setError("Cuenta bloqueada por 15 minutos tras múltiples intentos fallidos.");
-        } else {
-          await CustomersService.update(customer.id, { intentosFallidos: intentos });
-          setError(`PIN incorrecto. ${MAX_INTENTOS - intentos} intento(s) restante(s).`);
-        }
-        setLoading(false);
-        return;
-      }
-
-      await CustomersService.update(customer.id, { intentosFallidos: 0 });
-      await login(customer.id, customer.nombres);
-      closeModal();
     } catch {
       setError("Error al iniciar sesión");
     } finally {
@@ -342,21 +288,9 @@ export function CustomerAuthModal() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Credenciales incorrectas");
-
-      await supabase.auth.setSession({
-        access_token: result.accessToken,
-        refresh_token: result.refreshToken,
-      });
-
+      await adminLogin({ email, password, slug: "" });
       closeModal();
-      router.push(result.rol === "empleado" ? "/empleado" : "/admin");
+      router.push(role === "empleado" ? "/empleado" : "/admin");
     } catch {
       setError("Error al conectar");
     } finally {
@@ -522,7 +456,7 @@ export function CustomerAuthModal() {
               </button>
               <button
                 type="button"
-                onClick={() => { logout(); closeModal(); }}
+                onClick={() => { customerLogout(); closeModal(); }}
                 className="flex-1 rounded-xl border border-[var(--destructive-border)] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]"
               >
                 Cerrar

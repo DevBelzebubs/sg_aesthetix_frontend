@@ -9,7 +9,6 @@ export type EmployeeRow = {
   esta_activo: boolean;
   creado_en: string;
   actualizado_en: string;
-  auth_user_id: string | null;
   imagen_url: string | null;
   instagram: string | null;
   facebook: string | null;
@@ -29,7 +28,6 @@ export type Employee = {
   specialties: string[];
   weeklyLoad: string;
   commission: string;
-  auth_user_id: string | null;
   creadoEn: string;
   actualizadoEn: string;
   imagenUrl: string | null;
