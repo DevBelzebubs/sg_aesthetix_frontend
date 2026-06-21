@@ -152,12 +152,7 @@ export default function LocalesManagement() {
             </p>
           </div>
         </div>
-        {mode === "list" && (
-          <div className="mt-4">
-            <label className="flex items-center gap-3 rounded-2xl border border-[var(--border)] px-4 py-3">
-              <Search size={16} className="text-[var(--text-muted)]" />
-              </Field>
-            </div>
+        <div className="mt-4 grid gap-4">
             <div className="col-span-full">
               <Field label="Direccion" required error={fieldErrors.direccion}>
                 <input className={inputClassName} value={draft.direccion} onChange={(e) => { setDraft((c) => ({ ...c, direccion: e.target.value })); setFieldErrors((prev) => ({ ...prev, direccion: "" })); }} placeholder="Av. Aviacion 3464 · San Borja" />
@@ -193,31 +188,29 @@ export default function LocalesManagement() {
                 />
               </div>
             )}
-          </div>
-        )}
-
-          <button
-            type="button"
-            onClick={() => setIsConfirmOpen(true)}
-            disabled={!locale || Object.values(fieldErrors).some((v) => v !== "") || saving}
-            className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50"
-          >
-            {saving && <Loader2 size={16} className="animate-spin" />}
-            <PencilLine size={16} />
-            Guardar cambios
-          </button>
-          {locale?.maps_url && (
-            <a
-              href={locale.maps_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--background)]"
-            >
-              <Globe size={16} />
-              Ver en Google Maps
-            </a>
-          )}
         </div>
+
+        <button
+          type="button"
+          onClick={() => setIsConfirmOpen(true)}
+          disabled={!locale || Object.values(fieldErrors).some((v) => v !== "") || saving}
+          className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50"
+        >
+          {saving && <Loader2 size={16} className="animate-spin" />}
+          <PencilLine size={16} />
+          Guardar cambios
+        </button>
+        {locale?.maps_url && (
+          <a
+            href={locale.maps_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--background)]"
+          >
+            <Globe size={16} />
+            Ver en Google Maps
+          </a>
+        )}
       </div>
 
       {error && (
