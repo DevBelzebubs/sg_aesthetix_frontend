@@ -7,13 +7,22 @@ import { AppointmentsService } from "@/services/appointments.service";
 import { CustomersService } from "@/services/customers.service";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
 import { validateDni, validateDniOptional, validateEmail, validateEmailOptional, validateName, validatePhone, validateRequired } from "@/lib/validators";
+import { getRealtimeClient } from "@/lib/supabase/realtime";
 
 type BookingOption = {
   id: string;
   name: string;
   duration: string;
+  durationMinutes: number;
   price: string;
   imageUrl: string | null;
+};
+
+type ExistingReservation = {
+  empleadoId: string;
+  fecha: string;
+  horaInicio: string;
+  horaFin: string;
 };
 
 type TeamMember = {
@@ -38,6 +47,7 @@ type BookingFormProps = {
   barbers: TeamMember[];
   availableDates: CalendarDate[];
   availableSlots: string[];
+  existingReservations: ExistingReservation[];
 };
 
 type BookingDraft = {
@@ -86,6 +96,7 @@ export function BookingForm({
   barbers,
   availableDates,
   availableSlots,
+  existingReservations,
 }: BookingFormProps) {
   const [stage, setStage] = useState<"dni" | "register" | "booking">("dni");
   const [dni, setDni] = useState("");
@@ -130,6 +141,66 @@ export function BookingForm({
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
   const [showConfirm, setShowConfirm] = useState(false);
+
+  const sessionIdRef = useRef(crypto.randomUUID());
+  const [lockedSlots, setLockedSlots] = useState<Set<string>>(new Set());
+  const channelRef = useRef<ReturnType<ReturnType<typeof getRealtimeClient>["channel"]> | null>(null);
+  const mySlotRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const supabase = getRealtimeClient();
+
+    (async () => {
+      const { data } = await supabase
+        .from("blocked_slots")
+        .select("usuario_id, fecha_reserva, hora_inicio, session_id")
+        .neq("session_id", sessionIdRef.current)
+        .gt("expires_at", new Date().toISOString());
+
+      if (data) {
+        setLockedSlots(new Set(data.map((r: Record<string, unknown>) => slotKey(r.usuario_id as string, r.fecha_reserva as string, (r.hora_inicio as string).slice(0, 5)))));
+      }
+    })();
+
+    const channel = supabase.channel(`blocked_slots_${sessionIdRef.current}`);
+    channel
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "blocked_slots" },
+        (payload: { new: Record<string, unknown> }) => {
+          const row = payload.new as Record<string, unknown>;
+          if (row.session_id === sessionIdRef.current) return;
+          const key = slotKey(row.usuario_id as string, row.fecha_reserva as string, (row.hora_inicio as string).slice(0, 5));
+          setLockedSlots((prev) => new Set(prev).add(key));
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "blocked_slots" },
+        (payload: { old: Record<string, unknown> }) => {
+          const row = payload.old as Record<string, unknown>;
+          const key = slotKey(row.usuario_id as string, row.fecha_reserva as string, (row.hora_inicio as string).slice(0, 5));
+          setLockedSlots((prev) => {
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+          });
+        },
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      getRealtimeClient().from("blocked_slots").delete().eq("session_id", sessionIdRef.current).then();
+    };
+  }, []);
 
   const monthOptions = useMemo(() => {
     const groupedMonths = new Map
@@ -296,6 +367,22 @@ export function BookingForm({
     if (serviceErr) errors.serviceId = serviceErr;
     if (dateErr) errors.date = dateErr;
     if (timeErr) errors.time = timeErr;
+
+    if (formData.time && formData.barberId && formData.date && formData.serviceId) {
+      const selectedServiceObj = services.find((s) => s.id === formData.serviceId);
+      const duration = selectedServiceObj?.durationMinutes ?? 30;
+      const slotEnd = addMinutesToTime(formData.time, duration);
+      const conflicted = existingReservations.some(
+        (r) =>
+          r.empleadoId === formData.barberId &&
+          r.fecha === formData.date &&
+          r.horaInicio &&
+          r.horaFin &&
+          isOverlapping(formData.time, slotEnd, r.horaInicio.slice(0, 5), r.horaFin.slice(0, 5)),
+      );
+      if (conflicted) errors.time = "Este horario ya no está disponible";
+    }
+
     return errors;
   };
 
@@ -335,6 +422,7 @@ export function BookingForm({
       };
 
       await AppointmentsService.createPublic(payload);
+      unlockAllBySession();
       setIsSubmitted(true);
       setShowConfirm(false);
       setToastMessage("¡Reserva confirmada! Te esperamos.");
@@ -360,6 +448,33 @@ export function BookingForm({
 
   const nextStep = () => setCurrentStep((s) => Math.min(s + 1, STEPS.length - 1));
   const prevStep = () => setCurrentStep((s) => Math.max(s - 1, 0));
+
+  const lockSlot = async (barberId: string, date: string, time: string) => {
+    const supabase = getRealtimeClient();
+    await supabase.from("blocked_slots").delete().eq("session_id", sessionIdRef.current);
+    mySlotRef.current = slotKey(barberId, date, time);
+    const { error } = await supabase.from("blocked_slots").insert({
+      usuario_id: barberId,
+      fecha_reserva: date,
+      hora_inicio: time,
+      session_id: sessionIdRef.current,
+      expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    });
+    if (error && error.code === "23505") {
+      setError("Alguien más acaba de seleccionar este horario. Elige otro.");
+      return false;
+    }
+    if (error) {
+      setError("Error al bloquear el horario. Intenta de nuevo.");
+      return false;
+    }
+    return true;
+  };
+
+  const unlockAllBySession = () => {
+    getRealtimeClient().from("blocked_slots").delete().eq("session_id", sessionIdRef.current).then();
+    mySlotRef.current = null;
+  };
 
   return stage === "dni" || stage === "register" ? (
     <div className="mx-auto max-w-3xl px-8 py-12">
@@ -848,12 +963,31 @@ export function BookingForm({
                 const isToday = selectedDate?.value === todayStr;
                 const minTime = new Date(now.getTime() + 30 * 60 * 1000);
 
+                const selectedServiceObj = services.find((s) => s.id === formData.serviceId);
+                const selectedDuration = selectedServiceObj?.durationMinutes ?? 30;
+
+                const occupiedRanges = existingReservations
+                  .filter((r) => r.empleadoId === formData.barberId && r.fecha === selectedDate?.value && r.horaInicio && r.horaFin)
+                  .map((r) => ({ start: r.horaInicio.slice(0, 5), end: r.horaFin.slice(0, 5) }));
+
                 const slotsWithStatus = availableSlots.map((slot) => {
                   const [h, m] = slot.split(":").map(Number);
                   const slotTime = new Date();
                   slotTime.setHours(h, m, 0, 0);
-                  const isEnabled = !isToday || slotTime >= minTime;
-                  return { slot, isEnabled };
+                  const past = isToday && slotTime < minTime;
+
+                  if (past) return { slot, isEnabled: false };
+
+                  const slotEnd = addMinutesToTime(slot, selectedDuration);
+                  const conflicted = occupiedRanges.some((r) => isOverlapping(slot, slotEnd, r.start, r.end));
+
+                  if (conflicted) return { slot, isEnabled: false };
+
+                  const isLocked = formData.barberId && selectedDate?.value
+                    ? lockedSlots.has(slotKey(formData.barberId, selectedDate.value, slot))
+                    : false;
+
+                  return { slot, isEnabled: !isLocked };
                 });
 
                 const hasEnabled = slotsWithStatus.some((s) => s.isEnabled);
@@ -875,7 +1009,10 @@ export function BookingForm({
                           key={slot}
                           type="button"
                           disabled={!isEnabled}
-                          onClick={() => {
+                          onClick={async () => {
+                            if (formData.time === slot) return;
+                            const ok = await lockSlot(formData.barberId, formData.date, slot);
+                            if (!ok) return;
                             setFormData((c) => ({ ...c, time: slot }));
                             setIsSubmitted(false);
                           }}
@@ -917,9 +1054,9 @@ export function BookingForm({
                       type="text"
                       name="nombres"
                       value={formData.nombres}
-                      onChange={handleChange}
-                      placeholder="Juan"
-                      className={inputClassName}
+                      readOnly
+                      tabIndex={-1}
+                      className={inputClassName + " cursor-default opacity-60"}
                     />
                     {fieldErrors.nombres && (
                       <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
@@ -936,9 +1073,9 @@ export function BookingForm({
                       type="text"
                       name="apellidos"
                       value={formData.apellidos}
-                      onChange={handleChange}
-                      placeholder="Pérez"
-                      className={inputClassName}
+                      readOnly
+                      tabIndex={-1}
+                      className={inputClassName + " cursor-default opacity-60"}
                     />
                     {fieldErrors.apellidos && (
                       <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
@@ -961,9 +1098,9 @@ export function BookingForm({
                       maxLength={8}
                       name="dni"
                       value={formData.dni}
-                      onChange={handleChange}
-                      placeholder="12345678"
-                      className={inputClassName}
+                      readOnly
+                      tabIndex={-1}
+                      className={inputClassName + " cursor-default opacity-60"}
                     />
                   </label>
                   <label className="space-y-2">
@@ -974,9 +1111,9 @@ export function BookingForm({
                       type="tel"
                       name="phone"
                       value={formData.phone}
-                      onChange={handleChange}
-                      placeholder="999 999 999"
-                      className={inputClassName}
+                      readOnly
+                      tabIndex={-1}
+                      className={inputClassName + " cursor-default opacity-60"}
                     />
                     {fieldErrors.phone && (
                       <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
@@ -996,9 +1133,9 @@ export function BookingForm({
                     type="email"
                     name="email"
                     value={formData.email}
-                    onChange={handleChange}
-                    placeholder="nombre@correo.com"
-                    className={inputClassName}
+                    readOnly
+                    tabIndex={-1}
+                    className={inputClassName + " cursor-default opacity-60"}
                   />
                   {fieldErrors.email && (
                     <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
@@ -1142,7 +1279,7 @@ export function BookingForm({
           </div>
         </div>
       </aside>
-      <Toast message={toastMessage} type={toastType} open={toastOpen} onClose={() => setToastOpen(false)} />
+      <Toast message={toastMessage} type={toastType} open={toastOpen} onClose={() => setToastOpen(false)} position="top-right" />
     </div>
   );
 }
@@ -1172,4 +1309,19 @@ function calculateEndTime(startTime: string, durationString: string): string {
   const dateObj = new Date();
   dateObj.setHours(hours, minutes + minutesToAdd);
   return `${String(dateObj.getHours()).padStart(2, "0")}:${String(dateObj.getMinutes()).padStart(2, "0")}`;
+}
+
+function addMinutesToTime(time: string, minutes: number): string {
+  const [hours, mins] = time.split(":").map(Number);
+  const dateObj = new Date();
+  dateObj.setHours(hours, mins + minutes);
+  return `${String(dateObj.getHours()).padStart(2, "0")}:${String(dateObj.getMinutes()).padStart(2, "0")}`;
+}
+
+function isOverlapping(startA: string, endA: string, startB: string, endB: string): boolean {
+  return startA < endB && startB < endA;
+}
+
+function slotKey(usuarioId: string, fecha: string, hora: string): string {
+  return `${usuarioId}|${fecha}|${hora}`;
 }

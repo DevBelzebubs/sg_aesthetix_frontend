@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { AlertCircle } from "lucide-react";
+import { Toast } from "@/components/dashboard/toast";
+import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { validateRequired, validateEmail, validateDniOptional, validatePhoneOptional, validateMinLength, validatePositiveNumber, validateName } from "@/lib/validators";
 
 const fieldClass =
@@ -30,12 +32,12 @@ export function ComplaintBookForm({ slug }: Props) {
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error">("success");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setSuccess(null);
-
+  const validate = (): Record<string, string> => {
     const errors: Record<string, string> = {};
     const nombresErr = validateName(nombres, "El nombre");
     const apellidosErr = validateName(apellidos, "El apellido");
@@ -57,11 +59,23 @@ export function ComplaintBookForm({ slug }: Props) {
     if (descErr) errors.descripcion = descErr;
     if (bienErr) errors.bienContratado = bienErr;
     if (pedidoErr) errors.pedidoConsumidor = pedidoErr;
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
-      return;
-    }
+    return errors;
+  };
 
+  const handleSubmitClick = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSuccess(null);
+
+    const errors = validate();
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    setShowConfirm(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setShowConfirm(false);
     setIsSubmitting(true);
 
     try {
@@ -87,13 +101,20 @@ export function ComplaintBookForm({ slug }: Props) {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Error al enviar el reclamo.");
+        setToastType("error");
+        setToastMessage(data.error || "Error al enviar el reclamo.");
+        setToastOpen(true);
         return;
       }
 
+      setToastType("success");
+      setToastMessage(`${tipo === "reclamo" ? "Reclamo" : "Queja"} registrado con éxito. N° ${data.numeroReclamo}`);
+      setToastOpen(true);
       setSuccess(data.numeroReclamo);
     } catch {
-      setError("Error de conexión. Intente nuevamente.");
+      setToastType("error");
+      setToastMessage("Error de conexión. Intente nuevamente.");
+      setToastOpen(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -150,7 +171,7 @@ export function ComplaintBookForm({ slug }: Props) {
       </div>
 
       <form
-        onSubmit={handleSubmit}
+        onSubmit={handleSubmitClick}
         className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-sm sm:p-8"
       >
         <div className="mb-6 flex items-center gap-3 rounded-2xl border border-[var(--hover)]/15 bg-[var(--hover)]/[0.04] px-5 py-3.5">
@@ -204,6 +225,7 @@ export function ComplaintBookForm({ slug }: Props) {
                 setFieldErrors((prev) => ({ ...prev, nombres: "" }));
               }}
               placeholder="Ej: Juan Carlos"
+              maxLength={80}
             />
             {fieldErrors.nombres && (
               <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
@@ -225,6 +247,7 @@ export function ComplaintBookForm({ slug }: Props) {
                 setFieldErrors((prev) => ({ ...prev, apellidos: "" }));
               }}
               placeholder="Ej: Pérez García"
+              maxLength={80}
             />
             {fieldErrors.apellidos && (
               <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
@@ -264,6 +287,7 @@ export function ComplaintBookForm({ slug }: Props) {
                 setFieldErrors((prev) => ({ ...prev, domicilio: "" }));
               }}
               placeholder="Av. Ejemplo 123, Urb. Los Olivos"
+              maxLength={200}
             />
             {fieldErrors.domicilio && (
               <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
@@ -306,6 +330,7 @@ export function ComplaintBookForm({ slug }: Props) {
                 setFieldErrors((prev) => ({ ...prev, email: "" }));
               }}
               placeholder="correo@ejemplo.com"
+              maxLength={120}
             />
             {fieldErrors.email && (
               <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
@@ -327,6 +352,7 @@ export function ComplaintBookForm({ slug }: Props) {
                 setFieldErrors((prev) => ({ ...prev, bienContratado: "" }));
               }}
               placeholder="Ej: Corte de cabello"
+              maxLength={150}
             />
             {fieldErrors.bienContratado && (
               <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
@@ -348,6 +374,7 @@ export function ComplaintBookForm({ slug }: Props) {
                 type="number"
                 step="0.01"
                 min="0"
+                max="999999.99"
                 className={`${fieldClass} pl-9`}
                 value={montoReclamado}
                 onChange={(e) => {
@@ -378,6 +405,7 @@ export function ComplaintBookForm({ slug }: Props) {
                   setFieldErrors((prev) => ({ ...prev, descripcion: "" }));
                 }}
                 placeholder="Describa de manera detallada y ordenada los hechos que motivan su queja o reclamo. Incluya fechas, nombres de ser el caso, y cualquier información relevante..."
+                maxLength={2000}
               />
               {fieldErrors.descripcion && (
                 <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
@@ -401,6 +429,7 @@ export function ComplaintBookForm({ slug }: Props) {
                   setFieldErrors((prev) => ({ ...prev, pedidoConsumidor: "" }));
                 }}
                 placeholder="Indique qué solución espera: devolución de su dinero, cambio del producto, rectificación del servicio, etc."
+                maxLength={1000}
               />
               {fieldErrors.pedidoConsumidor && (
                 <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
@@ -443,6 +472,23 @@ export function ComplaintBookForm({ slug }: Props) {
           </p>
         </div>
       </form>
+
+      <ConfirmationModal
+        open={showConfirm}
+        title="¿Desea confirmar?"
+        description={`Confirme los datos ingresados para presentar ${tipo === "reclamo" ? "el reclamo" : "la queja"}. Una vez enviado, recibirá una copia por correo electrónico.`}
+        confirmLabel={isSubmitting ? "Enviando..." : "Sí, confirmar"}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={handleConfirmSubmit}
+      />
+
+      <Toast
+        message={toastMessage}
+        type={toastType}
+        open={toastOpen}
+        onClose={() => setToastOpen(false)}
+        position="top-right"
+      />
     </div>
   );
 }

@@ -1,8 +1,8 @@
-import { createClient } from "@/lib/supabase/client";
+import { createServerSupabase } from "@/lib/supabase/server";
 import Link from "next/link";
 import { ProductGrid } from "@/components/public/product-grid";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 type ProductosPageProps = {
   params: Promise<{ slug: string }>;
@@ -20,7 +20,7 @@ type Producto = {
 
 export default async function ProductosPage({ params }: ProductosPageProps) {
   const { slug } = await params;
-  const supabase = createClient();
+  const supabase = await createServerSupabase();
 
   const { data: categories } = await supabase
     .from("categoria_producto")

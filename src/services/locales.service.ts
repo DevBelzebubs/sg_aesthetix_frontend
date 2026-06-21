@@ -9,30 +9,19 @@ export type Locale = {
   maps_url: string;
   lat: number;
   lng: number;
-  orden: number;
   creado_en?: string;
   actualizado_en?: string;
 };
 
 export const LocalesService = {
-  async getAll(): Promise<Locale[]> {
+  async getFirst(): Promise<Locale | null> {
     const supabase = createClient();
     const { data } = await supabase
       .from("locales")
       .select("*")
-      .order("orden", { ascending: true });
-    return data ?? [];
-  },
-
-  async create(data: Omit<Locale, "id" | "creado_en" | "actualizado_en">): Promise<Locale> {
-    const supabase = createClient();
-    const { data: row, error } = await supabase
-      .from("locales")
-      .insert(data)
-      .select()
-      .single();
-    if (error) throw new Error(error.message);
-    return row as Locale;
+      .limit(1)
+      .maybeSingle();
+    return data ?? null;
   },
 
   async update(id: string, data: Partial<Omit<Locale, "id" | "creado_en" | "actualizado_en">>): Promise<Locale> {
@@ -45,11 +34,5 @@ export const LocalesService = {
       .single();
     if (error) throw new Error(error.message);
     return row as Locale;
-  },
-
-  async remove(id: string): Promise<void> {
-    const supabase = createClient();
-    const { error } = await supabase.from("locales").delete().eq("id", id);
-    if (error) throw new Error(error.message);
   },
 };

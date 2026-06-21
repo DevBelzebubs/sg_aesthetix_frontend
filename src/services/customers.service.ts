@@ -23,6 +23,7 @@ function mapRowToCustomer(row: Record<string, unknown>): Customer {
     codigoVerificacionHash: row.codigo_verificacion_hash as string | undefined,
     codigoVerificacionSalt: row.codigo_verificacion_salt as string | undefined,
     codigoVerificacionExpira: row.codigo_verificacion_expira as string | undefined,
+    esFrecuente: row.es_frecuente as boolean | undefined,
   };
 }
 
@@ -107,6 +108,7 @@ export const CustomersService = {
         pin_hash: data.pinHash || null,
         pin_salt: data.pinSalt || null,
         email_confirmado: data.emailConfirmado ?? false,
+        es_frecuente: data.esFrecuente ?? false,
       })
       .select()
       .single();
@@ -161,38 +163,6 @@ export const CustomersService = {
       .from("clientes")
       .update({ email_confirmado: true })
       .eq("id", id);
-    if (error) throw new Error(error.message);
-  },
-
-  async getPendingPromociones(): Promise<Customer[]> {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("clientes")
-      .select("*")
-      .eq("promocion_estado", "pendiente")
-      .order("promocion_creado_en", { ascending: false });
-
-    if (error) throw new Error(error.message);
-    return (data ?? []).map((row) => mapRowToCustomer(row as Record<string, unknown>));
-  },
-
-  async approvePromocion(id: string): Promise<void> {
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("clientes")
-      .update({ promocion_estado: "aprobado" })
-      .eq("id", id);
-
-    if (error) throw new Error(error.message);
-  },
-
-  async rejectPromocion(id: string): Promise<void> {
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("clientes")
-      .update({ promocion_estado: "rechazado" })
-      .eq("id", id);
-
     if (error) throw new Error(error.message);
   },
 };

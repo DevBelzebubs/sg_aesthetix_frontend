@@ -14,6 +14,7 @@ export type EmployeeRow = {
   instagram: string | null;
   facebook: string | null;
   tiktok: string | null;
+  public: boolean | null;
 };
 
 export type Employee = {
@@ -35,6 +36,7 @@ export type Employee = {
   instagram: string;
   facebook: string;
   tiktok: string;
+  public: boolean;
 };
 
 export type EmployeeDraft = {
@@ -51,6 +53,7 @@ export type EmployeeDraft = {
   instagram: string;
   facebook: string;
   tiktok: string;
+  public: boolean;
 };
 
 export type EmployeeFilter = "Todos" | "Activo" | "Inactivo";
