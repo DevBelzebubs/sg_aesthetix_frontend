@@ -132,28 +132,28 @@ export function CustomerAuthModal() {
         codigoVerificacionExpira: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       });
 
-      // Send email with verification code only
       if (regEmail) {
-        try {
-          await fetch("/api/email/send", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              to: regEmail,
-              subject: "Verifica tu correo - ZonaFade",
-              html: `
-                <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-                  <h2 style="color:#111">¡Bienvenido a ZonaFade, ${regNombres}!</h2>
-                  <p>Gracias por registrarte. Tu código de verificación es:</p>
-                  <div style="background:#f5f5f5;padding:16px;border-radius:8px;text-align:center;margin:16px 0">
-                    <span style="font-size:28px;font-weight:bold;letter-spacing:8px;color:#111">${codigo}</span>
-                  </div>
-                  <p style="color:#666;font-size:12px">Ingresa este código en la app para activar tu cuenta.</p>
-                </div>`,
-            }),
-          });
-        } catch (e) {
-          console.error("[REGISTRO] Error al enviar código:", e);
+        const emailRes = await fetch("/api/email/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: regEmail,
+            templateId: "template_nhrtjp9",
+            subject: "Verifica tu correo - Aesthetix",
+            html: `
+              <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+                <h2 style="color:#111">¡Bienvenido a Aesthetix, ${regNombres}!</h2>
+                <p>Gracias por registrarte. Tu código de verificación es:</p>
+                <div style="background:#f5f5f5;padding:16px;border-radius:8px;text-align:center;margin:16px 0">
+                  <span style="font-size:28px;font-weight:bold;letter-spacing:8px;color:#111">${codigo}</span>
+                </div>
+                <p style="color:#666;font-size:12px">Ingresa este código en la app para activar tu cuenta.</p>
+              </div>`,
+          }),
+        });
+        if (!emailRes.ok) {
+          const errText = await emailRes.text();
+          console.error("[REGISTRO] Error al enviar código:", errText);
         }
       }
 
@@ -231,14 +231,35 @@ export function CustomerAuthModal() {
         return;
       }
 
-      const tempPin = String(Math.floor(1000 + Math.random() * 9000));
+      const tempPin = String(Math.floor(100000 + Math.random() * 900000));
       const { hash, salt } = await hashPin(tempPin);
       await CustomersService.updatePin(customer.id, hash, salt);
-      await sendPinResetEmail(customer.id, forgotEmail, tempPin);
+      const res = await fetch("/api/email/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: forgotEmail,
+          subject: "Tu PIN temporal - Aesthetix",
+          html: `
+            <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+              <h2 style="color:#111">Recuperación de PIN</h2>
+              <p>Has solicitado un nuevo PIN de acceso.</p>
+              <p>Tu PIN temporal es:</p>
+              <div style="background:#f5f5f5;padding:16px;border-radius:8px;text-align:center;margin:16px 0">
+                <span style="font-size:28px;font-weight:bold;letter-spacing:8px;color:#111">${tempPin}</span>
+              </div>
+              <p style="color:#666;font-size:12px">Ingresa con este PIN y cámbialo desde tu perfil.</p>
+            </div>`,
+        }),
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText.includes("no configurado") ? "El servicio de correo no está configurado. Consulta al administrador." : "Error al enviar el correo.");
+      }
       setSuccessMsg("Se ha enviado un PIN temporal a tu correo. Revisa tu bandeja de entrada.");
       setForgotEmail("");
-    } catch {
-      setError("Error al procesar la solicitud.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al procesar la solicitud.");
     } finally {
       setLoading(false);
     }
@@ -555,7 +576,8 @@ export function CustomerAuthModal() {
                 PIN <span className="text-[var(--destructive)]">*</span>
               </span>
               <input
-                type="password"
+                type="text"
+                inputMode="numeric"
                 value={loginPin}
                 onChange={(e) => { setLoginPin(e.target.value.replace(/\D/g, "").slice(0, 6)); setFieldErrors((prev) => ({ ...prev, loginPin: "" })); }}
                 placeholder="••••••"
@@ -576,6 +598,16 @@ export function CustomerAuthModal() {
             >
               {loading ? "Ingresando..." : "Ingresar"}
             </button>
+
+            <div className="flex justify-center gap-4 pt-2">
+              <button
+                type="button"
+                onClick={() => { setTab("olvide-pin"); setError(""); setFieldErrors({}); setForgotEmail(email); }}
+                className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--foreground)] transition"
+              >
+                {error?.includes("PIN") ? "Enviar PIN a mi correo" : "Olvidé mi PIN"}
+              </button>
+            </div>
           </form>
         ) : tab === "registro" ? (
           regStep === "verify" ? (
@@ -629,6 +661,41 @@ export function CustomerAuthModal() {
               >
                 Volver al formulario
               </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!regNuevoId || !regEmail || !regNuevoNombres) return;
+                  const codigo = String(Math.floor(100000 + Math.random() * 900000));
+                  const { hash, salt } = await hashPin(codigo);
+                  await CustomersService.update(regNuevoId, {
+                    codigoVerificacionHash: hash,
+                    codigoVerificacionSalt: salt,
+                    codigoVerificacionExpira: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+                  });
+                  const res = await fetch("/api/email/send", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      to: regEmail,
+                      templateId: "template_nhrtjp9",
+                      subject: "Nuevo código - Aesthetix",
+                      html: `
+                        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+                          <h2 style="color:#111">Nuevo código de verificación</h2>
+                          <p>Tu nuevo código es:</p>
+                          <div style="background:#f5f5f5;padding:16px;border-radius:8px;text-align:center;margin:16px 0">
+                            <span style="font-size:28px;font-weight:bold;letter-spacing:8px;color:#111">${codigo}</span>
+                          </div>
+                        </div>`,
+                    }),
+                  });
+                  if (res.ok) setError(""); else setError("No se pudo reenviar el código. Intenta más tarde.");
+                }}
+                className="w-full text-center text-[10px] font-semibold uppercase tracking-widest text-[var(--hover)] hover:underline transition"
+              >
+                Reenviar código
+              </button>
             </form>
           ) : regStep === "set-pin" ? (
             <form onSubmit={handleSetPin} className="px-6 py-8 space-y-4">
@@ -652,11 +719,12 @@ export function CustomerAuthModal() {
                   PIN <span className="text-[var(--destructive)]">*</span>
                 </span>
                 <input
-                  type="password"
+                  type="text"
+                  inputMode="numeric"
                   value={regPin}
                   onChange={(e) => { setRegPin(e.target.value.replace(/\D/g, "").slice(0, 6)); setFieldErrors((prev) => ({ ...prev, pin: "" })); }}
                   placeholder="••••••"
-                  maxLength={4}
+                  maxLength={6}
                   className={fieldClass}
                   autoFocus
                 />
@@ -672,11 +740,12 @@ export function CustomerAuthModal() {
                   Confirmar PIN <span className="text-[var(--destructive)]">*</span>
                 </span>
                 <input
-                  type="password"
+                  type="text"
+                  inputMode="numeric"
                   value={regConfirmPin}
-                  onChange={(e) => { setRegConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 4)); setFieldErrors((prev) => ({ ...prev, confirmPin: "" })); }}
-                  placeholder="••••"
-                  maxLength={4}
+                  onChange={(e) => { setRegConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 6)); setFieldErrors((prev) => ({ ...prev, confirmPin: "" })); }}
+                  placeholder="••••••"
+                  maxLength={6}
                   className={fieldClass}
                 />
                 {fieldErrors.confirmPin && (
@@ -836,6 +905,62 @@ export function CustomerAuthModal() {
               </button>
             </form>
           )
+        ) : tab === "olvide-pin" ? (
+          <form onSubmit={handleForgotPin} className="px-6 py-8 space-y-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center mb-4">
+              Recuperar PIN
+            </p>
+
+            {error && (
+              <div className="flex items-center gap-2 rounded-xl border border-[var(--destructive-border)] bg-[var(--destructive-hover)] px-4 py-3 text-xs text-[var(--destructive)]">
+                <AlertCircle size="14" className="shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {successMsg && (
+              <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-500">
+                <CheckCircle2 size="14" className="shrink-0" />
+                <span>{successMsg}</span>
+              </div>
+            )}
+
+            {!successMsg && (
+              <>
+                <p className="text-sm text-[var(--text-muted)] text-center">
+                  Ingresa tu correo y te enviaremos un PIN temporal.
+                </p>
+                <label className="space-y-1.5 block">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                    Email <span className="text-[var(--destructive)]">*</span>
+                  </span>
+                  <input
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(e) => { setForgotEmail(e.target.value); setError(""); }}
+                    placeholder="tu@correo.com"
+                    maxLength={100}
+                    className={fieldClass}
+                  />
+                </label>
+                <button
+                  type="submit"
+                  disabled={loading || !forgotEmail}
+                  className="w-full rounded-xl bg-black px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {loading ? "Enviando..." : "Enviar PIN temporal"}
+                </button>
+              </>
+            )}
+
+            <button
+              type="button"
+              onClick={() => { setTab("cliente"); setError(""); setSuccessMsg(""); setForgotEmail(""); setFieldErrors({}); }}
+              className="w-full text-center text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--foreground)] transition"
+            >
+              Volver a inicio de sesión
+            </button>
+          </form>
         ) : (
           <form onSubmit={handleAdminLogin} className="px-6 py-8 space-y-4">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center mb-4">
@@ -917,6 +1042,17 @@ export function CustomerAuthModal() {
               className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--foreground)] transition"
             >
               ¿Ya tienes cuenta? Ingresa aquí
+            </button>
+          </div>
+        )}
+        {tab === "olvide-pin" && (
+          <div className="border-t border-[var(--border)] px-6 py-3 text-center">
+            <button
+              type="button"
+              onClick={() => { setTab("cliente"); setError(""); setSuccessMsg(""); setForgotEmail(""); setFieldErrors({}); }}
+              className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--foreground)] transition"
+            >
+              Volver a inicio de sesión
             </button>
           </div>
         )}

@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarClock, Home, Scissors, UserRound, Sun, Moon, X } from "lucide-react";
+import { CalendarClock, Home, Scissors, UserRound, Sun, Moon, X, ArrowLeftFromLine } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/contexts/theme-context";
 import { useAuth } from "@/hooks/useAuth";
@@ -135,6 +135,13 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="mt-4 border-t border-transparent/10 pt-4 space-y-1">
+            <Link
+              href="/home"
+              className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]"
+            >
+              <ArrowLeftFromLine size={18} />
+              <span>Volver a página pública</span>
+            </Link>
             <button
               type="button"
               onClick={toggleTheme}

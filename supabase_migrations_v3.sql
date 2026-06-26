@@ -64,6 +64,12 @@ BEGIN
   END LOOP;
 END $$;
 
+-- Columnas para diario del empleado (nota + checklist)
+ALTER TABLE public.usuarios
+ADD COLUMN IF NOT EXISTS nota_diaria TEXT,
+ADD COLUMN IF NOT EXISTS nota_diaria_fecha DATE,
+ADD COLUMN IF NOT EXISTS checklist_json JSONB DEFAULT '[]'::jsonb;
+
 -- Columnas faltantes en clientes
 ALTER TABLE public.clientes
 ADD COLUMN IF NOT EXISTS es_frecuente BOOLEAN NOT NULL DEFAULT false,

@@ -2,13 +2,16 @@ type EmailPayload = {
   to: string;
   subject: string;
   html: string;
+  templateId?: string;
 };
 
 export async function sendEmail(payload: EmailPayload): Promise<{ success: boolean; error?: string }> {
   const serviceId = process.env.EMAILJS_SERVICE_ID;
-  const templateId = process.env.EMAILJS_TEMPLATE_ID;
+  const defaultTemplateId = process.env.EMAILJS_TEMPLATE_ID;
   const publicKey = process.env.EMAILJS_PUBLIC_KEY;
   const privateKey = process.env.EMAILJS_PRIVATE_KEY;
+
+  const templateId = payload.templateId || defaultTemplateId;
 
   if (!serviceId || !templateId || !publicKey || !privateKey) {
     console.warn("[EMAIL] EmailJS no configurado. Email no enviado:", payload.subject);
@@ -29,7 +32,7 @@ export async function sendEmail(payload: EmailPayload): Promise<{ success: boole
           to_email: payload.to,
           from_name: "Aesthetix",
           subject: payload.subject,
-          message_html: payload.html,
+          content: payload.html,
         },
       }),
     });
