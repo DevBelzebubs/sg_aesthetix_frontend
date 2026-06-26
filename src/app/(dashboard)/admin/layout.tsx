@@ -190,7 +190,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
   }, [isReady, isAuthenticated, role, router]);
 
-  if (!isReady) {
+  if (!isReady || !isAuthenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
         <div className="h-4 w-4 animate-pulse rounded-full bg-[var(--text-muted)]" />
