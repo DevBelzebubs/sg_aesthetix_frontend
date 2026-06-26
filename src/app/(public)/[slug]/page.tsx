@@ -64,7 +64,7 @@ async function fetchLocales(supabase: Awaited<ReturnType<typeof createServerSupa
   const { data } = await supabase
     .from("locales")
     .select("*")
-    .order("orden", { ascending: true });
+    .order("nombre", { ascending: true });
   if (!data) return [];
   return (data as LocationRow[]).map((row) => ({
     name: row.nombre,

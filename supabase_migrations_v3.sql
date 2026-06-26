@@ -23,7 +23,8 @@ DECLARE
     'usuarios',
     'usuario_servicio',
     'reservas',
-    'blocked_slots'
+    'blocked_slots',
+    'locales'
   ];
 BEGIN
   FOREACH tbl IN ARRAY tbls
