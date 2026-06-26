@@ -63,3 +63,9 @@ BEGIN
     END IF;
   END LOOP;
 END $$;
+
+-- Columnas faltantes en clientes
+ALTER TABLE public.clientes
+ADD COLUMN IF NOT EXISTS es_frecuente BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN IF NOT EXISTS promocion_estado TEXT,
+ADD COLUMN IF NOT EXISTS promocion_creado_en TIMESTAMPTZ;
