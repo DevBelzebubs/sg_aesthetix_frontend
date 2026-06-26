@@ -52,6 +52,16 @@ type Location = {
   lng: number;
 };
 
+type HeroContent = {
+  id: string;
+  tipo: string;
+  urlMedia: string;
+  titulo: string;
+  subtitulo: string;
+  urlLogoDark: string;
+  urlLogoLight: string;
+};
+
 type LandingPageProps = {
   slug: string;
   services: Service[];
@@ -59,6 +69,7 @@ type LandingPageProps = {
   galleryItems: GalleryItem[];
   barbers: Barber[];
   locales: Location[];
+  hero: HeroContent | null;
 };
 
 
@@ -542,6 +553,7 @@ export default function LandingPage({
   galleryItems,
   barbers,
   locales: localesProp,
+  hero,
 }: LandingPageProps) {
   const locales = localesProp.length > 0 ? localesProp : defaultLocales;
   const WA_NUMBER = "5491112345678";
@@ -564,10 +576,10 @@ export default function LandingPage({
               loop
               playsInline
               className="h-full w-full object-cover opacity-90"
-              src="https://res.cloudinary.com/dp1vgjhsq/video/upload/v1777105289/WhatsApp_Video_2026-04-25_at_3.11.00_AM_1_aroels.mp4"
+              src={hero?.urlMedia || "https://res.cloudinary.com/dp1vgjhsq/video/upload/v1777105289/WhatsApp_Video_2026-04-25_at_3.11.00_AM_1_aroels.mp4"}
             />
             <span className="absolute bottom-3 left-3 bg-black/75 px-3 py-1.5 text-[10px] font-bold tracking-[0.18em] uppercase text-white">
-              Reserva online · Sin esperas
+              {hero?.subtitulo || "Reserva online · Sin esperas"}
             </span>
             {/* Acento verde en esquina del video */}
             <div className="absolute top-0 right-0 w-8 h-8">
@@ -597,9 +609,7 @@ export default function LandingPage({
               <StoreStatus />
             </div>
             <h1 className="text-3xl font-black uppercase leading-none tracking-tight text-[var(--foreground)]">
-              Redefi&shy;niendo
-              <br />
-              el corte
+              {hero?.titulo || "Redefiniendo el corte"}
             </h1>
             <Link
               href={`/${slug}/reservar`}
@@ -613,8 +623,8 @@ export default function LandingPage({
             <img
               src={
                 theme === "dark"
-                  ? "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1780970216/ChatGPT_Image_4_jun_2026_18_53_34_qwlk6n.png"
-                  : "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
+                  ? (hero?.urlLogoDark || "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1780970216/ChatGPT_Image_4_jun_2026_18_53_34_qwlk6n.png")
+                  : (hero?.urlLogoLight || "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png")
               }
               alt="For Men Castilla"
               style={{ height: 160, width: "100%", objectFit: "contain" }}
@@ -649,11 +659,7 @@ export default function LandingPage({
                 <StoreStatus />
               </div>
               <h1 className="text-4xl font-black uppercase leading-none tracking-tight text-[var(--foreground)] xl:text-5xl">
-                Redefi
-                <br />
-                niendo
-                <br />
-                el corte
+                {hero?.titulo || "Redefiniendo el corte"}
               </h1>
             </div>
             <div
@@ -666,10 +672,10 @@ export default function LandingPage({
                 loop
                 playsInline
                 className="h-full w-full object-cover opacity-94"
-                src="https://res.cloudinary.com/dp1vgjhsq/video/upload/v1777105289/WhatsApp_Video_2026-04-25_at_3.11.00_AM_1_aroels.mp4"
+                src={hero?.urlMedia || "https://res.cloudinary.com/dp1vgjhsq/video/upload/v1777105289/WhatsApp_Video_2026-04-25_at_3.11.00_AM_1_aroels.mp4"}
               />
               <span className="absolute bottom-5 left-5 bg-black/80 px-4 py-2 text-[10px] font-bold tracking-[0.2em] uppercase text-white">
-                Reserva online · Sin esperas
+                {hero?.subtitulo || "Reserva online · Sin esperas"}
               </span>
             </div>
             <div
@@ -679,8 +685,8 @@ export default function LandingPage({
               <img
                 src={
                   theme === "dark"
-                    ? "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1780970216/ChatGPT_Image_4_jun_2026_18_53_34_qwlk6n.png"
-                    : "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png"
+                    ? (hero?.urlLogoDark || "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1780970216/ChatGPT_Image_4_jun_2026_18_53_34_qwlk6n.png")
+                    : (hero?.urlLogoLight || "https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png")
                 }
                 alt="For Men Castilla"
                 style={{ height: 160, width: 160, objectFit: "contain" }}

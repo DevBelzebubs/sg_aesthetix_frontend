@@ -193,19 +193,19 @@ export default async function AdminHomePage() {
     .from("reservas")
     .select("*", { count: "exact", head: true })
     .eq("fecha_reserva", todayStr)
-    .eq("estado", "Pendiente");
+    .eq("estado", "pendiente");
 
   const { count: citasCompletadasHoy } = await supabase
     .from("reservas")
     .select("*", { count: "exact", head: true })
     .eq("fecha_reserva", todayStr)
-    .eq("estado", "Completada");
+    .eq("estado", "completada");
 
   const { data: proximasCitasRaw } = await supabase
     .from("reservas")
     .select("hora_inicio, clientes(nombres, apellidos)")
     .eq("fecha_reserva", todayStr)
-    .neq("estado", "Completada")
+    .neq("estado", "completada")
     .order("hora_inicio", { ascending: true })
     .limit(5);
 
@@ -232,14 +232,14 @@ export default async function AdminHomePage() {
     .select("*", { count: "exact", head: true })
     .gte("fecha_reserva", mondayStr)
     .lte("fecha_reserva", todayStr)
-    .eq("estado", "Pendiente");
+    .eq("estado", "pendiente");
 
   const { count: citasCompletadasSemana } = await supabase
     .from("reservas")
     .select("*", { count: "exact", head: true })
     .gte("fecha_reserva", mondayStr)
     .lte("fecha_reserva", todayStr)
-    .eq("estado", "Completada");
+    .eq("estado", "completada");
 
   // ------------------------------------------------------------------
   // Render

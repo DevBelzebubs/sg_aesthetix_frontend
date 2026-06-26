@@ -18,6 +18,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { RewardsService } from "@/services/rewards.service";
 
 type ServiceLink = {
   id: string;
@@ -199,6 +200,68 @@ export function EmployeeWorkspace({
     setAppointments((prev) =>
       prev.map((a) => (a.id === id ? { ...a, status } : a)),
     );
+
+    if (status === "completada") {
+      try {
+        const { data: reserva } = await supabase
+          .from("reservas")
+          .select("cliente_id, servicio_id")
+          .eq("id", id)
+          .single();
+
+        if (reserva?.cliente_id && reserva?.servicio_id) {
+          const { data: servicio } = await supabase
+            .from("servicios")
+            .select("nombre, precio, puntos_otorgados")
+            .eq("id", reserva.servicio_id)
+            .single();
+
+          if (servicio) {
+            const precio = Number(servicio.precio);
+            const puntos = Number(servicio.puntos_otorgados) || Math.max(1, Math.floor(precio));
+
+            const { data: venta } = await supabase
+              .from("ventas")
+              .insert({
+                cliente_id: reserva.cliente_id,
+                usuario_id: employeeId,
+                tipo_venta: "servicio",
+                subtotal: precio,
+                descuento: 0,
+                total: precio,
+                metodo_pago: "efectivo",
+                puntos_ganados: puntos,
+                estado: "pagada",
+              })
+              .select()
+              .single();
+
+            if (venta) {
+              const v = venta as Record<string, unknown>;
+              await supabase.from("venta_detalle").insert({
+                venta_id: v.id,
+                tipo_item: "servicio",
+                servicio_id: reserva.servicio_id,
+                descripcion: servicio.nombre,
+                precio_unitario: precio,
+                cantidad: 1,
+                subtotal: precio,
+                puntos_otorgados: puntos,
+              });
+
+              await RewardsService.addPoints(
+                reserva.cliente_id,
+                puntos,
+                "acumulacion",
+                `Puntos por servicio completado (${servicio.nombre})`,
+              );
+            }
+          }
+        }
+      } catch (err) {
+        console.error("[EMPLEADO] Error al crear venta/puntos:", err);
+      }
+    }
   }
 
   const toggleChecklist = (id: number) => {

@@ -167,19 +167,21 @@ export function BookingForm({
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "blocked_slots" },
-        (payload: { new: Record<string, unknown> }) => {
-          const row = payload.new as Record<string, unknown>;
-          if (row.session_id === sessionIdRef.current) return;
-          const key = slotKey(row.usuario_id as string, row.fecha_reserva as string, (row.hora_inicio as string).slice(0, 5));
-          setLockedSlots((prev) => new Set(prev).add(key));
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "DELETE", schema: "public", table: "blocked_slots" },
-        (payload: { old: Record<string, unknown> }) => {
-          const row = payload.old as Record<string, unknown>;
-          const key = slotKey(row.usuario_id as string, row.fecha_reserva as string, (row.hora_inicio as string).slice(0, 5));
+          (payload: { new: Record<string, unknown> }) => {
+            const row = payload.new as Record<string, unknown>;
+            if (row.session_id === sessionIdRef.current) return;
+            const hora = (row.hora_inicio as string) ?? "";
+            const key = slotKey(row.usuario_id as string, row.fecha_reserva as string, hora.slice(0, 5));
+            setLockedSlots((prev) => new Set(prev).add(key));
+          },
+        )
+        .on(
+          "postgres_changes",
+          { event: "DELETE", schema: "public", table: "blocked_slots" },
+          (payload: { old: Record<string, unknown> }) => {
+            const row = payload.old as Record<string, unknown>;
+            const hora = (row.hora_inicio as string) ?? "";
+            const key = slotKey(row.usuario_id as string, row.fecha_reserva as string, hora.slice(0, 5));
           setLockedSlots((prev) => {
             const next = new Set(prev);
             next.delete(key);

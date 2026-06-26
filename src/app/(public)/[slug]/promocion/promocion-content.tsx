@@ -1,8 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
 import { Pagination } from "@/components/dashboard/pagination";
+import { RecompensasService } from "@/services/recompensas.service";
+import { RewardsService } from "@/services/rewards.service";
+import { Toast } from "@/components/dashboard/toast";
+import type { ToastType } from "@/components/dashboard/toast";
+import { Loader2 } from "lucide-react";
 
 type RecompensaItem = {
   id: string;
@@ -22,17 +27,36 @@ export function PromocionContent({
   const { openModal, session } = useCustomerAuth();
   const pageSize = 10;
   const [page, setPage] = useState(1);
+  const [canjeandoId, setCanjeandoId] = useState<string | null>(null);
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMsg, setToastMsg] = useState("");
+  const [toastType, setToastType] = useState<ToastType>("success");
   const totalPages = Math.ceil(recompensas.length / pageSize);
   const paginatedRecompensas = recompensas.slice(
     (page - 1) * pageSize,
     page * pageSize,
   );
 
-  useEffect(() => {
-    if (page > Math.ceil(recompensas.length / pageSize)) {
-      setPage(1);
+  const handleCanje = useCallback(async (recompensa: RecompensaItem) => {
+    if (!session) return;
+    setCanjeandoId(recompensa.id);
+    try {
+      const cuenta = await RewardsService.getCuentaPuntosByClienteId(session.id);
+      if (!cuenta) throw new Error("No tienes una cuenta de puntos. Realiza tu primera compra.");
+      if (cuenta.puntosDisponibles < recompensa.puntosRequeridos) {
+        throw new Error(`Necesitas ${recompensa.puntosRequeridos} pts, tienes ${cuenta.puntosDisponibles} pts.`);
+      }
+      await RecompensasService.solicitarCanje(cuenta.id, recompensa.id);
+      setToastMsg(`Solicitud enviada para "${recompensa.nombre}". Espera la confirmación del local.`);
+      setToastType("success");
+    } catch (err) {
+      setToastMsg(err instanceof Error ? err.message : "Error al solicitar canje");
+      setToastType("error");
+    } finally {
+      setToastOpen(true);
+      setCanjeandoId(null);
     }
-  }, [recompensas.length, page, pageSize]);
+  }, [session]);
 
   return (
     <section className="space-y-10 pt-8">
@@ -77,6 +101,16 @@ export function PromocionContent({
                   {r.puntosRequeridos} pts
                 </p>
               </div>
+              {session && (
+                <button
+                  type="button"
+                  onClick={() => handleCanje(r)}
+                  disabled={canjeandoId === r.id}
+                  className="shrink-0 self-center rounded-full border border-[var(--hover)] px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-[var(--hover)] transition hover:bg-[var(--hover)] hover:text-white disabled:opacity-40"
+                >
+                  {canjeandoId === r.id ? <Loader2 size={14} className="animate-spin" /> : "Canjear"}
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -102,7 +136,7 @@ export function PromocionContent({
             </h2>
             <p className="mt-2 text-sm text-white/50 leading-relaxed max-w-lg">
               {session
-                ? "Ven al local en tu próxima visita y acumula más puntos."
+                ? "Selecciona una recompensa y solicita tu canje."
                 : "Inicia sesión con tu DNI y correo para canjear tus puntos."}
             </p>
           </div>
@@ -119,6 +153,8 @@ export function PromocionContent({
           )}
         </div>
       </div>
+
+      <Toast message={toastMsg} type={toastType} open={toastOpen} onClose={() => setToastOpen(false)} position="top-right" />
     </section>
   );
 }

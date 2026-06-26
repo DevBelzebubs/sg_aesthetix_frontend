@@ -1,8 +1,9 @@
 type EmailPayload = {
   to: string;
   subject: string;
-  html: string;
+  html?: string;
   templateId?: string;
+  templateParams?: Record<string, string>;
 };
 
 export async function sendEmail(payload: EmailPayload): Promise<{ success: boolean; error?: string }> {
@@ -29,10 +30,10 @@ export async function sendEmail(payload: EmailPayload): Promise<{ success: boole
         accessToken: privateKey,
         template_params: {
           to_name: payload.to.split("@")[0],
-          to_email: payload.to,
-          from_name: "Aesthetix",
-          subject: payload.subject,
-          content: payload.html,
+          email: payload.to,
+          from_name: "ZonaFade",
+          ...payload.templateParams,
+          ...(payload.templateParams ? {} : { subject: payload.subject, content: payload.html }),
         },
       }),
     });

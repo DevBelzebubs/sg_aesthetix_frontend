@@ -139,16 +139,7 @@ export function CustomerAuthModal() {
           body: JSON.stringify({
             to: regEmail,
             templateId: "template_nhrtjp9",
-            subject: "Verifica tu correo - Aesthetix",
-            html: `
-              <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-                <h2 style="color:#111">¡Bienvenido a Aesthetix, ${regNombres}!</h2>
-                <p>Gracias por registrarte. Tu código de verificación es:</p>
-                <div style="background:#f5f5f5;padding:16px;border-radius:8px;text-align:center;margin:16px 0">
-                  <span style="font-size:28px;font-weight:bold;letter-spacing:8px;color:#111">${codigo}</span>
-                </div>
-                <p style="color:#666;font-size:12px">Ingresa este código en la app para activar tu cuenta.</p>
-              </div>`,
+            templateParams: { to_name: regNombres, codigo },
           }),
         });
         if (!emailRes.ok) {
@@ -239,22 +230,14 @@ export function CustomerAuthModal() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to: forgotEmail,
-          subject: "Tu PIN temporal - Aesthetix",
-          html: `
-            <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-              <h2 style="color:#111">Recuperación de PIN</h2>
-              <p>Has solicitado un nuevo PIN de acceso.</p>
-              <p>Tu PIN temporal es:</p>
-              <div style="background:#f5f5f5;padding:16px;border-radius:8px;text-align:center;margin:16px 0">
-                <span style="font-size:28px;font-weight:bold;letter-spacing:8px;color:#111">${tempPin}</span>
-              </div>
-              <p style="color:#666;font-size:12px">Ingresa con este PIN y cámbialo desde tu perfil.</p>
-            </div>`,
+          templateId: "template_nhrtjp9",
+          templateParams: { to_name: customer.nombres || forgotEmail.split("@")[0], pin: tempPin },
         }),
       });
       if (!res.ok) {
         const errText = await res.text();
-        throw new Error(errText.includes("no configurado") ? "El servicio de correo no está configurado. Consulta al administrador." : "Error al enviar el correo.");
+        console.error("[OLVIDE-PIN] API error:", res.status, errText);
+        throw new Error(errText.includes("no configurado") ? "El servicio de correo no está configurado. Consulta al administrador." : `Error al enviar el correo (${res.status}): ${errText}`);
       }
       setSuccessMsg("Se ha enviado un PIN temporal a tu correo. Revisa tu bandeja de entrada.");
       setForgotEmail("");
@@ -679,15 +662,7 @@ export function CustomerAuthModal() {
                     body: JSON.stringify({
                       to: regEmail,
                       templateId: "template_nhrtjp9",
-                      subject: "Nuevo código - Aesthetix",
-                      html: `
-                        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-                          <h2 style="color:#111">Nuevo código de verificación</h2>
-                          <p>Tu nuevo código es:</p>
-                          <div style="background:#f5f5f5;padding:16px;border-radius:8px;text-align:center;margin:16px 0">
-                            <span style="font-size:28px;font-weight:bold;letter-spacing:8px;color:#111">${codigo}</span>
-                          </div>
-                        </div>`,
+                      templateParams: { to_name: regNuevoNombres, codigo },
                     }),
                   });
                   if (res.ok) setError(""); else setError("No se pudo reenviar el código. Intenta más tarde.");

@@ -85,7 +85,7 @@ export default async function Page({
   const { slug } = await params;
   const supabase = await createServerSupabase();
 
-  const [serviciosRes, productosRes, galeriaRes, barbers, locales] = await Promise.all([
+  const [serviciosRes, productosRes, galeriaRes, barbers, locales, heroRes] = await Promise.all([
     supabase
       .from("servicios")
       .select("id, nombre, descripcion, precio, duracion_minutos, imagen_url, puntos_otorgados")
@@ -107,6 +107,12 @@ export default async function Page({
       .limit(4),
     fetchBarbers(supabase),
     fetchLocales(supabase),
+    supabase
+      .from("hero_content")
+      .select("*")
+      .eq("activo", true)
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   const services = (serviciosRes.data ?? []).map((s) => ({
@@ -134,6 +140,18 @@ export default async function Page({
     imagenUrl: g.imagen_url,
   }));
 
+  const hero = heroRes?.data
+    ? {
+        id: heroRes.data.id,
+        tipo: heroRes.data.tipo,
+        urlMedia: heroRes.data.url_media ?? "",
+        titulo: heroRes.data.titulo ?? "Redefiniendo el corte",
+        subtitulo: heroRes.data.subtitulo ?? "Reserva online · Sin esperas",
+        urlLogoDark: heroRes.data.url_logo_dark ?? "",
+        urlLogoLight: heroRes.data.url_logo_light ?? "",
+      }
+    : null;
+
   return (
     <LandingPage
       slug={slug}
@@ -142,6 +160,7 @@ export default async function Page({
       galleryItems={galleryItems}
       barbers={barbers}
       locales={locales}
+      hero={hero}
     />
   );
 }

@@ -1,77 +1,28 @@
+
 -- ============================================================
--- MIGRACIÓN V3: RLS POLICIES FALTANTES
--- El admin dashboard usa createBrowserClient() con anon key
--- (no Supabase Auth), así que todas las tablas necesitan
--- políticas para el rol "anon".
--- Ejecutar en: Supabase Dashboard > SQL Editor
+-- TABLA HERO CONTENT
+-- Almacena el video/imagen del hero de la landing page
 -- ============================================================
+CREATE TABLE IF NOT EXISTS public.hero_content (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  tipo TEXT NOT NULL DEFAULT 'video' CHECK (tipo IN ('video', 'imagen')),
+  url_media TEXT NOT NULL DEFAULT '',
+  titulo TEXT DEFAULT 'Redefiniendo el corte',
+  subtitulo TEXT DEFAULT 'Reserva online · Sin esperas',
+  url_logo_dark TEXT DEFAULT '',
+  url_logo_light TEXT DEFAULT '',
+  activo BOOLEAN DEFAULT true,
+  creado_en TIMESTAMPTZ DEFAULT now(),
+  actualizado_en TIMESTAMPTZ DEFAULT now()
+);
 
-DO $$
-DECLARE
-  tbl TEXT;
-  pol TEXT;
-  tbls TEXT[] := ARRAY[
-    'categoria_servicio',
-    'categoria_producto',
-    'movimientos_inventario',
-    'ventas',
-    'venta_detalle',
-    'servicios',
-    'productos',
-    'clientes',
-    'galeria_cortes',
-    'usuarios',
-    'usuario_servicio',
-    'reservas',
-    'blocked_slots',
-    'locales'
-  ];
-BEGIN
-  FOREACH tbl IN ARRAY tbls
-  LOOP
-    -- Saltar si la tabla no existe
-    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = tbl) THEN
-      RAISE NOTICE 'Tabla "%" no existe, saltando...', tbl;
-      CONTINUE;
-    END IF;
-
-    -- Habilitar RLS (idempotente)
-    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', tbl);
-
-    -- SELECT policy
-    pol := tbl || '_select_anon';
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = pol AND tablename = tbl) THEN
-      EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT TO anon USING (true)', pol, tbl);
-    END IF;
-
-    -- INSERT policy
-    pol := tbl || '_insert_anon';
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = pol AND tablename = tbl) THEN
-      EXECUTE format('CREATE POLICY %I ON public.%I FOR INSERT TO anon WITH CHECK (true)', pol, tbl);
-    END IF;
-
-    -- UPDATE policy
-    pol := tbl || '_update_anon';
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = pol AND tablename = tbl) THEN
-      EXECUTE format('CREATE POLICY %I ON public.%I FOR UPDATE TO anon USING (true) WITH CHECK (true)', pol, tbl);
-    END IF;
-
-    -- DELETE policy (saltar si no existe, opcional)
-    pol := tbl || '_delete_anon';
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = pol AND tablename = tbl) THEN
-      EXECUTE format('CREATE POLICY %I ON public.%I FOR DELETE TO anon USING (true)', pol, tbl);
-    END IF;
-  END LOOP;
-END $$;
-
--- Columnas para diario del empleado (nota + checklist)
-ALTER TABLE public.usuarios
-ADD COLUMN IF NOT EXISTS nota_diaria TEXT,
-ADD COLUMN IF NOT EXISTS nota_diaria_fecha DATE,
-ADD COLUMN IF NOT EXISTS checklist_json JSONB DEFAULT '[]'::jsonb;
-
--- Columnas faltantes en clientes
-ALTER TABLE public.clientes
-ADD COLUMN IF NOT EXISTS es_frecuente BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN IF NOT EXISTS promocion_estado TEXT,
-ADD COLUMN IF NOT EXISTS promocion_creado_en TIMESTAMPTZ;
+-- Insertar fila por defecto si está vacía
+INSERT INTO public.hero_content (tipo, url_media, titulo, subtitulo, url_logo_dark, url_logo_light, activo)
+SELECT 'video',
+  'https://res.cloudinary.com/dp1vgjhsq/video/upload/v1777105289/WhatsApp_Video_2026-04-25_at_3.11.00_AM_1_aroels.mp4',
+  'Redefiniendo el corte',
+  'Reserva online · Sin esperas',
+  'https://res.cloudinary.com/dp1vgjhsq/image/upload/v1780970216/ChatGPT_Image_4_jun_2026_18_53_34_qwlk6n.png',
+  'https://res.cloudinary.com/dp1vgjhsq/image/upload/v1779981307/LOGOTIPO_tsrnvl.png',
+  true
+WHERE NOT EXISTS (SELECT 1 FROM public.hero_content);

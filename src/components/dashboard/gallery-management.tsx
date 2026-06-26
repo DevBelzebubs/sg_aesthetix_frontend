@@ -84,9 +84,9 @@ export function GalleryManagement({ totalEstilos, totalPublicados, totalDestacad
 
   const selectedItem = galleryForList.find((i) => i.id === selectedId);
 
-  const handleCreate = () => { setSelectedId(null); setDraft(emptyDraft); setMode("create"); };
-  const handleEdit = (item: GalleryItem) => { setSelectedId(item.id); setDraft(toDraft(item)); setMode("edit"); };
-  const handleBack = () => { setMode("list"); setSelectedId(null); setDraft(emptyDraft); setShowInactive(false); };
+  const handleCreate = () => { setSelectedId(null); setDraft(emptyDraft); setMode("create"); setFieldErrors({}); };
+  const handleEdit = (item: GalleryItem) => { setSelectedId(item.id); setDraft(toDraft(item)); setMode("edit"); setFieldErrors({}); };
+  const handleBack = () => { setMode("list"); setSelectedId(null); setDraft(emptyDraft); setShowInactive(false); setFieldErrors({}); };
 
   async function saveItem() {
     const errors: Record<string, string> = {};
@@ -420,8 +420,8 @@ export function GalleryManagement({ totalEstilos, totalPublicados, totalDestacad
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-6">
             <button 
               type="button" 
-              onClick={() => setIsConfirmOpen(true)} 
-              disabled={!draft.titulo || saving || Object.keys(fieldErrors).length > 0} 
+              onClick={saveItem} 
+              disabled={saving} 
               className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50"
             >
               {saving && <Loader2 size={16} className="animate-spin" />}

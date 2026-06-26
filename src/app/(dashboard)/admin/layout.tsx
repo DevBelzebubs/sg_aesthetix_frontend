@@ -26,6 +26,7 @@ import {
   ArrowDownToLine,
   PackagePlus,
   BookOpen,
+  Globe,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -74,8 +75,8 @@ const navGroups: NavGroup[] = [
     label: "CONTROL EMPRESA",
     items: [
       { href: "/admin/galeria", label: "Galería", icon: Image },
+      { href: "/admin/hero", label: "Hero", icon: Globe },
       { href: "/admin/libro-reclamaciones", label: "Libro Reclamaciones", icon: BookOpen },
-
     ],
   },
 ];
