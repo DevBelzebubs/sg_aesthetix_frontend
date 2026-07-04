@@ -34,30 +34,33 @@ async function fetchBarbers(supabase: Awaited<ReturnType<typeof createServerSupa
     .eq("public", true)
     .order("creado_en", { ascending: true });
 
-  if (!rows) return [];
+  if (!rows || rows.length === 0) return [];
 
-  const barbers = await Promise.all(
-    (rows as BarberRow[]).map(async (row) => {
-      const { data: servicios } = await supabase
-        .from("usuario_servicio")
-        .select("servicios!inner(nombre)")
-        .eq("usuario_id", row.id);
-      const specialties = ((servicios ?? []) as { servicios: { nombre: string }[] }[])
-        .map((s) => s.servicios[0]?.nombre)
-        .filter(Boolean) as string[];
-      return {
-        id: row.id,
-        nombre: `${row.nombres} ${row.apellidos}`,
-        specialties,
-        imagenUrl: row.imagen_url ?? null,
-        instagram: row.instagram ?? null,
-        facebook: row.facebook ?? null,
-        tiktok: row.tiktok ?? null,
-      };
-    }),
-  );
+  const barberIds = (rows as BarberRow[]).map((r) => r.id);
+  const { data: allServices } = await supabase
+    .from("usuario_servicio")
+    .select("usuario_id, servicios!inner(nombre)")
+    .in("usuario_id", barberIds);
 
-  return barbers;
+  const servicesByBarber = new Map<string, string[]>();
+  for (const s of (allServices ?? []) as { usuario_id: string; servicios: { nombre: string }[] }[]) {
+    const uid = s.usuario_id;
+    const name = s.servicios?.[0]?.nombre;
+    if (uid && name) {
+      if (!servicesByBarber.has(uid)) servicesByBarber.set(uid, []);
+      servicesByBarber.get(uid)!.push(name);
+    }
+  }
+
+  return (rows as BarberRow[]).map((row) => ({
+    id: row.id,
+    nombre: `${row.nombres} ${row.apellidos}`,
+    specialties: servicesByBarber.get(row.id) ?? [],
+    imagenUrl: row.imagen_url ?? null,
+    instagram: row.instagram ?? null,
+    facebook: row.facebook ?? null,
+    tiktok: row.tiktok ?? null,
+  }));
 }
 
 async function fetchLocales(supabase: Awaited<ReturnType<typeof createServerSupabase>>) {

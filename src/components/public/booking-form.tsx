@@ -1,13 +1,31 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Toast } from "@/components/dashboard/toast";
 import { AppointmentsService } from "@/services/appointments.service";
 import { CustomersService } from "@/services/customers.service";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
-import { validateDni, validateDniOptional, validateEmail, validateEmailOptional, validateName, validatePhone, validateRequired } from "@/lib/validators";
+import { validateDni, validateDniOptional, validateEmail, validateEmailOptional, validateName, validatePhone, validatePhoneOptional, validateRequired } from "@/lib/validators";
 import { getRealtimeClient } from "@/lib/supabase/realtime";
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: {
+            client_id: string;
+            callback: (response: { credential?: string }) => void;
+            auto_select?: boolean;
+          }) => void;
+          renderButton: (element: HTMLElement, options: { theme?: string; size?: string; type?: string; shape?: string }) => void;
+          prompt: (callback?: (notification: { isNotDisplayed: () => boolean }) => void) => void;
+        };
+      };
+    };
+  }
+}
 
 type BookingOption = {
   id: string;
@@ -133,6 +151,7 @@ export function BookingForm({
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -146,6 +165,7 @@ export function BookingForm({
   const [lockedSlots, setLockedSlots] = useState<Set<string>>(new Set());
   const channelRef = useRef<ReturnType<ReturnType<typeof getRealtimeClient>["channel"]> | null>(null);
   const mySlotRef = useRef<string | null>(null);
+  const googleBtnRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const supabase = getRealtimeClient();
@@ -328,6 +348,77 @@ export function BookingForm({
     }
   };
 
+  const handleGoogleLogin = useCallback(async (credential: string) => {
+    setGoogleLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error de autenticación");
+
+      setCustomerId(data.id);
+      setFormData((c) => ({
+        ...c,
+        nombres: data.nombres,
+        apellidos: data.apellidos || "",
+        phone: data.telefono || c.phone,
+        email: data.correoElectronico || c.email,
+        dni: data.dni || "",
+        fechaNacimiento: data.fechaNacimiento || "",
+      }));
+      setStage("booking");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al conectar con Google");
+    } finally {
+      setGoogleLoading(false);
+    }
+  }, []);
+
+  const googleCallbackRef = useRef<(credential: string) => void>(handleGoogleLogin);
+  googleCallbackRef.current = handleGoogleLogin;
+
+  useEffect(() => {
+    if (stage !== "dni") return;
+    const scriptId = "google-gsi-script";
+
+    const initGoogle = () => {
+      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+      if (!clientId || !window.google?.accounts?.id) return;
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: (response: { credential?: string }) => {
+          if (response.credential) googleCallbackRef.current(response.credential);
+        },
+        auto_select: false,
+      });
+      if (googleBtnRef.current) {
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: "filled_black",
+          size: "large",
+          type: "standard",
+          shape: "rectangular",
+        });
+      }
+    };
+
+    if (document.getElementById(scriptId)) {
+      initGoogle();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = scriptId;
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = initGoogle;
+    document.head.appendChild(script);
+  }, [stage]);
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.nombres || !formData.apellidos || !formData.phone) return;
@@ -355,9 +446,9 @@ export function BookingForm({
     const errors: Record<string, string> = {};
     const nombresErr = validateName(formData.nombres, "Los nombres");
     const apellidosErr = validateName(formData.apellidos, "Los apellidos");
-    const phoneErr = validatePhone(formData.phone);
+    const phoneErr = validatePhoneOptional(formData.phone);
     const emailErr = validateEmail(formData.email);
-    const dniErr = validateDni(formData.dni);
+    const dniErr = validateDniOptional(formData.dni);
     const serviceErr = validateRequired(formData.serviceId, "El servicio");
     const dateErr = validateRequired(formData.date, "La fecha");
     const timeErr = validateRequired(formData.time, "La hora");
@@ -489,7 +580,7 @@ export function BookingForm({
         </h1>
         <p className="mt-2 text-base leading-relaxed text-[var(--text-muted)]">
           {stage === "dni"
-            ? "Ingresa tu DNI para agilizar la reserva."
+            ? "Inicia sesión con Google o ingresa tu DNI para agilizar la reserva."
             : "Llena los campos para registrarte."}
         </p>
       </div>
@@ -502,7 +593,25 @@ export function BookingForm({
       )}
 
       {stage === "dni" && (
-        <form onSubmit={handleDniLookup} className="flex flex-col gap-6">
+        <>
+          <div className="mb-6 flex flex-col items-center gap-3">
+            <div
+              ref={googleBtnRef}
+              className="min-h-[40px] flex items-center justify-center"
+            />
+            {googleLoading && (
+              <div className="flex items-center gap-2">
+                <Loader2 size={16} className="animate-spin" />
+                <span className="text-xs text-[var(--text-muted)]">Verificando...</span>
+              </div>
+            )}
+          </div>
+          <div className="mb-6 flex items-center gap-4">
+            <div className="flex-1 h-px bg-[var(--border)]" />
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">o</span>
+            <div className="flex-1 h-px bg-[var(--border)]" />
+          </div>
+          <form onSubmit={handleDniLookup} className="flex flex-col gap-6">
           <label className="flex flex-col gap-1.5">
             <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
               Número de DNI <span className="text-[var(--destructive)]">*</span>
@@ -531,6 +640,7 @@ export function BookingForm({
             {isLoading ? "Buscando..." : "Buscar"}
           </button>
         </form>
+        </>
       )}
 
       {stage === "register" && (
@@ -1092,7 +1202,7 @@ export function BookingForm({
                 <div className="grid grid-cols-2 gap-4">
                   <label className="space-y-2">
                     <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                      DNI <span className="text-[var(--destructive)]">*</span>
+                      DNI <span className="text-[var(--text-muted)]">(opcional)</span>
                     </span>
                     <input
                       type="text"
@@ -1107,7 +1217,7 @@ export function BookingForm({
                   </label>
                   <label className="space-y-2">
                     <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                      Teléfono <span className="text-[var(--destructive)]">*</span>
+                      Teléfono <span className="text-[var(--text-muted)]">(opcional)</span>
                     </span>
                     <input
                       type="tel"

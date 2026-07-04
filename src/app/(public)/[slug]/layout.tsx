@@ -8,6 +8,8 @@ import { PublicLayoutShell } from "@/components/public/public-layout-shell";
 import { FooterLogo } from "@/components/public/footer-logo";
 import { createServerSupabase } from "@/lib/supabase/server";
 
+export const revalidate = 3600;
+
 type PublicLandingLayoutProps = {
   children: ReactNode;
   params: Promise<{ slug: string }>;

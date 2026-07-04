@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 import { BookingForm } from "@/components/public/booking-form";
 import { createServerSupabase } from "@/lib/supabase/server";
+
+export const revalidate = 60;
 
 type ReservarPageProps = {
   params: Promise<{ slug: string }>;
@@ -49,7 +50,6 @@ function capitalize(value: string) {
 }
 
 export default async function ReservarPage({ params }: ReservarPageProps) {
-  noStore();
   const { slug } = await params;
   const supabase = await createServerSupabase();
 
