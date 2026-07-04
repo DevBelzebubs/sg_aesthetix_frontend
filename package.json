@@ -29,9 +29,7 @@
     "react-dom": "19.2.4",
     "resend": "^6.12.4"
   },
-  "optionalDependencies": {
-    "@ast-grep/napi-linux-x64-gnu": "0.40.5"
-  },
+  "optionalDependencies": {},
   "devDependencies": {
     "@opennextjs/cloudflare": "^1.19.11",
     "@tailwindcss/postcss": "^4.2.2",

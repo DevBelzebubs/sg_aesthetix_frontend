@@ -84,11 +84,11 @@ export function ServicesManagement({ totalServicios, totalActivos, precioPromedi
   useEffect(() => {
     if (!showInactive) return;
     setLoadingInactive(true);
-    supabase
+    Promise.resolve(supabase
       .from("servicios")
       .select("*")
       .eq("esta_activo", false)
-      .order("nombre", { ascending: true })
+      .order("nombre", { ascending: true }))
       .then(({ data }) => setInactiveServices(data ?? []))
       .finally(() => setLoadingInactive(false));
   }, [showInactive]);

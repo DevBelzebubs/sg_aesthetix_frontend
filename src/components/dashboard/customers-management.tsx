@@ -73,7 +73,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    CustomersService.getAll()
+    Promise.resolve(CustomersService.getAll())
       .then((data) => {
         setCustomers(
           data.map((c) => ({

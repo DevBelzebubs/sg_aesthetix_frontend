@@ -55,11 +55,11 @@ export default function ProductCategoriesManagement() {
   useEffect(() => {
     if (!showInactive) return;
     setLoadingInactive(true);
-    supabase
+    Promise.resolve(supabase
       .from("categoria_producto")
       .select("*")
       .eq("esta_activo", false)
-      .order("orden", { ascending: true })
+      .order("orden", { ascending: true }))
       .then(({ data }) => setInactiveItems(data ?? []))
       .finally(() => setLoadingInactive(false));
   }, [showInactive]);

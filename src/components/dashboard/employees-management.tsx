@@ -84,7 +84,7 @@ export function EmployeesManagement({ kpiActivos, kpiAdmins, kpiEmpleados }: Pro
   useEffect(() => {
     if (!showInactive) return;
     setLoadingInactive(true);
-    EmployeesService.getInactivos()
+    Promise.resolve(EmployeesService.getInactivos())
       .then(setInactiveEmployees)
       .catch(() => {})
       .finally(() => setLoadingInactive(false));

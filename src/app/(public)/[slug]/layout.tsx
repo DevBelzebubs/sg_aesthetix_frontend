@@ -36,16 +36,17 @@ export default async function PublicLandingLayout({
   const theme = await getThemeSettingsByTenantId(tenant.tenantId);
   const supabase = await createServerSupabase();
 
-  const { data: localesData } = await supabase
-    .from("locales")
-    .select("nombre, direccion, telefono, maps_url, lat, lng")
-    .limit(1);
-
-  const { data: usersData } = await supabase
-    .from("usuarios")
-    .select("instagram, facebook, tiktok")
-    .not("instagram", "is", null)
-    .limit(1);
+  const [{ data: localesData }, { data: usersData }] = await Promise.all([
+    supabase
+      .from("locales")
+      .select("nombre, direccion, telefono, maps_url, lat, lng")
+      .limit(1),
+    supabase
+      .from("usuarios")
+      .select("instagram, facebook, tiktok")
+      .not("instagram", "is", null)
+      .limit(1),
+  ]);
 
   const locale = localesData?.[0];
   const socialUser = usersData?.[0];

@@ -338,7 +338,7 @@ export function CustomerAuthModal() {
         if (nuevosIntentos >= MAX_INTENTOS) {
           updateData.bloqueadoHasta = new Date(Date.now() + 15 * 60 * 1000).toISOString();
         }
-        await CustomersService.update(customer.id, updateData as any);
+        await CustomersService.update(customer.id, updateData as import("@/types/customer").UpdateCustomerPayload);
         setError(
           nuevosIntentos >= MAX_INTENTOS
             ? "Demasiados intentos. Cuenta bloqueada por 15 minutos."

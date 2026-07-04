@@ -60,7 +60,7 @@ export function ComplaintsManagement() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    ComplaintsService.getAll()
+    Promise.resolve(ComplaintsService.getAll())
       .then(setComplaints)
       .catch(() => {})
       .finally(() => setLoading(false));
