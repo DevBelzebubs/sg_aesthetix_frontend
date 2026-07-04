@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import {
   ShoppingCart, TrendingUp, TrendingDown, CreditCard,
   Banknote, Smartphone, AlertTriangle, Package,
@@ -521,7 +522,7 @@ function LowStockWidget({ data }: { data: LowStockProduct[] }) {
             const isCritical = product.stock_actual === 0;
 
             return (
-              <a
+              <Link
                 key={product.id}
                 href="/admin/inventario"
                 className="block rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4 transition hover:border-[var(--hover)]/40"
@@ -557,7 +558,7 @@ function LowStockWidget({ data }: { data: LowStockProduct[] }) {
                     style={{ width: `${Math.min(stockRatio, 100)}%` }}
                   />
                 </div>
-              </a>
+              </Link>
             );
           })}
         </div>
@@ -630,13 +631,13 @@ function AppointmentsWidget({
       <div className="mt-5">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-semibold text-[var(--foreground)]">{total} citas</span>
-          <a
+          <Link
             href="/admin/agenda"
             className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--foreground)] transition"
           >
             Ver todas
             <ChevronRight size={14} />
-          </a>
+          </Link>
         </div>
 
         <div className="h-3 rounded-full bg-[var(--background)] overflow-hidden flex">

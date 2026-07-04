@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, ArrowDown, ArrowLeft, ArrowUp, Loader2, PencilLine, Plus, Search, Tag, Trash2, X } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowLeft, ArrowUp, Loader2, PencilLine, Plus, Search, Tag, Trash2, Undo2, X } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { createClient } from "@/lib/supabase/client";

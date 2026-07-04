@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Clock3, DollarSign, Loader2, PencilLine, Plus, Scissors, Search, Trash2, Undo2, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, Clock3, DollarSign, Loader2, PencilLine, Plus, Scissors, Search, Trash2, Undo2, X } from "lucide-react";
 import { CloudinaryUpload } from "@/components/dashboard/cloudinary-upload";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
