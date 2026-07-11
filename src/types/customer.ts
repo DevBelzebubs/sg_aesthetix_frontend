@@ -2,7 +2,6 @@ export interface Customer {
   id: string;
   nombres: string;
   apellidos?: string;
-  dni?: string;
   telefono?: string;
   correoElectronico?: string;
   estaActivo: boolean;
@@ -24,7 +23,6 @@ export interface Customer {
 export interface CreateCustomerPayload {
   nombres: string;
   apellidos?: string;
-  dni?: string;
   telefono?: string;
   correoElectronico?: string;
   promocionEstado?: string;
@@ -36,7 +34,6 @@ export interface CreateCustomerPayload {
 }
 
 export interface UpdateCustomerPayload {
-  dni?: string;
   nombres?: string;
   apellidos?: string;
   telefono?: string;

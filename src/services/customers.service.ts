@@ -6,7 +6,6 @@ function mapRowToCustomer(row: Record<string, unknown>): Customer {
     id: row.id as string,
     nombres: row.nombres as string,
     apellidos: row.apellidos as string | undefined,
-    dni: row.dni as string | undefined,
     telefono: row.telefono as string | undefined,
     correoElectronico: row.correo_electronico as string | undefined,
     estaActivo: row.esta_activo as boolean,
@@ -63,18 +62,6 @@ export const CustomersService = {
     return mapRowToCustomer(data as Record<string, unknown>);
   },
 
-  async findByDni(dni: string): Promise<Customer | null> {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("clientes")
-      .select("*")
-      .eq("dni", dni)
-      .maybeSingle();
-
-    if (error) throw new Error(error.message);
-    if (!data) return null;
-    return mapRowToCustomer(data as Record<string, unknown>);
-  },
 
   async findByEmail(email: string): Promise<Customer | null> {
     const supabase = createClient();
@@ -96,7 +83,6 @@ export const CustomersService = {
       .insert({
         nombres: data.nombres,
         apellidos: data.apellidos || "",
-        dni: data.dni || null,
         telefono: data.telefono || null,
         correo_electronico: data.correoElectronico || null,
         esta_activo: true,
@@ -118,7 +104,6 @@ export const CustomersService = {
   async update(id: string, data: UpdateCustomerPayload): Promise<Customer> {
     const supabase = createClient();
     const updateData: Record<string, unknown> = {};
-    if (data.dni !== undefined) updateData.dni = data.dni;
     if (data.nombres !== undefined) updateData.nombres = data.nombres;
     if (data.apellidos !== undefined) updateData.apellidos = data.apellidos;
     if (data.telefono !== undefined) updateData.telefono = data.telefono;

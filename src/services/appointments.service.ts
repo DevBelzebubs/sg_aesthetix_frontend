@@ -275,6 +275,7 @@ export const AppointmentsService = {
     data: {
       hora_inicio?: string;
       hora_fin?: string;
+      fecha_reserva?: string;
       estado?: string;
       observaciones?: string | null;
       usuario_id?: string;
@@ -285,6 +286,7 @@ export const AppointmentsService = {
     const payload: Record<string, unknown> = {};
     if (data.hora_inicio !== undefined) payload.hora_inicio = data.hora_inicio;
     if (data.hora_fin !== undefined) payload.hora_fin = data.hora_fin;
+    if (data.fecha_reserva !== undefined) payload.fecha_reserva = data.fecha_reserva;
     if (data.estado !== undefined) payload.estado = data.estado;
     if (data.observaciones !== undefined) payload.observaciones = data.observaciones;
     if (data.usuario_id !== undefined) payload.usuario_id = data.usuario_id;

@@ -15,17 +15,6 @@ export function validateEmailOptional(v: string): string | null {
   return null;
 }
 
-export function validateDni(v: string): string | null {
-  if (!v) return "El DNI es obligatorio";
-  if (!/^\d{8}$/.test(v)) return "El DNI debe tener 8 dígitos";
-  return null;
-}
-
-export function validateDniOptional(v: string): string | null {
-  if (!v) return null;
-  if (!/^\d{8}$/.test(v)) return "El DNI debe tener 8 dígitos";
-  return null;
-}
 
 export function validatePhone(v: string): string | null {
   if (!v) return "El teléfono es obligatorio";

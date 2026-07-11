@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AlertCircle } from "lucide-react";
 import { Toast } from "@/components/dashboard/toast";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
-import { validateRequired, validateEmail, validateDniOptional, validatePhoneOptional, validateMinLength, validatePositiveNumber, validateName } from "@/lib/validators";
+import { validateRequired, validateEmail, validatePhoneOptional, validateMinLength, validatePositiveNumber, validateName } from "@/lib/validators";
 
 const fieldClass =
   "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-sm text-[var(--foreground)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--hover)] focus:ring-2 focus:ring-[var(--hover)]/20";
@@ -19,7 +19,6 @@ export function ComplaintBookForm({ slug }: Props) {
   const [tipo, setTipo] = useState<"queja" | "reclamo">("reclamo");
   const [nombres, setNombres] = useState("");
   const [apellidos, setApellidos] = useState("");
-  const [dni, setDni] = useState("");
   const [domicilio, setDomicilio] = useState("");
   const [telefono, setTelefono] = useState("");
   const [email, setEmail] = useState("");
@@ -42,7 +41,6 @@ export function ComplaintBookForm({ slug }: Props) {
     const nombresErr = validateName(nombres, "El nombre");
     const apellidosErr = validateName(apellidos, "El apellido");
     const emailErr = validateEmail(email);
-    const dniErr = validateDniOptional(dni);
     const telErr = validatePhoneOptional(telefono);
     const domErr = domicilio ? validateMinLength(domicilio, 5, "El domicilio") : null;
     const montoErr = montoReclamado ? validatePositiveNumber(Number(montoReclamado), "El monto reclamado") : null;
@@ -52,7 +50,6 @@ export function ComplaintBookForm({ slug }: Props) {
     if (nombresErr) errors.nombres = nombresErr;
     if (apellidosErr) errors.apellidos = apellidosErr;
     if (emailErr) errors.email = emailErr;
-    if (dniErr) errors.dni = dniErr;
     if (telErr) errors.telefono = telErr;
     if (domErr) errors.domicilio = domErr;
     if (montoErr) errors.monto = montoErr;
@@ -87,7 +84,6 @@ export function ComplaintBookForm({ slug }: Props) {
           tipo,
           nombres: nombres.trim(),
           apellidos: apellidos.trim(),
-          dni: dni.trim() || undefined,
           domicilio: domicilio.trim() || undefined,
           telefono: telefono.trim() || undefined,
           email: email.trim(),
@@ -253,26 +249,6 @@ export function ComplaintBookForm({ slug }: Props) {
               <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
                 <AlertCircle size={11} />
                 {fieldErrors.apellidos}
-              </p>
-            )}
-          </label>
-
-          <label className="space-y-1.5">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">DNI</span>
-              <input
-                className={fieldClass}
-                value={dni}
-                onChange={(e) => {
-                  setDni(e.target.value.replace(/\D/g, ""));
-                  setFieldErrors((prev) => ({ ...prev, dni: "" }));
-                }}
-                placeholder="12345678"
-                maxLength={8}
-              />
-            {fieldErrors.dni && (
-              <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
-                <AlertCircle size={11} />
-                {fieldErrors.dni}
               </p>
             )}
           </label>

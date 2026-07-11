@@ -6,7 +6,7 @@ import { Toast } from "@/components/dashboard/toast";
 import { AppointmentsService } from "@/services/appointments.service";
 import { CustomersService } from "@/services/customers.service";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
-import { validateDni, validateDniOptional, validateEmail, validateEmailOptional, validateName, validatePhone, validatePhoneOptional, validateRequired } from "@/lib/validators";
+import { validateEmail, validateEmailOptional, validateName, validatePhone, validatePhoneOptional, validateRequired } from "@/lib/validators";
 import { getRealtimeClient } from "@/lib/supabase/realtime";
 
 declare global {
@@ -77,7 +77,6 @@ type BookingDraft = {
   apellidos: string;
   phone: string;
   email: string;
-  dni: string;
   fechaNacimiento: string;
 };
 
@@ -90,7 +89,6 @@ const initialDraft: BookingDraft = {
   apellidos: "",
   phone: "",
   email: "",
-  dni: "",
   fechaNacimiento: "",
 };
 
@@ -116,8 +114,7 @@ export function BookingForm({
   availableSlots,
   existingReservations,
 }: BookingFormProps) {
-  const [stage, setStage] = useState<"dni" | "register" | "booking">("dni");
-  const [dni, setDni] = useState("");
+  const [stage, setStage] = useState<"google" | "register" | "booking">("google");
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<BookingDraft>(initialDraft);
@@ -140,7 +137,6 @@ export function BookingForm({
             apellidos: found.apellidos ?? "",
             phone: found.telefono ?? c.phone,
             email: found.correoElectronico ?? c.email,
-            dni: found.dni ?? c.dni,
             fechaNacimiento: found.fechaNacimiento ?? c.fechaNacimiento,
           }));
         }
@@ -314,40 +310,6 @@ export function BookingForm({
     setFieldErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const handleDniLookup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const err = validateDni(dni);
-    if (err) {
-      setFieldErrors({ dni: err });
-      return;
-    }
-    setIsLoading(true);
-    setError("");
-    try {
-      const customer = await CustomersService.findByDni(dni);
-      if (customer) {
-        setCustomerId(customer.id);
-        setFormData((c) => ({
-          ...c,
-          nombres: customer.nombres,
-          apellidos: customer.apellidos ?? "",
-          phone: customer.telefono ?? c.phone,
-          email: customer.correoElectronico ?? c.email,
-          dni: customer.dni ?? dni,
-          fechaNacimiento: customer.fechaNacimiento ?? c.fechaNacimiento,
-        }));
-        setStage("booking");
-      } else {
-        setFormData((c) => ({ ...c, dni }));
-        setStage("register");
-      }
-    } catch {
-      setError("Error al buscar DNI");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleGoogleLogin = useCallback(async (credential: string) => {
     setGoogleLoading(true);
     setError("");
@@ -367,7 +329,6 @@ export function BookingForm({
         apellidos: data.apellidos || "",
         phone: data.telefono || c.phone,
         email: data.correoElectronico || c.email,
-        dni: data.dni || "",
         fechaNacimiento: data.fechaNacimiento || "",
       }));
       setStage("booking");
@@ -382,7 +343,7 @@ export function BookingForm({
   googleCallbackRef.current = handleGoogleLogin;
 
   useEffect(() => {
-    if (stage !== "dni") return;
+    if (stage !== "google") return;
     const scriptId = "google-gsi-script";
 
     const initGoogle = () => {
@@ -428,7 +389,6 @@ export function BookingForm({
       const newCustomer = await CustomersService.create({
         nombres: formData.nombres.trim(),
         apellidos: formData.apellidos.trim(),
-        dni: formData.dni || undefined,
         telefono: formData.phone,
         correoElectronico: formData.email,
         fechaNacimiento: formData.fechaNacimiento || undefined,
@@ -448,7 +408,6 @@ export function BookingForm({
     const apellidosErr = validateName(formData.apellidos, "Los apellidos");
     const phoneErr = validatePhoneOptional(formData.phone);
     const emailErr = validateEmail(formData.email);
-    const dniErr = validateDniOptional(formData.dni);
     const serviceErr = validateRequired(formData.serviceId, "El servicio");
     const dateErr = validateRequired(formData.date, "La fecha");
     const timeErr = validateRequired(formData.time, "La hora");
@@ -456,7 +415,6 @@ export function BookingForm({
     if (apellidosErr) errors.apellidos = apellidosErr;
     if (phoneErr) errors.phone = phoneErr;
     if (emailErr) errors.email = emailErr;
-    if (dniErr) errors.dni = dniErr;
     if (serviceErr) errors.serviceId = serviceErr;
     if (dateErr) errors.date = dateErr;
     if (timeErr) errors.time = timeErr;
@@ -524,12 +482,11 @@ export function BookingForm({
       setTimeout(() => {
         setFormData(initialDraft);
         setCurrentStep(0);
-        setDni("");
         setCustomerId(null);
         setIsSubmitted(false);
         setError("");
         setFieldErrors({});
-        setStage("dni");
+        setStage("google");
         setToastOpen(false);
       }, 2500);
     } catch (err) {
@@ -569,18 +526,18 @@ export function BookingForm({
     mySlotRef.current = null;
   };
 
-  return stage === "dni" || stage === "register" ? (
+  return stage === "google" || stage === "register" ? (
     <div className="mx-auto max-w-3xl px-8 py-12">
       <div className="mb-8 text-center">
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
           {businessName}
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight">
-          {stage === "dni" ? "Reserva online" : "Completa tus datos"}
+          {stage === "google" ? "Reserva online" : "Completa tus datos"}
         </h1>
         <p className="mt-2 text-base leading-relaxed text-[var(--text-muted)]">
-          {stage === "dni"
-            ? "Inicia sesión con Google o ingresa tu DNI para agilizar la reserva."
+          {stage === "google"
+            ? "Inicia sesión con Google para agilizar la reserva."
             : "Llena los campos para registrarte."}
         </p>
       </div>
@@ -592,7 +549,7 @@ export function BookingForm({
         </div>
       )}
 
-      {stage === "dni" && (
+      {stage === "google" && (
         <>
           <div className="mb-6 flex flex-col items-center gap-3">
             <div
@@ -606,40 +563,6 @@ export function BookingForm({
               </div>
             )}
           </div>
-          <div className="mb-6 flex items-center gap-4">
-            <div className="flex-1 h-px bg-[var(--border)]" />
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">o</span>
-            <div className="flex-1 h-px bg-[var(--border)]" />
-          </div>
-          <form onSubmit={handleDniLookup} className="flex flex-col gap-6">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-              Número de DNI <span className="text-[var(--destructive)]">*</span>
-            </span>
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={8}
-              value={dni}
-              onChange={(e) => setDni(e.target.value.replace(/\D/g, ""))}
-              placeholder="12345678"
-              className={fieldClass}
-            />
-            {fieldErrors.dni && (
-              <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
-                <AlertCircle size={11} />
-                {fieldErrors.dni}
-              </p>
-            )}
-          </label>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="mt-6 w-full rounded-xl bg-black px-8 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {isLoading ? "Buscando..." : "Buscar"}
-          </button>
-        </form>
         </>
       )}
 
@@ -675,23 +598,8 @@ export function BookingForm({
             </label>
           </div>
 
-          {/* Fila 2: DNI + Teléfono */}
-          <div className="grid grid-cols-2 gap-4">
-            <label className="space-y-2">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                DNI
-              </span>
-              <input
-                required
-                type="text"
-                inputMode="numeric"
-                maxLength={8}
-                value={formData.dni}
-                onChange={(e) => setFormData((c) => ({ ...c, dni: e.target.value.replace(/\D/g, "") }))}
-                placeholder="12345678"
-                className={inputClassName}
-              />
-            </label>
+          {/* Fila 2: Teléfono */}
+          <div className="grid grid-cols-1 gap-4">
             <label className="space-y-2">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
                 Teléfono
@@ -1198,23 +1106,8 @@ export function BookingForm({
                   </label>
                 </div>
 
-                {/* Fila 2: DNI + Teléfono */}
+                {/* Fila 2: Teléfono */}
                 <div className="grid grid-cols-2 gap-4">
-                  <label className="space-y-2">
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                      DNI <span className="text-[var(--text-muted)]">(opcional)</span>
-                    </span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={8}
-                      name="dni"
-                      value={formData.dni}
-                      readOnly
-                      tabIndex={-1}
-                      className={inputClassName + " cursor-default opacity-60"}
-                    />
-                  </label>
                   <label className="space-y-2">
                     <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
                       Teléfono <span className="text-[var(--text-muted)]">(opcional)</span>
@@ -1234,6 +1127,7 @@ export function BookingForm({
                       </p>
                     )}
                   </label>
+                  <div />
                 </div>
 
                 {/* Fila 3: Email */}

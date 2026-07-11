@@ -4,7 +4,6 @@ export interface Complaint {
   tipo: "queja" | "reclamo";
   nombres: string;
   apellidos: string;
-  dni?: string;
   domicilio?: string;
   telefono?: string;
   email: string;
@@ -24,7 +23,6 @@ export interface CreateComplaintPayload {
   tipo: "queja" | "reclamo";
   nombres: string;
   apellidos: string;
-  dni?: string;
   domicilio?: string;
   telefono?: string;
   email: string;

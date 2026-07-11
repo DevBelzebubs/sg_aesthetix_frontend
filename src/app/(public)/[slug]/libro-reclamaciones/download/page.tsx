@@ -109,7 +109,6 @@ function DownloadContent() {
 
         renderSection("1. IDENTIFICACIÓN DEL CONSUMIDOR");
         renderRow("Nombres y Apellidos", `${complaint.nombres} ${complaint.apellidos}`);
-        renderRow("DNI / CE", complaint.dni);
         renderRow("Teléfono", complaint.telefono);
         renderRow("Correo electrónico", complaint.email);
         renderRow("Domicilio", complaint.domicilio);

@@ -98,7 +98,6 @@ export async function POST(request: Request) {
       id: customer.id,
       nombres: customer.nombres,
       apellidos: customer.apellidos || "",
-      dni: customer.dni || null,
       telefono: customer.telefono || null,
       correoElectronico: customer.correo_electronico || email,
       fechaNacimiento: customer.fecha_nacimiento || null,

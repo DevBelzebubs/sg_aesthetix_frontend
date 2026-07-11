@@ -76,7 +76,6 @@ export function ComplaintsManagement() {
         !query ||
         c.nombres.toLowerCase().includes(text) ||
         c.apellidos.toLowerCase().includes(text) ||
-        c.dni?.toLowerCase().includes(text) ||
         c.email.toLowerCase().includes(text) ||
         c.descripcion.toLowerCase().includes(text);
 
@@ -214,7 +213,7 @@ export function ComplaintsManagement() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 className="w-full bg-transparent text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--text-muted)]"
-                placeholder="Buscar por nombre, DNI, email..."
+                placeholder="Buscar por nombre, email..."
               />
             </label>
           </div>
@@ -261,7 +260,6 @@ export function ComplaintsManagement() {
                             <div className="text-xs space-y-0.5">
                               <div>{complaint.email}</div>
                               {complaint.telefono && <div>{complaint.telefono}</div>}
-                              {complaint.dni && <div>DNI: {complaint.dni}</div>}
                             </div>
                           </td>
                           <td className="px-5 py-4 text-center whitespace-nowrap">
@@ -398,7 +396,7 @@ function DetailView({
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Nombres" value={complaint.nombres} />
         <Field label="Apellidos" value={complaint.apellidos} />
-        {complaint.dni && <Field label="DNI" value={complaint.dni} />}
+
         {complaint.domicilio && <Field label="Domicilio" value={complaint.domicilio} />}
         {complaint.telefono && <Field label="Teléfono" value={complaint.telefono} />}
         <Field label="Email" value={complaint.email} />

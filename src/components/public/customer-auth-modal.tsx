@@ -1,15 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2, KeyRound, X, Mail } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AlertCircle, CheckCircle2, KeyRound, Loader2, X, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
 import { CustomersService } from "@/services/customers.service";
-import { validateDni, validateEmail, validatePhone, validateRequired, validatePassword, validateDateOfBirth } from "@/lib/validators";
+import { validateEmail, validatePhone, validateRequired, validatePassword, validateDateOfBirth } from "@/lib/validators";
 import { hashPin, verifyPin } from "@/lib/pin";
 
 import { sendPinResetEmail } from "@/lib/email-client";
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: { client_id: string; callback: (response: { credential?: string }) => void; auto_select?: boolean }) => void;
+          renderButton: (element: HTMLElement, options: { theme?: string; size?: string; type?: string; shape?: string }) => void;
+          prompt: (callback?: (notification: { isNotDisplayed: () => boolean }) => void) => void;
+        };
+      };
+    };
+  }
+}
 
 type Tab = "cliente" | "registro" | "admin" | "olvide-pin";
 
@@ -39,7 +53,6 @@ export function CustomerAuthModal() {
   const [regNombres, setRegNombres] = useState("");
   const [regApellidos, setRegApellidos] = useState("");
   const [regEmail, setRegEmail] = useState("");
-  const [regDni, setRegDni] = useState("");
   const [regTelefono, setRegTelefono] = useState("");
   const [regFechaNacimiento, setRegFechaNacimiento] = useState("");
   const [regNuevoId, setRegNuevoId] = useState<string | null>(null);
@@ -64,6 +77,71 @@ export function CustomerAuthModal() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
 
+  // Google login
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const googleBtnRef = useRef<HTMLDivElement>(null);
+
+  const handleGoogleLogin = useCallback(async (credential: string) => {
+    setGoogleLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error de autenticación");
+      await customerLogin(data.id, data.nombres);
+      closeModal();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al conectar con Google");
+    } finally {
+      setGoogleLoading(false);
+    }
+  }, [customerLogin, closeModal]);
+
+  const googleCallbackRef = useRef<(credential: string) => void>(handleGoogleLogin);
+  googleCallbackRef.current = handleGoogleLogin;
+
+  useEffect(() => {
+    if (!modalOpen || tab !== "cliente" || session) return;
+    const scriptId = "google-gsi-modal-script";
+
+    const initGoogle = () => {
+      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+      if (!clientId || !window.google?.accounts?.id) return;
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: (response: { credential?: string }) => {
+          if (response.credential) googleCallbackRef.current(response.credential);
+        },
+        auto_select: false,
+      });
+      if (googleBtnRef.current) {
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: "filled_black",
+          size: "large",
+          type: "standard",
+          shape: "rectangular",
+        });
+      }
+    };
+
+    if (document.getElementById(scriptId)) {
+      setTimeout(initGoogle, 200);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = scriptId;
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = initGoogle;
+    document.head.appendChild(script);
+  }, [modalOpen, tab, session]);
+
   useEffect(() => {
     if (!session || tab !== "cliente") return;
     (async () => {
@@ -87,13 +165,11 @@ export function CustomerAuthModal() {
     const errors: Record<string, string> = {};
     const nameErr = validateRequired(regNombres, "Los nombres");
     const apellidoErr = validateRequired(regApellidos, "Los apellidos");
-    const dniErr = validateDni(regDni);
     const emailErr = validateEmail(regEmail);
     const phoneErr = validatePhone(regTelefono);
     const dobErr = validateDateOfBirth(regFechaNacimiento);
     if (nameErr) errors.nombres = nameErr;
     if (apellidoErr) errors.apellidos = apellidoErr;
-    if (dniErr) errors.regDni = dniErr;
     if (emailErr) errors.regEmail = emailErr;
     if (phoneErr) errors.regTelefono = phoneErr;
     if (dobErr) errors.regFechaNacimiento = dobErr;
@@ -104,14 +180,7 @@ export function CustomerAuthModal() {
     setLoading(true);
     setError("");
     try {
-      const existente = await CustomersService.findByDni(regDni);
-      if (existente) {
-        setError("Ya existe un cliente con ese DNI. Usa la pestaña Cliente para ingresar.");
-        setLoading(false);
-        return;
-      }
 
-      // Generate 6-digit verification code
       const codigo = String(Math.floor(100000 + Math.random() * 900000));
 
       const { hash: codeHash, salt: codeSalt } = await hashPin(codigo);
@@ -119,7 +188,6 @@ export function CustomerAuthModal() {
       const nuevo = await CustomersService.create({
         nombres: regNombres,
         apellidos: regApellidos,
-        dni: regDni,
         telefono: regTelefono,
         correoElectronico: regEmail,
         fechaNacimiento: regFechaNacimiento,
@@ -361,7 +429,6 @@ export function CustomerAuthModal() {
     setRegNombres("");
     setRegApellidos("");
     setRegEmail("");
-    setRegDni("");
     setRegTelefono("");
     setRegFechaNacimiento("");
     setRegNuevoId(null);
@@ -523,7 +590,25 @@ export function CustomerAuthModal() {
             </div>
           </div>
         ) : tab === "cliente" ? (
-          <form onSubmit={handleCustomerLogin} className="px-6 py-8 space-y-4">
+          <>
+            <div className="px-6 pt-6 flex flex-col items-center gap-3">
+              <div
+                ref={googleBtnRef}
+                className="min-h-[40px] flex items-center justify-center"
+              />
+              {googleLoading && (
+                <div className="flex items-center gap-2">
+                  <Loader2 size={16} className="animate-spin" />
+                  <span className="text-xs text-[var(--text-muted)]">Verificando...</span>
+                </div>
+              )}
+            </div>
+            <div className="px-6 mb-2 flex items-center gap-4">
+              <div className="flex-1 h-px bg-[var(--border)]" />
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">o</span>
+              <div className="flex-1 h-px bg-[var(--border)]" />
+            </div>
+          <form onSubmit={handleCustomerLogin} className="px-6 pb-8 space-y-4">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] text-center mb-4">
               Ingresa con tu correo y PIN
             </p>
@@ -592,6 +677,7 @@ export function CustomerAuthModal() {
               </button>
             </div>
           </form>
+          </>
         ) : tab === "registro" ? (
           regStep === "verify" ? (
             <form onSubmit={handleVerifyCode} className="px-6 py-8 space-y-4">
@@ -794,25 +880,6 @@ export function CustomerAuthModal() {
                   <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
                     <AlertCircle size={11} />
                     {fieldErrors.apellidos}
-                  </p>
-                )}
-              </label>
-              <label className="space-y-1 block">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                  DNI <span className="text-[var(--destructive)]">*</span>
-                </span>
-                <input
-                  type="text"
-                  value={regDni}
-                  onChange={(e) => { setRegDni(e.target.value); setFieldErrors((prev) => ({ ...prev, regDni: "" })); }}
-                  placeholder="12345678"
-                  maxLength={8}
-                  className={fieldClass}
-                />
-                {fieldErrors.regDni && (
-                  <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
-                    <AlertCircle size={11} />
-                    {fieldErrors.regDni}
                   </p>
                 )}
               </label>

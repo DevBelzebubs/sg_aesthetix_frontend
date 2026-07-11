@@ -53,7 +53,7 @@ export default async function PrivacidadPage({ params }: Props) {
         <h2>2. Datos personales que recopilamos</h2>
         <p>Podemos recopilar las siguientes categorías de datos personales:</p>
         <ul>
-          <li>Datos de identificación: nombres, apellidos, DNI.</li>
+          <li>Datos de identificación: nombres, apellidos.</li>
           <li>Datos de contacto: correo electrónico, número de teléfono.</li>
           <li>Datos de transacción: historial de servicios adquiridos, reservas realizadas, consumo de puntos de fidelización.</li>
           <li>Datos de navegación: dirección IP, tipo de navegador, páginas visitadas en nuestro sitio web.</li>
@@ -85,7 +85,7 @@ export default async function PrivacidadPage({ params }: Props) {
           derechos de <strong>Acceso, Rectificación, Cancelación y Oposición</strong>
           (derechos ARCO) respecto de sus datos personales. Para ejercerlos, puede
           presentar una solicitud a través de los canales de atención del
-          Establecimiento, indicando su nombre, DNI y el derecho que desea ejercer.
+          Establecimiento, indicando su nombre y el derecho que desea ejercer.
         </p>
         <p>
           Su solicitud será atendida en el plazo máximo de <strong>veinte (20) días hábiles</strong>

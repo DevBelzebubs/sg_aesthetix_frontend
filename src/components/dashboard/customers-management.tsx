@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, ArrowLeft, Calendar, KeyRound, PencilLine, Phone, Search, Trash2, Undo2, UserRound, Users, X } from "lucide-react";
-import { validateRequired, validateEmailOptional, validatePhoneOptional, validateDniOptional } from "@/lib/validators";
+import { validateRequired, validateEmailOptional, validatePhoneOptional } from "@/lib/validators";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { CustomersService } from "@/services/customers.service";
@@ -17,7 +17,6 @@ type CustomerRecord = {
   apellidos: string;
   phone: string;
   email: string;
-  dni: string;
   fechaNacimiento: string;
   estaActivo: boolean;
   pin: string;
@@ -31,7 +30,6 @@ const emptyDraft: CustomerRecord = {
   apellidos: "",
   phone: "",
   email: "",
-  dni: "",
   fechaNacimiento: "",
   estaActivo: true,
   pin: "",
@@ -83,7 +81,6 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
             apellidos: c.apellidos ?? "",
             phone: c.telefono ?? "",
             email: c.correoElectronico ?? "",
-            dni: c.dni ?? "",
             fechaNacimiento: c.fechaNacimiento ?? "",
             estaActivo: c.estaActivo,
             pin: "",
@@ -113,7 +110,6 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
             apellidos: (c.apellidos as string) ?? "",
             phone: (c.telefono as string) ?? "",
             email: (c.correo_electronico as string) ?? "",
-            dni: (c.dni as string) ?? "",
             fechaNacimiento: (c.fecha_nacimiento as string) ?? "",
             estaActivo: false,
             pin: "",
@@ -136,8 +132,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
       return (
         customer.name.toLowerCase().includes(text) ||
         customer.phone.toLowerCase().includes(text) ||
-        customer.email.toLowerCase().includes(text) ||
-        customer.dni.toLowerCase().includes(text)
+        customer.email.toLowerCase().includes(text)
       );
     });
   }, [customers, query]);
@@ -150,8 +145,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
     return inactiveCustomers.filter((c) =>
       c.name.toLowerCase().includes(query.toLowerCase()) ||
       c.phone.toLowerCase().includes(query.toLowerCase()) ||
-      c.email.toLowerCase().includes(query.toLowerCase()) ||
-      c.dni.toLowerCase().includes(query.toLowerCase())
+      c.email.toLowerCase().includes(query.toLowerCase())
     );
   }, [inactiveCustomers, query]);
   const totalPagesInactive = Math.ceil(filteredInactive.length / pageSize);
@@ -183,8 +177,6 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
     if (errPhone) errors.phone = errPhone;
     const errEmail = validateEmailOptional(draft.email);
     if (errEmail) errors.email = errEmail;
-    const errDni = validateDniOptional(draft.dni);
-    if (errDni) errors.dni = errDni;
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
@@ -197,7 +189,6 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
         apellidos: draft.apellidos || undefined,
         telefono: draft.phone || undefined,
         correoElectronico: draft.email || undefined,
-        dni: draft.dni || undefined,
         fechaNacimiento: draft.fechaNacimiento || undefined,
       });
 
@@ -349,7 +340,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--text-muted)]"
-              placeholder="Buscar por nombre, telefono, DNI o email"
+              placeholder="Buscar por nombre, telefono o email"
               autoComplete="off"
             />
           </label>
@@ -369,13 +360,12 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
           ) : (
             <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)]">
               <div className="overflow-x-auto touch-pan-x">
-                <table className="w-full text-sm min-w-[900px]">
+                <table className="w-full text-sm min-w-[700px]">
                   <thead>
                     <tr className="border-b border-[var(--border)] text-left">
                       <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
                       <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Teléfono</th>
                       <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Correo</th>
-                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">DNI</th>
                       <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nacimiento</th>
                       <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
                     </tr>
@@ -386,7 +376,6 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
                         <td className="px-6 py-4 font-medium text-[var(--foreground)] whitespace-nowrap">{customer.nombres} {customer.apellidos}</td>
                         <td className="px-6 py-4 text-[var(--text-muted)] whitespace-nowrap">{customer.phone || "—"}</td>
                         <td className="px-6 py-4 text-[var(--text-muted)] truncate max-w-[180px]">{customer.email || "—"}</td>
-                        <td className="px-6 py-4 text-[var(--text-muted)] tabular-nums whitespace-nowrap">{customer.dni || "—"}</td>
                         <td className="px-6 py-4 text-[var(--text-muted)] whitespace-nowrap">
                           {customer.fechaNacimiento ? new Date(customer.fechaNacimiento).toLocaleDateString("es-PE") : "—"}
                         </td>
@@ -452,7 +441,6 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
                       <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Nombre</th>
                       <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Teléfono</th>
                       <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Correo</th>
-                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">DNI</th>
                       <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24"></th>
                     </tr>
                   </thead>
@@ -462,7 +450,6 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
                         <td className="px-6 py-4 font-medium text-[var(--foreground)] whitespace-nowrap">{customer.nombres} {customer.apellidos}</td>
                         <td className="px-6 py-4 text-[var(--text-muted)] whitespace-nowrap">{customer.phone || "—"}</td>
                         <td className="px-6 py-4 text-[var(--text-muted)] truncate max-w-[180px]">{customer.email || "—"}</td>
-                        <td className="px-6 py-4 text-[var(--text-muted)] tabular-nums whitespace-nowrap">{customer.dni || "—"}</td>
                         <td className="px-6 py-4">
                           <button
                             type="button"
@@ -542,17 +529,6 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
                   setFieldErrors((prev) => { const next = { ...prev }; delete next.email; return next; });
                 }}
                 placeholder="correo@ejemplo.com"
-              />
-            </Field>
-            <Field label="DNI" error={fieldErrors.dni}>
-              <input
-                className={inputClassName}
-                value={draft.dni}
-                onChange={(event) => {
-                  setDraft((current) => ({ ...current, dni: event.target.value }));
-                  setFieldErrors((prev) => { const next = { ...prev }; delete next.dni; return next; });
-                }}
-                placeholder="12345678"
               />
             </Field>
             <Field label="Fecha de nacimiento" error={fieldErrors.fechaNacimiento}>
