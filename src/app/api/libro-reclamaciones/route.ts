@@ -26,7 +26,6 @@ export async function POST(request: Request) {
       tipo,
       nombres,
       apellidos,
-      dni,
       domicilio,
       telefono,
       email,
@@ -52,10 +51,6 @@ export async function POST(request: Request) {
       return Response.json({ error: "El correo electrónico no tiene un formato válido" }, { status: 400 });
     }
 
-    if (dni && !/^\d{8}$/.test(dni)) {
-      return Response.json({ error: "El DNI debe tener 8 dígitos" }, { status: 400 });
-    }
-
     if (telefono && !/^(\+?\d{1,3})?\d{7,9}$/.test(String(telefono).replace(/\s/g, ""))) {
       return Response.json({ error: "El teléfono no tiene un formato válido" }, { status: 400 });
     }
@@ -70,7 +65,6 @@ export async function POST(request: Request) {
           tipo,
           nombres,
           apellidos,
-          dni: dni || null,
           domicilio: domicilio || null,
           telefono: telefono || null,
           email,
@@ -111,7 +105,6 @@ export async function POST(request: Request) {
         tipo: tipo === "reclamo" ? "Reclamo" : "Queja",
         nombres,
         apellidos,
-        dni: dni || "No especificado",
         domicilio: domicilio || "No especificado",
         telefono: telefono || "No especificado",
         email,

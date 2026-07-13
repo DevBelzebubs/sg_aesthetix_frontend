@@ -25,5 +25,5 @@ export interface CanjePuntos {
   creadoEn?: string;
   actualizadoEn?: string;
   recompensa?: RecompensaPuntos;
-  cliente?: { nombres: string; dni?: string };
+  cliente?: { nombres: string };
 }

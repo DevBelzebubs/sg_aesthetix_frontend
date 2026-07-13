@@ -71,7 +71,6 @@ type ClientOption = {
   id: string;
   nombres: string;
   apellidos: string;
-  dni: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -243,19 +242,19 @@ function ClientRightbar({
   clientes: ClientOption[];
   selectedId: string;
   onSelect: (id: string) => void;
-  onCreate: (cliente: { id: string; nombres: string; apellidos: string; dni: string | null }) => void;
+  onCreate: (cliente: { id: string; nombres: string; apellidos: string }) => void;
   onUseAppointment: (servicioId: string) => void;
 }) {
   const supabase = createClient();
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [newClient, setNewClient] = useState({ nombres: "", apellidos: "", dni: "", telefono: "", email: "", fechaNacimiento: "", pin: "", confirmPin: "", esFrecuente: false });
+  const [newClient, setNewClient] = useState({ nombres: "", apellidos: "", telefono: "", email: "", fechaNacimiento: "", pin: "", confirmPin: "", esFrecuente: false });
   const [appointments, setAppointments] = useState<{ id: string; fecha_reserva: string; hora_inicio: string; servicio_nombre: string; empleado_nombre: string; estado: string; servicio_id: string }[]>([]);
   const [loadingApps, setLoadingApps] = useState(false);
 
   useEffect(() => {
-    if (open) { setSearch(""); setShowCreate(false); setSaving(false); setNewClient({ nombres: "", apellidos: "", dni: "", telefono: "", email: "", fechaNacimiento: "", pin: "", confirmPin: "", esFrecuente: false }); }
+    if (open) { setSearch(""); setShowCreate(false); setSaving(false); setNewClient({ nombres: "", apellidos: "", telefono: "", email: "", fechaNacimiento: "", pin: "", confirmPin: "", esFrecuente: false }); }
   }, [open]);
 
   useEffect(() => {
@@ -293,8 +292,7 @@ function ClientRightbar({
     const q = search.toLowerCase();
     return clientes.filter((c) =>
       c.nombres.toLowerCase().includes(q) ||
-      c.apellidos.toLowerCase().includes(q) ||
-      (c.dni && c.dni.includes(q))
+      c.apellidos.toLowerCase().includes(q)
     ).slice(0, 15);
   }, [search, clientes]);
 
@@ -309,7 +307,6 @@ function ClientRightbar({
     const payload: Record<string, unknown> = {
       nombres: newClient.nombres,
       apellidos: newClient.apellidos,
-      dni: newClient.dni || null,
       telefono: newClient.telefono || null,
       correo_electronico: newClient.email || null,
       fecha_nacimiento: newClient.fechaNacimiento || null,
@@ -329,7 +326,6 @@ function ClientRightbar({
       id: c.id as string,
       nombres: c.nombres as string,
       apellidos: (c.apellidos as string) || "",
-      dni: (c.dni as string) || null,
     });
     onClose();
   }
@@ -361,9 +357,6 @@ function ClientRightbar({
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-6">
-                <Field label="DNI" required>
-                  <input className={inputClassName} value={newClient.dni} onChange={(e) => setNewClient((c) => ({ ...c, dni: e.target.value.replace(/\D/g, "").slice(0, 8) }))} placeholder="12345678" inputMode="numeric" />
-                </Field>
                 <Field label="Teléfono" required>
                   <input className={inputClassName} value={newClient.telefono} onChange={(e) => setNewClient((c) => ({ ...c, telefono: e.target.value.replace(/\D/g, "").slice(0, 9) }))} placeholder="987654321" inputMode="numeric" />
                 </Field>
@@ -388,7 +381,7 @@ function ClientRightbar({
 
               <div className="flex gap-4">
                 <button onClick={() => setShowCreate(false)} className="flex-1 rounded-full border border-[var(--border)] px-4 py-3 text-sm text-[var(--foreground)] transition hover:bg-[var(--background-secondary)]">Cancelar</button>
-                <button onClick={handleCreate} disabled={!newClient.nombres || !newClient.apellidos || !newClient.dni || !newClient.telefono || !newClient.email || !newClient.fechaNacimiento || (newClient.pin !== newClient.confirmPin) || saving} className="flex-1 rounded-full bg-emerald-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-50">
+                <button onClick={handleCreate} disabled={!newClient.nombres || !newClient.apellidos || !newClient.telefono || !newClient.email || !newClient.fechaNacimiento || (newClient.pin !== newClient.confirmPin) || saving} className="flex-1 rounded-full bg-emerald-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-50">
                   {saving ? <Loader2 size={16} className="animate-spin mx-auto" /> : "Crear cliente"}
                 </button>
               </div>
@@ -401,7 +394,7 @@ function ClientRightbar({
                   className="w-full rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] pl-11 pr-4 py-3 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--foreground)]"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar por nombre o DNI..."
+                  placeholder="Buscar por nombre..."
                 />
               </div>
 
@@ -446,7 +439,6 @@ function ClientRightbar({
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-[var(--foreground)]">{selected.nombres} {selected.apellidos}</p>
-                      {selected.dni && <p className="text-xs text-[var(--text-muted)]">DNI: {selected.dni}</p>}
                     </div>
                   </div>
                   <button onClick={() => onSelect("")} className="mt-2 text-xs text-[var(--text-muted)] hover:text-[var(--destructive)]">Quitar selección</button>
@@ -501,7 +493,6 @@ function ClientRightbar({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="truncate text-sm font-medium text-[var(--foreground)]">{c.nombres} {c.apellidos}</p>
-                        {c.dni && <p className="text-xs text-[var(--text-muted)]">DNI: {c.dni}</p>}
                       </div>
                     </button>
                   ))}
@@ -607,7 +598,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
   async function fetchClientes() {
     const { data } = await supabase
       .from("clientes")
-      .select("id, nombres, apellidos, dni")
+      .select("id, nombres, apellidos")
       .eq("esta_activo", true)
       .order("nombres");
     setClientes((data as ClientOption[]) ?? []);

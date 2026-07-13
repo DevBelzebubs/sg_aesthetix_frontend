@@ -213,19 +213,18 @@ export const RecompensasService = {
       const cuenta = r.cuenta as Record<string, unknown> | undefined;
       const clienteId = (cuenta?.cliente_id as string) ?? "";
 
-      let cliente: { nombres: string; dni?: string } | undefined;
+      let cliente: { nombres: string } | undefined;
 
       if (clienteId) {
         const { data: clienteData } = await supabase
           .from("clientes")
-          .select("nombres, dni")
+          .select("nombres")
           .eq("id", clienteId)
           .maybeSingle();
         if (clienteData) {
           const c = clienteData as Record<string, unknown>;
           cliente = {
             nombres: (c.nombres as string) ?? "—",
-            dni: c.dni as string | undefined,
           };
         }
       }

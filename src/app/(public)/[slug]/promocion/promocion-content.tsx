@@ -137,7 +137,7 @@ export function PromocionContent({
             <p className="mt-2 text-sm text-white/50 leading-relaxed max-w-lg">
               {session
                 ? "Selecciona una recompensa y solicita tu canje."
-                : "Inicia sesión con tu DNI y correo para canjear tus puntos."}
+                : "Inicia sesión con tu correo para canjear tus puntos."}
             </p>
           </div>
           {!session && (
