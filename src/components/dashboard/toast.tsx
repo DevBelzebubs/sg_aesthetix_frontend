@@ -10,9 +10,10 @@ type ToastProps = {
   open: boolean;
   onClose: () => void;
   duration?: number;
+  position?: "bottom-right" | "top-right";
 };
 
-export function Toast({ message, type = "success", open, onClose, duration = 4000 }: ToastProps) {
+export function Toast({ message, type = "success", open, onClose, duration = 4000, position = "bottom-right" }: ToastProps) {
   useEffect(() => {
     if (!open) return;
     const timer = setTimeout(onClose, duration);
@@ -23,19 +24,21 @@ export function Toast({ message, type = "success", open, onClose, duration = 400
 
   const Icon = type === "success" ? CheckCircle : AlertCircle;
 
+  const positionClass = position === "top-right" ? "top-6 right-6" : "bottom-6 right-6";
+
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] px-5 py-3.5 shadow-lg">
+    <div className={`fixed z-50 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] px-6 py-4 shadow-lg ${positionClass}`}>
       <Icon
-        size={18}
+        size={22}
         className={type === "success" ? "text-emerald-500" : "text-[var(--destructive)]"}
       />
-      <p className="text-sm font-medium text-[var(--foreground)]">{message}</p>
+      <p className="text-base font-semibold text-[var(--foreground)]">{message}</p>
       <button
         type="button"
         onClick={onClose}
         className="ml-2 text-[var(--text-muted)] transition hover:text-[var(--foreground)]"
       >
-        <X size={14} />
+        <X size={16} />
       </button>
     </div>
   );

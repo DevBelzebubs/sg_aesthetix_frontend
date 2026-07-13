@@ -4,13 +4,15 @@ import { sendEmail } from "@/lib/email";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { to, subject, html } = body;
+    const { to, subject, html, templateId, templateParams } = body;
 
-    if (!to || !subject || !html) {
-      return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
+    console.log("[EMAIL-API] body:", JSON.stringify({ to, hasHtml: !!html, hasTemplateParams: !!templateParams, templateId }));
+
+    if (!to || !(html || templateParams)) {
+      return NextResponse.json({ error: "Faltan campos requeridos: " + JSON.stringify({ to: !!to, html: !!html, templateParams: !!templateParams }) }, { status: 400 });
     }
 
-    const result = await sendEmail({ to, subject, html });
+    const result = await sendEmail({ to, subject, html, templateId, templateParams });
 
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 500 });

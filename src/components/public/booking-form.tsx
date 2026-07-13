@@ -1,19 +1,46 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Toast } from "@/components/dashboard/toast";
 import { AppointmentsService } from "@/services/appointments.service";
 import { CustomersService } from "@/services/customers.service";
 import { useCustomerAuth } from "@/contexts/customer-auth-context";
-import { validateDni, validateDniOptional, validateEmail, validateEmailOptional, validateName, validatePhone, validateRequired } from "@/lib/validators";
+import { validateDni, validateDniOptional, validateEmail, validateEmailOptional, validateName, validatePhone, validatePhoneOptional, validateRequired } from "@/lib/validators";
+import { getRealtimeClient } from "@/lib/supabase/realtime";
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: {
+            client_id: string;
+            callback: (response: { credential?: string }) => void;
+            auto_select?: boolean;
+          }) => void;
+          renderButton: (element: HTMLElement, options: { theme?: string; size?: string; type?: string; shape?: string }) => void;
+          prompt: (callback?: (notification: { isNotDisplayed: () => boolean }) => void) => void;
+        };
+      };
+    };
+  }
+}
 
 type BookingOption = {
   id: string;
   name: string;
   duration: string;
+  durationMinutes: number;
   price: string;
   imageUrl: string | null;
+};
+
+type ExistingReservation = {
+  empleadoId: string;
+  fecha: string;
+  horaInicio: string;
+  horaFin: string;
 };
 
 type TeamMember = {
@@ -38,6 +65,7 @@ type BookingFormProps = {
   barbers: TeamMember[];
   availableDates: CalendarDate[];
   availableSlots: string[];
+  existingReservations: ExistingReservation[];
 };
 
 type BookingDraft = {
@@ -86,6 +114,7 @@ export function BookingForm({
   barbers,
   availableDates,
   availableSlots,
+  existingReservations,
 }: BookingFormProps) {
   const [stage, setStage] = useState<"dni" | "register" | "booking">("dni");
   const [dni, setDni] = useState("");
@@ -122,6 +151,7 @@ export function BookingForm({
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -130,6 +160,69 @@ export function BookingForm({
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
   const [showConfirm, setShowConfirm] = useState(false);
+
+  const sessionIdRef = useRef(crypto.randomUUID());
+  const [lockedSlots, setLockedSlots] = useState<Set<string>>(new Set());
+  const channelRef = useRef<ReturnType<ReturnType<typeof getRealtimeClient>["channel"]> | null>(null);
+  const mySlotRef = useRef<string | null>(null);
+  const googleBtnRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const supabase = getRealtimeClient();
+
+    (async () => {
+      const { data } = await supabase
+        .from("blocked_slots")
+        .select("usuario_id, fecha_reserva, hora_inicio, session_id")
+        .neq("session_id", sessionIdRef.current)
+        .gt("expires_at", new Date().toISOString());
+
+      if (data) {
+        setLockedSlots(new Set(data.map((r: Record<string, unknown>) => slotKey(r.usuario_id as string, r.fecha_reserva as string, (r.hora_inicio as string).slice(0, 5)))));
+      }
+    })();
+
+    const channel = supabase.channel(`blocked_slots_${sessionIdRef.current}`);
+    channel
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "blocked_slots" },
+          (payload: { new: Record<string, unknown> }) => {
+            const row = payload.new as Record<string, unknown>;
+            if (row.session_id === sessionIdRef.current) return;
+            const hora = (row.hora_inicio as string) ?? "";
+            const key = slotKey(row.usuario_id as string, row.fecha_reserva as string, hora.slice(0, 5));
+            setLockedSlots((prev) => new Set(prev).add(key));
+          },
+        )
+        .on(
+          "postgres_changes",
+          { event: "DELETE", schema: "public", table: "blocked_slots" },
+          (payload: { old: Record<string, unknown> }) => {
+            const row = payload.old as Record<string, unknown>;
+            const hora = (row.hora_inicio as string) ?? "";
+            const key = slotKey(row.usuario_id as string, row.fecha_reserva as string, hora.slice(0, 5));
+          setLockedSlots((prev) => {
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+          });
+        },
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      getRealtimeClient().from("blocked_slots").delete().eq("session_id", sessionIdRef.current).then();
+    };
+  }, []);
 
   const monthOptions = useMemo(() => {
     const groupedMonths = new Map
@@ -255,6 +348,77 @@ export function BookingForm({
     }
   };
 
+  const handleGoogleLogin = useCallback(async (credential: string) => {
+    setGoogleLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error de autenticación");
+
+      setCustomerId(data.id);
+      setFormData((c) => ({
+        ...c,
+        nombres: data.nombres,
+        apellidos: data.apellidos || "",
+        phone: data.telefono || c.phone,
+        email: data.correoElectronico || c.email,
+        dni: data.dni || "",
+        fechaNacimiento: data.fechaNacimiento || "",
+      }));
+      setStage("booking");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al conectar con Google");
+    } finally {
+      setGoogleLoading(false);
+    }
+  }, []);
+
+  const googleCallbackRef = useRef<(credential: string) => void>(handleGoogleLogin);
+  googleCallbackRef.current = handleGoogleLogin;
+
+  useEffect(() => {
+    if (stage !== "dni") return;
+    const scriptId = "google-gsi-script";
+
+    const initGoogle = () => {
+      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+      if (!clientId || !window.google?.accounts?.id) return;
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: (response: { credential?: string }) => {
+          if (response.credential) googleCallbackRef.current(response.credential);
+        },
+        auto_select: false,
+      });
+      if (googleBtnRef.current) {
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: "filled_black",
+          size: "large",
+          type: "standard",
+          shape: "rectangular",
+        });
+      }
+    };
+
+    if (document.getElementById(scriptId)) {
+      initGoogle();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = scriptId;
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = initGoogle;
+    document.head.appendChild(script);
+  }, [stage]);
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.nombres || !formData.apellidos || !formData.phone) return;
@@ -282,9 +446,9 @@ export function BookingForm({
     const errors: Record<string, string> = {};
     const nombresErr = validateName(formData.nombres, "Los nombres");
     const apellidosErr = validateName(formData.apellidos, "Los apellidos");
-    const phoneErr = validatePhone(formData.phone);
+    const phoneErr = validatePhoneOptional(formData.phone);
     const emailErr = validateEmail(formData.email);
-    const dniErr = validateDni(formData.dni);
+    const dniErr = validateDniOptional(formData.dni);
     const serviceErr = validateRequired(formData.serviceId, "El servicio");
     const dateErr = validateRequired(formData.date, "La fecha");
     const timeErr = validateRequired(formData.time, "La hora");
@@ -296,6 +460,22 @@ export function BookingForm({
     if (serviceErr) errors.serviceId = serviceErr;
     if (dateErr) errors.date = dateErr;
     if (timeErr) errors.time = timeErr;
+
+    if (formData.time && formData.barberId && formData.date && formData.serviceId) {
+      const selectedServiceObj = services.find((s) => s.id === formData.serviceId);
+      const duration = selectedServiceObj?.durationMinutes ?? 30;
+      const slotEnd = addMinutesToTime(formData.time, duration);
+      const conflicted = existingReservations.some(
+        (r) =>
+          r.empleadoId === formData.barberId &&
+          r.fecha === formData.date &&
+          r.horaInicio &&
+          r.horaFin &&
+          isOverlapping(formData.time, slotEnd, r.horaInicio.slice(0, 5), r.horaFin.slice(0, 5)),
+      );
+      if (conflicted) errors.time = "Este horario ya no está disponible";
+    }
+
     return errors;
   };
 
@@ -335,6 +515,7 @@ export function BookingForm({
       };
 
       await AppointmentsService.createPublic(payload);
+      unlockAllBySession();
       setIsSubmitted(true);
       setShowConfirm(false);
       setToastMessage("¡Reserva confirmada! Te esperamos.");
@@ -361,6 +542,33 @@ export function BookingForm({
   const nextStep = () => setCurrentStep((s) => Math.min(s + 1, STEPS.length - 1));
   const prevStep = () => setCurrentStep((s) => Math.max(s - 1, 0));
 
+  const lockSlot = async (barberId: string, date: string, time: string) => {
+    const supabase = getRealtimeClient();
+    await supabase.from("blocked_slots").delete().eq("session_id", sessionIdRef.current);
+    mySlotRef.current = slotKey(barberId, date, time);
+    const { error } = await supabase.from("blocked_slots").insert({
+      usuario_id: barberId,
+      fecha_reserva: date,
+      hora_inicio: time,
+      session_id: sessionIdRef.current,
+      expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    });
+    if (error && error.code === "23505") {
+      setError("Alguien más acaba de seleccionar este horario. Elige otro.");
+      return false;
+    }
+    if (error) {
+      setError("Error al bloquear el horario. Intenta de nuevo.");
+      return false;
+    }
+    return true;
+  };
+
+  const unlockAllBySession = () => {
+    getRealtimeClient().from("blocked_slots").delete().eq("session_id", sessionIdRef.current).then();
+    mySlotRef.current = null;
+  };
+
   return stage === "dni" || stage === "register" ? (
     <div className="mx-auto max-w-3xl px-8 py-12">
       <div className="mb-8 text-center">
@@ -372,7 +580,7 @@ export function BookingForm({
         </h1>
         <p className="mt-2 text-base leading-relaxed text-[var(--text-muted)]">
           {stage === "dni"
-            ? "Ingresa tu DNI para agilizar la reserva."
+            ? "Inicia sesión con Google o ingresa tu DNI para agilizar la reserva."
             : "Llena los campos para registrarte."}
         </p>
       </div>
@@ -385,7 +593,25 @@ export function BookingForm({
       )}
 
       {stage === "dni" && (
-        <form onSubmit={handleDniLookup} className="flex flex-col gap-6">
+        <>
+          <div className="mb-6 flex flex-col items-center gap-3">
+            <div
+              ref={googleBtnRef}
+              className="min-h-[40px] flex items-center justify-center"
+            />
+            {googleLoading && (
+              <div className="flex items-center gap-2">
+                <Loader2 size={16} className="animate-spin" />
+                <span className="text-xs text-[var(--text-muted)]">Verificando...</span>
+              </div>
+            )}
+          </div>
+          <div className="mb-6 flex items-center gap-4">
+            <div className="flex-1 h-px bg-[var(--border)]" />
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">o</span>
+            <div className="flex-1 h-px bg-[var(--border)]" />
+          </div>
+          <form onSubmit={handleDniLookup} className="flex flex-col gap-6">
           <label className="flex flex-col gap-1.5">
             <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
               Número de DNI <span className="text-[var(--destructive)]">*</span>
@@ -414,6 +640,7 @@ export function BookingForm({
             {isLoading ? "Buscando..." : "Buscar"}
           </button>
         </form>
+        </>
       )}
 
       {stage === "register" && (
@@ -848,12 +1075,31 @@ export function BookingForm({
                 const isToday = selectedDate?.value === todayStr;
                 const minTime = new Date(now.getTime() + 30 * 60 * 1000);
 
+                const selectedServiceObj = services.find((s) => s.id === formData.serviceId);
+                const selectedDuration = selectedServiceObj?.durationMinutes ?? 30;
+
+                const occupiedRanges = existingReservations
+                  .filter((r) => r.empleadoId === formData.barberId && r.fecha === selectedDate?.value && r.horaInicio && r.horaFin)
+                  .map((r) => ({ start: r.horaInicio.slice(0, 5), end: r.horaFin.slice(0, 5) }));
+
                 const slotsWithStatus = availableSlots.map((slot) => {
                   const [h, m] = slot.split(":").map(Number);
                   const slotTime = new Date();
                   slotTime.setHours(h, m, 0, 0);
-                  const isEnabled = !isToday || slotTime >= minTime;
-                  return { slot, isEnabled };
+                  const past = isToday && slotTime < minTime;
+
+                  if (past) return { slot, isEnabled: false };
+
+                  const slotEnd = addMinutesToTime(slot, selectedDuration);
+                  const conflicted = occupiedRanges.some((r) => isOverlapping(slot, slotEnd, r.start, r.end));
+
+                  if (conflicted) return { slot, isEnabled: false };
+
+                  const isLocked = formData.barberId && selectedDate?.value
+                    ? lockedSlots.has(slotKey(formData.barberId, selectedDate.value, slot))
+                    : false;
+
+                  return { slot, isEnabled: !isLocked };
                 });
 
                 const hasEnabled = slotsWithStatus.some((s) => s.isEnabled);
@@ -875,7 +1121,10 @@ export function BookingForm({
                           key={slot}
                           type="button"
                           disabled={!isEnabled}
-                          onClick={() => {
+                          onClick={async () => {
+                            if (formData.time === slot) return;
+                            const ok = await lockSlot(formData.barberId, formData.date, slot);
+                            if (!ok) return;
                             setFormData((c) => ({ ...c, time: slot }));
                             setIsSubmitted(false);
                           }}
@@ -914,12 +1163,12 @@ export function BookingForm({
                       Nombres <span className="text-[var(--destructive)]">*</span>
                     </span>
                     <input
-                      readOnly
                       type="text"
                       name="nombres"
                       value={formData.nombres}
-                      placeholder="Juan"
-                      className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
+                      readOnly
+                      tabIndex={-1}
+                      className={inputClassName + " cursor-default opacity-60"}
                     />
                     {fieldErrors.nombres && (
                       <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
@@ -933,12 +1182,12 @@ export function BookingForm({
                       Apellidos <span className="text-[var(--destructive)]">*</span>
                     </span>
                     <input
-                      readOnly
                       type="text"
                       name="apellidos"
                       value={formData.apellidos}
-                      placeholder="Pérez"
-                      className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
+                      readOnly
+                      tabIndex={-1}
+                      className={inputClassName + " cursor-default opacity-60"}
                     />
                     {fieldErrors.apellidos && (
                       <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
@@ -953,30 +1202,30 @@ export function BookingForm({
                 <div className="grid grid-cols-2 gap-4">
                   <label className="space-y-2">
                     <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                      DNI <span className="text-[var(--destructive)]">*</span>
+                      DNI <span className="text-[var(--text-muted)]">(opcional)</span>
                     </span>
                     <input
-                      readOnly
                       type="text"
                       inputMode="numeric"
                       maxLength={8}
                       name="dni"
                       value={formData.dni}
-                      placeholder="12345678"
-                      className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
+                      readOnly
+                      tabIndex={-1}
+                      className={inputClassName + " cursor-default opacity-60"}
                     />
                   </label>
                   <label className="space-y-2">
                     <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                      Teléfono <span className="text-[var(--destructive)]">*</span>
+                      Teléfono <span className="text-[var(--text-muted)]">(opcional)</span>
                     </span>
                     <input
-                      readOnly
                       type="tel"
                       name="phone"
                       value={formData.phone}
-                      placeholder="999 999 999"
-                      className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
+                      readOnly
+                      tabIndex={-1}
+                      className={inputClassName + " cursor-default opacity-60"}
                     />
                     {fieldErrors.phone && (
                       <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
@@ -993,12 +1242,12 @@ export function BookingForm({
                     Email <span className="text-[var(--destructive)]">*</span>
                   </span>
                   <input
-                    readOnly
                     type="email"
                     name="email"
                     value={formData.email}
-                    placeholder="nombre@correo.com"
-                    className={`${inputClassName} cursor-default bg-[var(--background-tertiary)] opacity-80`}
+                    readOnly
+                    tabIndex={-1}
+                    className={inputClassName + " cursor-default opacity-60"}
                   />
                   {fieldErrors.email && (
                     <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--destructive)]">
@@ -1142,7 +1391,7 @@ export function BookingForm({
           </div>
         </div>
       </aside>
-      <Toast message={toastMessage} type={toastType} open={toastOpen} onClose={() => setToastOpen(false)} />
+      <Toast message={toastMessage} type={toastType} open={toastOpen} onClose={() => setToastOpen(false)} position="top-right" />
     </div>
   );
 }
@@ -1172,4 +1421,19 @@ function calculateEndTime(startTime: string, durationString: string): string {
   const dateObj = new Date();
   dateObj.setHours(hours, minutes + minutesToAdd);
   return `${String(dateObj.getHours()).padStart(2, "0")}:${String(dateObj.getMinutes()).padStart(2, "0")}`;
+}
+
+function addMinutesToTime(time: string, minutes: number): string {
+  const [hours, mins] = time.split(":").map(Number);
+  const dateObj = new Date();
+  dateObj.setHours(hours, mins + minutes);
+  return `${String(dateObj.getHours()).padStart(2, "0")}:${String(dateObj.getMinutes()).padStart(2, "0")}`;
+}
+
+function isOverlapping(startA: string, endA: string, startB: string, endB: string): boolean {
+  return startA < endB && startB < endA;
+}
+
+function slotKey(usuarioId: string, fecha: string, hora: string): string {
+  return `${usuarioId}|${fecha}|${hora}`;
 }

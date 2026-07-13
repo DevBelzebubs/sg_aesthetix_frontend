@@ -1,4 +1,4 @@
-import { resend, FROM_EMAIL } from "@/lib/email/resend";
+import { sendEmail } from "@/lib/email";
 import { complaintResponseEmailHtml } from "@/lib/email/templates/complaint-response";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -77,8 +77,7 @@ export async function POST(request: Request) {
       tenantName,
     });
 
-    const emailResult = await resend.emails.send({
-      from: FROM_EMAIL,
+    const emailResult = await sendEmail({
       to: complaint.email,
       subject: `Respuesta a su ${complaint.tipo} - Libro de Reclamaciones - ${tenantName}`,
       html,
@@ -87,7 +86,6 @@ export async function POST(request: Request) {
     return Response.json({
       success: true,
       id: complaint.id,
-      emailId: emailResult?.data?.id,
       message: "Respuesta enviada correctamente.",
     });
   } catch (error) {

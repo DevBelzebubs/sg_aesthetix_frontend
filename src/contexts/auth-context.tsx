@@ -9,13 +9,14 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import type { Session } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/client";
 import type { AuthSession, UserRole } from "@/types/auth";
+
+const STORAGE_KEY = "sg_aesthetix_session";
 
 type AuthContextValue = AuthSession & {
   isReady: boolean;
   isAuthenticated: boolean;
+  userId: string | null;
   login: (credentials: {
     email: string;
     password: string;
@@ -31,74 +32,52 @@ export const AuthContext = createContext<AuthContextValue | undefined>(
   undefined,
 );
 
+function loadSession(): { token: string | null; role: UserRole | null; userId: string | null } {
+  if (typeof window === "undefined") return { token: null, role: null, userId: null };
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { token: null, role: null, userId: null };
+    const parsed = JSON.parse(raw);
+    return {
+      token: parsed.token ?? null,
+      role: parsed.role ?? null,
+      userId: parsed.userId ?? null,
+    };
+  } catch {
+    return { token: null, role: null, userId: null };
+  }
+}
+
+function saveSession(token: string | null, role: UserRole | null, userId: string | null) {
+  if (typeof window === "undefined") return;
+  if (!token || !role) {
+    localStorage.removeItem(STORAGE_KEY);
+  } else {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ token, role, userId }));
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const supabase = createClient();
   const router = useRouter();
 
   const [token, setToken] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Restaurar sesión al montar
   useEffect(() => {
-    async function restoreSession() {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        applySession(session);
-      } catch {
-        // sesión inválida, ignorar
-      } finally {
-        setIsReady(true);
-      }
-    }
-
-    restoreSession();
-
-    // Escuchar cambios de sesión (refresh de token, logout en otra pestaña)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      (_event: string, session: Session | null) => {
-        applySession(session);
-      },
-    );
-
-    return () => subscription.unsubscribe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const stored = loadSession();
+    setToken(stored.token);
+    setRole(stored.role);
+    setUserId(stored.userId);
+    setIsReady(true);
   }, []);
-
-function applySession(session: Session | null) {
-  if (session) {
-    setToken(session.access_token);
-    const metaRole = session.user.user_metadata?.role as UserRole | undefined;
-    if (metaRole === "admin" || metaRole === "empleado") {
-      setRole(metaRole);
-    } else {
-      supabase
-        .from("usuarios")
-        .select("rol")
-        .eq("auth_user_id", session.user.id)
-        .single()
-        .then(({ data }) => {
-          if (data?.rol === "admin" || data?.rol === "empleado") {
-            setRole(data.rol as UserRole);
-          }
-        });
-    }
-  } else {
-    setToken(null);
-    setRole(null);
-  }
-}
 
   const login = useCallback(
     async ({
       email,
       password,
-      slug,
     }: {
       email: string;
       password: string;
@@ -106,89 +85,46 @@ function applySession(session: Session | null) {
     }) => {
       setError(null);
 
-      // 1. Try Supabase Auth sign in
-      let { data: authData, error: authError } =
-        await supabase.auth.signInWithPassword({ email, password });
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-      // 2. If sign in fails, try to sync the auth user from `usuarios` table
-      if (authError || !authData.session) {
-        const res = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
+      const result = await res.json();
 
-        const result = await res.json();
-
-        if (!res.ok) {
-          let msg = "Credenciales incorrectas. Intenta de nuevo.";
-          let errCode = "auth_failed";
-          if (result.error === "Cuenta desactivada") {
-            msg = "Tu cuenta está desactivada. Contacta al administrador.";
-            errCode = "account_disabled";
-          } else if (result.needsReset) {
-            msg = "Error de autenticación. Ve a Supabase Dashboard > SQL Editor y pega el SQL que ves en la consola (F12).";
-            errCode = "password_mismatch";
-          }
-          setError(msg);
-          throw new Error(errCode);
+      if (!res.ok) {
+        let msg = "Credenciales incorrectas. Intenta de nuevo.";
+        if (result.error === "Cuenta desactivada") {
+          msg = "Tu cuenta está desactivada. Contacta al administrador.";
         }
-
-        if (result.created) {
-          const second = await supabase.auth.signInWithPassword({ email, password });
-          authData = second.data;
-          authError = second.error;
-        } else {
-          const second = await supabase.auth.signInWithPassword({ email, password });
-          authData = second.data;
-          authError = second.error;
-        }
-
-        if (authError || !authData?.session) {
-          setError("Credenciales incorrectas. Intenta de nuevo.");
-          throw new Error("auth_failed");
-        }
+        setError(msg);
+        throw new Error(msg);
       }
 
-      const session = authData.session!;
+      const userRole = result.role as UserRole;
 
-      // 3. Obtener rol desde la tabla `usuarios`
-      const { data: usuario, error: userError } = await supabase
-        .from("usuarios")
-        .select("rol, esta_activo")
-        .eq("auth_user_id", session.user.id)
-        .single();
-
-      if (userError || !usuario) {
-        await supabase.auth.signOut();
-        setError("No tienes acceso a este negocio.");
-        throw new Error("no_tenant_access");
-      }
-
-      if (!usuario.esta_activo) {
-        await supabase.auth.signOut();
-        setError("Tu cuenta está desactivada.");
-        throw new Error("account_disabled");
-      }
-
-      const userRole = usuario.rol as UserRole;
-
-      setToken(session.access_token);
+      setToken(result.userId);
       setRole(userRole);
+      setUserId(result.userId);
+      saveSession(result.userId, userRole, result.userId);
     },
-    [supabase],
+    [],
   );
 
   const logout = useCallback(async () => {
-    await supabase.auth.signOut();
     setToken(null);
     setRole(null);
+    setUserId(null);
+    saveSession(null, null, null);
     router.push("/home");
-  }, [supabase, router]);
+  }, [router]);
 
   const setSession = useCallback((session: AuthSession) => {
     setToken(session.token);
     setRole(session.role);
+    setUserId(session.token);
+    saveSession(session.token, session.role, session.token);
   }, []);
 
   const hasRole = useCallback(
@@ -200,6 +136,7 @@ function applySession(session: Session | null) {
     () => ({
       token,
       role,
+      userId,
       isReady,
       isAuthenticated: Boolean(token && role),
       login,
@@ -208,7 +145,7 @@ function applySession(session: Session | null) {
       hasRole,
       error,
     }),
-    [token, role, isReady, login, logout, setSession, hasRole, error],
+    [token, role, userId, isReady, login, logout, setSession, hasRole, error],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarClock, Home, Scissors, UserRound, Sun, Moon, X } from "lucide-react";
+import { CalendarClock, Home, Scissors, UserRound, Sun, Moon, X, ArrowLeftFromLine } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/contexts/theme-context";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,7 +18,7 @@ const navigation = [
 export default function EmployeeLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
-  const { isReady, isAuthenticated, role, logout } = useAuth();
+  const { isReady, isAuthenticated, role, logout, userId } = useAuth();
   const router = useRouter();
   const supabase = createClient();
   const [userName, setUserName] = useState("");
@@ -31,22 +31,20 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function loadName() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.id) {
-        const { data } = await supabase
-          .from("usuarios")
-          .select("nombres, apellidos")
-          .eq("auth_user_id", session.user.id)
-          .single();
-        if (data) {
-          setUserName(`${data.nombres} ${data.apellidos ?? ""}`.trim());
-        }
+      if (!userId) return;
+      const { data } = await supabase
+        .from("usuarios")
+        .select("nombres, apellidos")
+        .eq("id", userId)
+        .single();
+      if (data) {
+        setUserName(`${data.nombres} ${data.apellidos ?? ""}`.trim());
       }
     }
     if (isReady && isAuthenticated) loadName();
-  }, [isReady, isAuthenticated, supabase]);
+  }, [isReady, isAuthenticated, userId, supabase]);
 
-  if (!isReady) {
+  if (!isReady || !isAuthenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
         <div className="h-4 w-4 animate-pulse rounded-full bg-[var(--text-muted)]" />
@@ -137,6 +135,13 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="mt-4 border-t border-transparent/10 pt-4 space-y-1">
+            <Link
+              href="/home"
+              className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--foreground)]"
+            >
+              <ArrowLeftFromLine size={18} />
+              <span>Volver a página pública</span>
+            </Link>
             <button
               type="button"
               onClick={toggleTheme}

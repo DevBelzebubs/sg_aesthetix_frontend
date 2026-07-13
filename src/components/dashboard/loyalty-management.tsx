@@ -6,12 +6,8 @@ import { validateRequired, validatePositiveNumber } from "@/lib/validators";
 import { CloudinaryUpload } from "@/components/dashboard/cloudinary-upload";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
-import { ConfiguracionService } from "@/services/configuracion.service";
-import { CustomersService } from "@/services/customers.service";
-import { RewardsService } from "@/services/rewards.service";
 import { RecompensasService } from "@/services/recompensas.service";
-import type { Customer } from "@/types/customer";
-import type { CanjePuntos, RecompensaPuntos } from "@/types/redemption";
+import type { RecompensaPuntos } from "@/types/redemption";
 
 type RewardDraft = {
   nombre: string; tipo_recompensa: string; puntos_requeridos: number;
@@ -87,35 +83,6 @@ export function LoyaltyManagement({ totalBeneficios, totalActivas, canjesPendien
     setIsDeleteConfirmOpen(false);
   };
 
-  const [promocionActiva, setPromocionActiva] = useState(false);
-  const [loadingConfig, setLoadingConfig] = useState(true);
-  const [toggling, setToggling] = useState(false);
-  const [errorPromo, setErrorPromo] = useState("");
-  const [pendingRegistros, setPendingRegistros] = useState<Customer[]>([]);
-  const [loadingRegistros, setLoadingRegistros] = useState(true);
-  const [pendingCanjes, setPendingCanjes] = useState<(CanjePuntos & { clienteNombre?: string })[]>([]);
-  const [loadingCanjes, setLoadingCanjes] = useState(true);
-
-  useEffect(() => {
-    ConfiguracionService.get().then((config) => { if (config) setPromocionActiva(config.promocionActiva); }).catch(() => setErrorPromo("Error al cargar configuracion")).finally(() => setLoadingConfig(false));
-    CustomersService.getPendingPromociones().then(setPendingRegistros).catch(() => {}).finally(() => setLoadingRegistros(false));
-    RecompensasService.getCanjesPendientes().then((canjes) => {
-      setPendingCanjes(canjes.map((c) => ({ ...c, clienteNombre: c.cliente?.nombres ?? "—" })));
-    }).catch(() => {}).finally(() => setLoadingCanjes(false));
-  }, []);
-
-  const refreshRegistros = () => { CustomersService.getPendingPromociones().then(setPendingRegistros).catch(() => {}); };
-
-  const handleTogglePromocion = async () => {
-    const nuevo = !promocionActiva; setToggling(true); setErrorPromo(""); setPromocionActiva(nuevo);
-    try { await ConfiguracionService.update({ promocionActiva: nuevo }); } catch (err) {
-      setPromocionActiva(!nuevo); setErrorPromo(err instanceof Error ? err.message : "Error al actualizar.");
-    } finally { setToggling(false); }
-  };
-
-  const handleApprove = async (clienteId: string) => { try { await CustomersService.approvePromocion(clienteId); await RewardsService.claimWelcomeReward(clienteId); refreshRegistros(); } catch (err) { console.error(err); } };
-  const handleReject = async (clienteId: string) => { try { await CustomersService.rejectPromocion(clienteId); refreshRegistros(); } catch (err) { console.error(err); } };
-
   return (
     <>
       {/* KPIs */}
@@ -135,54 +102,6 @@ export function LoyaltyManagement({ totalBeneficios, totalActivas, canjesPendien
           </article>
         </div>
       )}
-
-      {/* Promocion QR */}
-      <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-[var(--background)] p-3"><QrCode size={18} className="text-[var(--foreground)]" /></div>
-            <div><p className="text-sm font-semibold text-[var(--foreground)]">Promocion via QR</p><p className="text-sm text-[var(--text-muted)]">{promocionActiva ? "El QR esta activo." : "El QR esta desactivado."}</p></div>
-          </div>
-          <button type="button" onClick={handleTogglePromocion} disabled={loadingConfig || toggling} className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full transition-colors ${promocionActiva ? "bg-[var(--hover)]" : "bg-[var(--text-muted)]"} ${loadingConfig || toggling ? "opacity-50" : ""}`} role="switch">
-            <span className={`inline-block h-5 w-5 transform rounded-full bg-[var(--background-secondary)] shadow-sm transition-transform ${promocionActiva ? "translate-x-6" : "translate-x-1"}`} />
-          </button>
-        </div>
-        {errorPromo && <p className="mt-3 text-xs font-medium text-[var(--destructive)]">{errorPromo}</p>}
-      </div>
-
-      {/* Registros pendientes */}
-      {promocionActiva && (
-        <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between"><div><p className="text-sm font-semibold text-[var(--foreground)]">Registros pendientes</p><p className="text-sm text-[var(--text-muted)]">{loadingRegistros ? "Cargando..." : `${pendingRegistros.length} cliente(s)`}</p></div></div>
-          {loadingRegistros ? <div className="flex justify-center py-8"><div className="h-4 w-4 animate-pulse rounded-full bg-[var(--text-muted)]" /></div> :
-           pendingRegistros.length === 0 ? <p className="py-6 text-center text-sm text-[var(--text-muted)]">No hay registros pendientes.</p> :
-           <div className="divide-y divide-transparent/5">{pendingRegistros.map((c) => (
-             <div key={c.id} className="flex items-center justify-between gap-4 py-3">
-               <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-[var(--foreground)]">{c.nombres}</p><p className="text-xs text-[var(--text-muted)]">DNI: {c.dni ?? "---"} · Tel: {c.telefono ?? "---"}</p></div>
-               <div className="flex shrink-0 gap-2">
-                 <button onClick={() => handleApprove(c.id)} className="rounded-full bg-[var(--hover)] px-4 py-1.5 text-xs font-semibold text-white transition hover:opacity-90">Aprobar</button>
-                 <button onClick={() => handleReject(c.id)} className="rounded-full border border-[var(--destructive-border)] px-4 py-1.5 text-xs font-semibold text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]">Rechazar</button>
-               </div>
-             </div>
-           ))}</div>}
-        </div>
-      )}
-
-      {/* Canjes pendientes */}
-      <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm">
-        <div className="mb-4 flex items-center justify-between"><div><p className="text-sm font-semibold text-[var(--foreground)]">Canjes pendientes</p><p className="text-sm text-[var(--text-muted)]">{loadingCanjes ? "Cargando..." : `${pendingCanjes.length} canje(s)`}</p></div></div>
-        {loadingCanjes ? <div className="flex justify-center py-8"><div className="h-4 w-4 animate-pulse rounded-full bg-[var(--text-muted)]" /></div> :
-         pendingCanjes.length === 0 ? <p className="py-6 text-center text-sm text-[var(--text-muted)]">No hay canjes pendientes.</p> :
-         <div className="divide-y divide-transparent/5">{pendingCanjes.map((c) => (
-           <div key={c.id} className="flex items-center justify-between gap-4 py-3">
-             <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-[var(--foreground)]">{c.clienteNombre}</p><p className="text-xs text-[var(--text-muted)]">{c.recompensa?.nombre ?? "—"} · {c.puntosCanjeados} pts</p></div>
-             <div className="flex shrink-0 gap-2">
-               <button onClick={async () => { try { await RecompensasService.aprobarCanje(c.id); setPendingCanjes((p) => p.filter((x) => x.id !== c.id)); } catch (err) { console.error(err); } }} className="rounded-full bg-[var(--hover)] px-4 py-1.5 text-xs font-semibold text-white transition hover:opacity-90">Aprobar</button>
-               <button onClick={async () => { try { await RecompensasService.rechazarCanje(c.id); setPendingCanjes((p) => p.filter((x) => x.id !== c.id)); } catch (err) { console.error(err); } }} className="rounded-full border border-[var(--destructive-border)] px-4 py-1.5 text-xs font-semibold text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)]">Rechazar</button>
-             </div>
-           </div>
-         ))}</div>}
-      </div>
 
       {/* Beneficios */}
       <div className="rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 shadow-sm">
@@ -268,7 +187,7 @@ export function LoyaltyManagement({ totalBeneficios, totalActivas, canjesPendien
             </div>
           </div>
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-6">
-            <button type="button" onClick={() => setIsConfirmOpen(true)} disabled={!draft.nombre || draft.puntos_requeridos < 1 || Object.keys(fieldErrors).length > 0} className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50"><PencilLine size={16} />{mode === "create" ? "Crear beneficio" : "Guardar beneficio"}</button>
+            <button type="button" onClick={() => setIsConfirmOpen(true)} disabled={!draft.nombre || draft.puntos_requeridos < 1 || Object.values(fieldErrors).some((v) => v !== "")} className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50"><PencilLine size={16} />{mode === "create" ? "Crear beneficio" : "Guardar beneficio"}</button>
             {mode === "edit" && <button type="button" onClick={() => setIsDeleteConfirmOpen(true)} disabled={!selectedRecompensa} className="inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-5 py-2.5 text-sm font-semibold text-[var(--destructive)] transition hover:bg-[var(--destructive-hover)] disabled:opacity-50"><Trash2 size={16} /> Eliminar</button>}
             <button type="button" onClick={handleBack} className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--background)]"><X size={16} /> Cancelar</button>
           </div>

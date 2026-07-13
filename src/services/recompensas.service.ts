@@ -40,7 +40,7 @@ export const RecompensasService = {
 
     const { data, error } = await supabase
       .from("recompensas_puntos")
-      .select("*")
+      .select("id, tipo_recompensa, servicio_id, producto_id, nombre, descripcion, puntos_requeridos, cantidad_entregada, esta_activo, imagen_url, creado_en, actualizado_en")
       .eq("esta_activo", true)
       .order("puntos_requeridos", { ascending: true });
 
@@ -53,7 +53,7 @@ export const RecompensasService = {
 
     const { data, error } = await supabase
       .from("recompensas_puntos")
-      .select("*")
+      .select("id, tipo_recompensa, servicio_id, producto_id, nombre, descripcion, puntos_requeridos, cantidad_entregada, esta_activo, imagen_url, creado_en, actualizado_en")
       .order("creado_en", { ascending: false });
 
     if (error) throw new Error(error.message);

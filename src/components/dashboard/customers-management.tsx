@@ -8,7 +8,6 @@ import { Pagination } from "@/components/dashboard/pagination";
 import { CustomersService } from "@/services/customers.service";
 import { createClient } from "@/lib/supabase/client";
 import { hashPin } from "@/lib/pin";
-import { sendNewClientPinEmail } from "@/lib/email-client";
 import type { Customer } from "@/types/customer";
 
 type CustomerRecord = {
@@ -54,6 +53,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
   const [inactiveCustomers, setInactiveCustomers] = useState<CustomerRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInactive, setShowInactive] = useState(false);
+  const [loadingInactive, setLoadingInactive] = useState(false);
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<"list" | "edit">("list");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -65,12 +65,15 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
 
   const [pinResetTarget, setPinResetTarget] = useState<CustomerRecord | null>(null);
   const [resettingPin, setResettingPin] = useState(false);
+  const [resetPinValue, setResetPinValue] = useState("");
+  const [resetPinConfirm, setResetPinConfirm] = useState("");
+  const [resetPinError, setResetPinError] = useState("");
 
   const pageSize = 10;
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    CustomersService.getAll()
+    Promise.resolve(CustomersService.getAll())
       .then((data) => {
         setCustomers(
           data.map((c) => ({
@@ -94,7 +97,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
 
   useEffect(() => {
     if (!showInactive) return;
-    setLoading(true);
+    setLoadingInactive(true);
     (async () => {
       const { data } = await supabase
         .from("clientes")
@@ -118,7 +121,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
           })),
         );
       }
-      setLoading(false);
+      setLoadingInactive(false);
     })();
   }, [showInactive]);
 
@@ -198,7 +201,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
         fechaNacimiento: draft.fechaNacimiento || undefined,
       });
 
-      if (draft.pin && draft.pin === draft.pinConfirm) {
+      if (draft.pin.length === 6 && draft.pin === draft.pinConfirm) {
         const { hash, salt } = await hashPin(draft.pin);
         await CustomersService.updatePin(selectedId, hash, salt);
       }
@@ -232,19 +235,35 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
     setIsDeleteConfirmOpen(false);
   };
 
+  useEffect(() => {
+    if (pinResetTarget) {
+      setResetPinValue("");
+      setResetPinConfirm("");
+      setResetPinError("");
+    }
+  }, [pinResetTarget]);
+
   const handleResetPin = async () => {
     if (!pinResetTarget) return;
+    setResetPinError("");
+    if (!resetPinValue || resetPinValue.length !== 6) {
+      setResetPinError("El PIN debe tener exactamente 6 dígitos");
+      return;
+    }
+    if (resetPinValue !== resetPinConfirm) {
+      setResetPinError("Los PIN no coinciden");
+      return;
+    }
     setResettingPin(true);
     try {
-      const newPin = String(Math.floor(1000 + Math.random() * 9000));
-      const { hash, salt } = await hashPin(newPin);
+      const { hash, salt } = await hashPin(resetPinValue);
       await CustomersService.updatePin(pinResetTarget.id, hash, salt);
-      if (pinResetTarget.email) {
-        await sendNewClientPinEmail(pinResetTarget.email, pinResetTarget.nombres, newPin);
-      }
     } catch { /* error silencioso */ }
     setResettingPin(false);
     setPinResetTarget(null);
+    setResetPinValue("");
+    setResetPinConfirm("");
+    setResetPinError("");
   };
 
   if (loading) {
@@ -300,7 +319,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => { setShowInactive((v) => !v); setQuery(""); setPage(1); }}
+              onClick={() => { setShowInactive((v) => !v); setPage(1); }}
               className={`inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-4 py-2 text-sm font-semibold text-[var(--destructive)] transition ${
                 showInactive
                   ? "bg-[var(--destructive-hover)]"
@@ -331,6 +350,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
               onChange={(event) => setQuery(event.target.value)}
               className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--text-muted)]"
               placeholder="Buscar por nombre, telefono, DNI o email"
+              autoComplete="off"
             />
           </label>
         )}
@@ -382,7 +402,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
                             </button>
                             <button
                               type="button"
-                              onClick={() => setPinResetTarget(customer)}
+                              onClick={() => { setPinResetTarget(customer); setResetPinValue(""); setResetPinConfirm(""); setResetPinError(""); }}
                               className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-amber-500"
                               title="Resetear PIN"
                             >
@@ -412,7 +432,11 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
       {/* Papelera */}
       {mode === "list" && showInactive && (
         <>
-          {paginatedInactive.length === 0 ? (
+          {loadingInactive ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="h-4 w-4 animate-pulse rounded-full bg-[var(--text-muted)]" />
+            </div>
+          ) : paginatedInactive.length === 0 ? (
             <div className="col-span-full flex flex-col items-center gap-3 py-16">
               <Trash2 size={32} className="text-[var(--text-muted)]" />
               <p className="text-sm text-[var(--text-muted)]">
@@ -548,8 +572,9 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
                 className={inputClassName}
                 value={draft.pin}
                 onChange={(event) => setDraft((current) => ({ ...current, pin: event.target.value.replace(/\D/g, "").slice(0, 6) }))}
-                placeholder="4-6 dígitos"
+                placeholder="6 dígitos"
                 inputMode="numeric"
+                autoComplete="new-password"
               />
             </Field>
             <Field label="Confirmar PIN">
@@ -560,6 +585,7 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
                 onChange={(event) => setDraft((current) => ({ ...current, pinConfirm: event.target.value.replace(/\D/g, "").slice(0, 6) }))}
                 placeholder="Repetir PIN"
                 inputMode="numeric"
+                autoComplete="new-password"
               />
             </Field>
           </div>
@@ -612,14 +638,70 @@ export function CustomersManagement({ totalClientes, nuevosEsteMes, conTelefono 
         onConfirm={handleDelete}
       />
 
-      <ConfirmationModal
-        open={pinResetTarget !== null}
-        title="Resetear PIN"
-        description={`Se generará un nuevo PIN para ${pinResetTarget?.nombres ?? ""} ${pinResetTarget?.apellidos ?? ""}.${pinResetTarget?.email ? " Se enviará por correo." : ""}`}
-        confirmLabel={resettingPin ? "Generando..." : "Si, resetear"}
-        onClose={() => setPinResetTarget(null)}
-        onConfirm={handleResetPin}
-      />
+      {pinResetTarget !== null && (
+        <div key={pinResetTarget.id} className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-[15vh] px-4">
+          <div className="w-full max-w-md rounded-3xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 shadow-xl">
+            <div className="mb-4">
+              <p className="text-lg font-semibold text-[var(--foreground)]">Resetear PIN</p>
+              <p className="text-sm text-[var(--text-muted)] mt-1">
+                Nuevo PIN para {pinResetTarget.nombres} {pinResetTarget.apellidos}
+              </p>
+            </div>
+            <div className="space-y-4">
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-[var(--foreground)]">Nuevo PIN</span>
+                <input
+                  type="password"
+                  className={inputClassName}
+                  value={resetPinValue}
+                  onChange={(e) => setResetPinValue(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="6 dígitos"
+                  inputMode="numeric"
+                  maxLength={6}
+                  autoComplete="new-password"
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-[var(--foreground)]">Confirmar PIN</span>
+                <input
+                  type="password"
+                  className={inputClassName}
+                  value={resetPinConfirm}
+                  onChange={(e) => setResetPinConfirm(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="Repetir PIN"
+                  inputMode="numeric"
+                  maxLength={6}
+                  autoComplete="new-password"
+                />
+              </label>
+              {resetPinError && (
+                <div className="flex items-center gap-1.5 text-xs text-[var(--destructive)]">
+                  <AlertCircle size={12} />
+                  {resetPinError}
+                </div>
+              )}
+            </div>
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => { setPinResetTarget(null); setResetPinValue(""); setResetPinConfirm(""); setResetPinError(""); }}
+                className="rounded-full border border-[var(--border)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--background)]"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleResetPin}
+                disabled={resettingPin}
+                className="inline-flex items-center gap-2 rounded-full bg-[var(--button-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--button-primary-foreground)] transition hover:opacity-90 disabled:opacity-50"
+              >
+                <KeyRound size={16} />
+                {resettingPin ? "Reseteando..." : "Resetear"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

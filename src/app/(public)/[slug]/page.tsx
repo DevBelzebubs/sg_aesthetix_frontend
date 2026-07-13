@@ -1,7 +1,7 @@
 import LandingPage from "./landing-page";
-import { createClient } from "@/lib/supabase/client";
+import { createServerSupabase } from "@/lib/supabase/server";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 type BarberRow = {
   id: string;
@@ -12,6 +12,7 @@ type BarberRow = {
   instagram: string | null;
   facebook: string | null;
   tiktok: string | null;
+  public: boolean | null;
 };
 
 type LocationRow = {
@@ -25,46 +26,48 @@ type LocationRow = {
   lng: number;
 };
 
-async function fetchBarbers() {
-  const supabase = createClient();
+async function fetchBarbers(supabase: Awaited<ReturnType<typeof createServerSupabase>>) {
   const { data: rows } = await supabase
     .from("usuarios")
-    .select("id, nombres, apellidos, telefono, imagen_url, instagram, facebook, tiktok")
+    .select("id, nombres, apellidos, telefono, imagen_url, instagram, facebook, tiktok, public")
     .eq("esta_activo", true)
+    .eq("public", true)
     .order("creado_en", { ascending: true });
 
-  if (!rows) return [];
+  if (!rows || rows.length === 0) return [];
 
-  const barbers = await Promise.all(
-    (rows as BarberRow[]).map(async (row) => {
-      const { data: servicios } = await supabase
-        .from("usuario_servicio")
-        .select("servicios!inner(nombre)")
-        .eq("usuario_id", row.id);
-      const specialties = ((servicios ?? []) as { servicios: { nombre: string }[] }[])
-        .map((s) => s.servicios[0]?.nombre)
-        .filter(Boolean) as string[];
-      return {
-        id: row.id,
-        nombre: `${row.nombres} ${row.apellidos}`,
-        specialties,
-        imagenUrl: row.imagen_url ?? null,
-        instagram: row.instagram ?? null,
-        facebook: row.facebook ?? null,
-        tiktok: row.tiktok ?? null,
-      };
-    }),
-  );
+  const barberIds = (rows as BarberRow[]).map((r) => r.id);
+  const { data: allServices } = await supabase
+    .from("usuario_servicio")
+    .select("usuario_id, servicios!inner(nombre)")
+    .in("usuario_id", barberIds);
 
-  return barbers;
+  const servicesByBarber = new Map<string, string[]>();
+  for (const s of (allServices ?? []) as { usuario_id: string; servicios: { nombre: string }[] }[]) {
+    const uid = s.usuario_id;
+    const name = s.servicios?.[0]?.nombre;
+    if (uid && name) {
+      if (!servicesByBarber.has(uid)) servicesByBarber.set(uid, []);
+      servicesByBarber.get(uid)!.push(name);
+    }
+  }
+
+  return (rows as BarberRow[]).map((row) => ({
+    id: row.id,
+    nombre: `${row.nombres} ${row.apellidos}`,
+    specialties: servicesByBarber.get(row.id) ?? [],
+    imagenUrl: row.imagen_url ?? null,
+    instagram: row.instagram ?? null,
+    facebook: row.facebook ?? null,
+    tiktok: row.tiktok ?? null,
+  }));
 }
 
-async function fetchLocales() {
-  const supabase = createClient();
+async function fetchLocales(supabase: Awaited<ReturnType<typeof createServerSupabase>>) {
   const { data } = await supabase
     .from("locales")
     .select("*")
-    .order("orden", { ascending: true });
+    .order("nombre", { ascending: true });
   if (!data) return [];
   return (data as LocationRow[]).map((row) => ({
     name: row.nombre,
@@ -83,9 +86,9 @@ export default async function Page({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const supabase = createClient();
+  const supabase = await createServerSupabase();
 
-  const [serviciosRes, productosRes, galeriaRes, barbers, locales] = await Promise.all([
+  const [serviciosRes, productosRes, galeriaRes, barbers, locales, heroRes] = await Promise.all([
     supabase
       .from("servicios")
       .select("id, nombre, descripcion, precio, duracion_minutos, imagen_url, puntos_otorgados")
@@ -105,8 +108,14 @@ export default async function Page({
       .eq("destacado", true)
       .order("orden", { ascending: true })
       .limit(4),
-    fetchBarbers(),
-    fetchLocales(),
+    fetchBarbers(supabase),
+    fetchLocales(supabase),
+    supabase
+      .from("hero_content")
+      .select("*")
+      .eq("activo", true)
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   const services = (serviciosRes.data ?? []).map((s) => ({
@@ -134,6 +143,18 @@ export default async function Page({
     imagenUrl: g.imagen_url,
   }));
 
+  const hero = heroRes?.data
+    ? {
+        id: heroRes.data.id,
+        tipo: heroRes.data.tipo,
+        urlMedia: heroRes.data.url_media ?? "",
+        titulo: heroRes.data.titulo ?? "Redefiniendo el corte",
+        subtitulo: heroRes.data.subtitulo ?? "Reserva online · Sin esperas",
+        urlLogoDark: heroRes.data.url_logo_dark ?? "",
+        urlLogoLight: heroRes.data.url_logo_light ?? "",
+      }
+    : null;
+
   return (
     <LandingPage
       slug={slug}
@@ -142,6 +163,7 @@ export default async function Page({
       galleryItems={galleryItems}
       barbers={barbers}
       locales={locales}
+      hero={hero}
     />
   );
 }

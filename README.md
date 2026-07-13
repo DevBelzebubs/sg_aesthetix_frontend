@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SG Aesthetix
 
-## Getting Started
+Plataforma de reservas online para barberías. Permite a los clientes agendar citas, comprar productos y gestionar fidelización.
 
-First, run the development server:
+## Stack
+
+- **Framework**: Next.js 15 (App Router)
+- **Estilo**: Tailwind CSS v4
+- **Backend**: Supabase (PostgreSQL + Realtime)
+- **Despliegue**: Cloudflare Workers (`@opennextjs/cloudflare`)
+- **Email**: EmailJS
+- **Imágenes**: Cloudinary
+
+## Setup local
 
 ```bash
+npm install
+cp .env.example .env     # completar con credenciales reales
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Variables de entorno
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Ver `.env.example` para la lista completa. Las variables `NEXT_PUBLIC_*` se inyectan en el cliente.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Build y deploy
 
-## Learn More
+```bash
+# Build para Cloudflare Workers
+npm run cf:build
 
-To learn more about Next.js, take a look at the following resources:
+# Preview local
+npm run cf:preview
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Deploy a producción
+npm run cf:deploy
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Estructura
 
-## Deploy on Vercel
+```
+src/
+  app/            # App Router (pages + layouts + API routes)
+    (public)/     # Rutas públicas (landing, reservas, etc.)
+    (dashboard)/  # Panel admin y empleado
+    api/          # API endpoints
+  components/     # Componentes React
+  contexts/       # Contextos (auth, theme, cart)
+  hooks/          # Hooks personalizados
+  lib/            # Utilidades (supabase, validators, email, etc.)
+  services/       # Capa de acceso a datos (Supabase)
+  types/          # Tipos TypeScript
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Licencia
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Propietario.

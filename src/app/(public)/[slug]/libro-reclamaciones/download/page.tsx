@@ -2,10 +2,10 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useParams } from "next/navigation";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
 import { AlertCircle, Loader2, Download } from "lucide-react";
 
-function wrapText(text: string, maxWidth: number, font: any, fontSize: number): string[] {
+function wrapText(text: string, maxWidth: number, font: PDFFont, fontSize: number): string[] {
   const words = text.split(" ");
   const lines: string[] = [];
   let currentLine = "";
@@ -150,9 +150,9 @@ function DownloadContent() {
         a.click();
         
         setLoading(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err);
-        setError(err.message || "Error al procesar el documento.");
+        setError(err instanceof Error ? err.message : "Error al procesar el documento.");
         setLoading(false);
       }
     }

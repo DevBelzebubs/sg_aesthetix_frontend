@@ -8,6 +8,8 @@ import { PublicLayoutShell } from "@/components/public/public-layout-shell";
 import { FooterLogo } from "@/components/public/footer-logo";
 import { createServerSupabase } from "@/lib/supabase/server";
 
+export const revalidate = 3600;
+
 type PublicLandingLayoutProps = {
   children: ReactNode;
   params: Promise<{ slug: string }>;
@@ -34,17 +36,17 @@ export default async function PublicLandingLayout({
   const theme = await getThemeSettingsByTenantId(tenant.tenantId);
   const supabase = await createServerSupabase();
 
-  const { data: localesData } = await supabase
-    .from("locales")
-    .select("nombre, direccion, telefono, maps_url, lat, lng")
-    .order("orden", { ascending: true })
-    .limit(1);
-
-  const { data: usersData } = await supabase
-    .from("usuarios")
-    .select("instagram, facebook, tiktok")
-    .not("instagram", "is", null)
-    .limit(1);
+  const [{ data: localesData }, { data: usersData }] = await Promise.all([
+    supabase
+      .from("locales")
+      .select("nombre, direccion, telefono, maps_url, lat, lng")
+      .limit(1),
+    supabase
+      .from("usuarios")
+      .select("instagram, facebook, tiktok")
+      .not("instagram", "is", null)
+      .limit(1),
+  ]);
 
   const locale = localesData?.[0];
   const socialUser = usersData?.[0];
@@ -131,13 +133,6 @@ export default async function PublicLandingLayout({
               >
                 Reservar turno
               </Link>
-              <Link
-                href={`${basePath}#reservas`}
-                className="hover:text-[var(--foreground)] transition-colors"
-              >
-                Horarios disponibles
-              </Link>
-    
             </div>
           </div>
 

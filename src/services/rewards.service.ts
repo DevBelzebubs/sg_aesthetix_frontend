@@ -1,8 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import type { WelcomeReward, CuentaPuntos, TransaccionPuntos } from "@/types/reward";
 
-const WELCOME_POINTS = 50;
-
 export const RewardsService = {
   async claimBirthdayReward(clienteId: string, fechaNacimiento: string): Promise<WelcomeReward | null> {
     const supabase = createClient();
@@ -44,7 +42,7 @@ export const RewardsService = {
       .from("transacciones_puntos")
       .select("id")
       .eq("cuenta_puntos_id", cuentaId)
-      .eq("tipo", "cumpleaños")
+      .eq("tipo", "acumulacion")
       .gte("creado_en", `${year}-01-01`)
       .lte("creado_en", `${year}-12-31`)
       .maybeSingle();
@@ -57,7 +55,7 @@ export const RewardsService = {
       .from("transacciones_puntos")
       .insert({
         cuenta_puntos_id: cuentaId,
-        tipo: "cumpleaños",
+        tipo: "acumulacion",
         puntos: BIRTHDAY_POINTS,
         saldo_anterior: puntosDisponibles,
         saldo_nuevo: puntosDisponibles + BIRTHDAY_POINTS,
@@ -81,77 +79,6 @@ export const RewardsService = {
       puntos: BIRTHDAY_POINTS,
       saldoNuevo: puntosDisponibles + BIRTHDAY_POINTS,
       message: `¡Feliz cumpleaños! Has recibido ${BIRTHDAY_POINTS} puntos de regalo.`,
-    };
-  },
-
-  async claimWelcomeReward(clienteId: string): Promise<WelcomeReward> {
-    const supabase = createClient();
-
-    const { data: cuentaExistente, error: findError } = await supabase
-      .from("cuenta_puntos")
-      .select("*")
-      .eq("cliente_id", clienteId)
-      .maybeSingle();
-
-    if (findError) throw new Error(findError.message);
-
-    let cuentaId: string;
-    let puntosDisponibles: number;
-    let puntosAcumulados: number;
-
-    if (cuentaExistente) {
-      const record = cuentaExistente as Record<string, unknown>;
-      cuentaId = record.id as string;
-      puntosDisponibles = record.puntos_disponibles as number;
-      puntosAcumulados = record.puntos_acumulados as number;
-    } else {
-      const { data: newCuenta, error: createError } = await supabase
-        .from("cuenta_puntos")
-        .insert({
-          cliente_id: clienteId,
-          puntos_disponibles: 0,
-          puntos_acumulados: 0,
-          puntos_canjeados: 0,
-        })
-        .select()
-        .single();
-
-      if (createError) throw new Error(createError.message);
-
-      const record = newCuenta as Record<string, unknown>;
-      cuentaId = record.id as string;
-      puntosDisponibles = 0;
-      puntosAcumulados = 0;
-    }
-
-    const { error: txError } = await supabase
-      .from("transacciones_puntos")
-      .insert({
-        cuenta_puntos_id: cuentaId,
-        tipo: "bienvenida",
-        puntos: WELCOME_POINTS,
-        saldo_anterior: puntosDisponibles,
-        saldo_nuevo: puntosDisponibles + WELCOME_POINTS,
-        descripcion: "Puntos de bienvenida por registro vía promoción",
-      });
-
-    if (txError) throw new Error(txError.message);
-
-    const { error: updateError } = await supabase
-      .from("cuenta_puntos")
-      .update({
-        puntos_disponibles: puntosDisponibles + WELCOME_POINTS,
-        puntos_acumulados: puntosAcumulados + WELCOME_POINTS,
-        actualizado_en: new Date().toISOString(),
-      })
-      .eq("id", cuentaId);
-
-    if (updateError) throw new Error(updateError.message);
-
-    return {
-      puntos: WELCOME_POINTS,
-      saldoNuevo: puntosDisponibles + WELCOME_POINTS,
-      message: `¡Bienvenido! Has recibido ${WELCOME_POINTS} puntos de regalo.`,
     };
   },
 
@@ -248,7 +175,7 @@ export const RewardsService = {
     const precio = (servicio ? (servicio as Record<string, unknown>).precio : 30) as number;
     const puntos = Math.max(1, Math.floor(precio));
 
-    await this.addPoints(clienteId, puntos, "cita", `Puntos por corte completado (S/${precio})`);
+    await this.addPoints(clienteId, puntos, "acumulacion", `Puntos por corte completado (S/${precio})`);
   },
 
   async getCuentaPuntosByClienteId(clienteId: string): Promise<CuentaPuntos | null> {

@@ -15,13 +15,13 @@ function mapRowToEmployee(row: EmployeeRow, specialties: string[]): Employee {
     specialties,
     weeklyLoad: "",
     commission: "",
-    auth_user_id: row.auth_user_id,
     creadoEn: row.creado_en ?? "",
     actualizadoEn: row.actualizado_en ?? "",
     imagenUrl: row.imagen_url ?? null,
     instagram: row.instagram ?? "",
     facebook: row.facebook ?? "",
     tiktok: row.tiktok ?? "",
+    public: row.public ?? false,
   };
 }
 
@@ -67,19 +67,6 @@ export const EmployeesService = {
     return mapRowToEmployee(row as EmployeeRow, specialties);
   },
 
-  async getByAuthUserId(authUserId: string): Promise<Employee | null> {
-    const supabase = createClient();
-    const { data: row, error } = await supabase
-      .from("usuarios")
-      .select("*")
-      .eq("auth_user_id", authUserId)
-      .single();
-    if (error) return null;
-    if (!row) return null;
-    const specialties = await fetchSpecialties((row as EmployeeRow).id);
-    return mapRowToEmployee(row as EmployeeRow, specialties);
-  },
-
   async create(data: {
     nombres: string;
     apellidos: string;
@@ -92,6 +79,7 @@ export const EmployeesService = {
     instagram?: string;
     facebook?: string;
     tiktok?: string;
+    public?: boolean;
   }  ): Promise<Employee> {
     const supabase = createClient();
     const clave_hash = data.clave_hash ? await bcrypt.hash(data.clave_hash, 10) : "";
@@ -109,6 +97,7 @@ export const EmployeesService = {
         instagram: data.instagram || null,
         facebook: data.facebook || null,
         tiktok: data.tiktok || null,
+        public: data.public ?? false,
       })
       .select()
       .single();
@@ -140,6 +129,7 @@ export const EmployeesService = {
       instagram?: string;
       facebook?: string;
       tiktok?: string;
+      public?: boolean;
     },
   ): Promise<Employee> {
     const supabase = createClient();
@@ -154,6 +144,7 @@ export const EmployeesService = {
     if (data.instagram !== undefined) updateData.instagram = data.instagram || null;
     if (data.facebook !== undefined) updateData.facebook = data.facebook || null;
     if (data.tiktok !== undefined) updateData.tiktok = data.tiktok || null;
+    if (data.public !== undefined) updateData.public = data.public;
     const { error } = await supabase.from("usuarios").update(updateData).eq("id", id);
     if (error) throw new Error(error.message);
     if (data.servicio_ids !== undefined) {

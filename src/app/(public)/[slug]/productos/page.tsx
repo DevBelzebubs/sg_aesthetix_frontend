@@ -1,8 +1,8 @@
-import { createClient } from "@/lib/supabase/client";
+import { createServerSupabase } from "@/lib/supabase/server";
 import Link from "next/link";
 import { ProductGrid } from "@/components/public/product-grid";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 type ProductosPageProps = {
   params: Promise<{ slug: string }>;
@@ -20,13 +20,21 @@ type Producto = {
 
 export default async function ProductosPage({ params }: ProductosPageProps) {
   const { slug } = await params;
-  const supabase = createClient();
+  const supabase = await createServerSupabase();
 
-  const { data: categories } = await supabase
-    .from("categoria_producto")
-    .select("id, nombre, publico, esta_activo")
-    .eq("esta_activo", true)
-    .order("orden", { ascending: true });
+  const [{ data: categories }, { data: products }] = await Promise.all([
+    supabase
+      .from("categoria_producto")
+      .select("id, nombre, publico, esta_activo")
+      .eq("esta_activo", true)
+      .order("orden", { ascending: true }),
+    supabase
+      .from("productos")
+      .select("id, nombre, descripcion, imagen_url, precio_venta, puntos_otorgados, categoria_producto_id")
+      .eq("esta_activo", true)
+      .eq("publico", true)
+      .order("categoria_producto_id", { ascending: true }),
+  ]);
 
   const categoryMap = new Map<number, { nombre: string; publico: boolean }>();
   const publicCategoryIds = new Set<number>();
@@ -34,13 +42,6 @@ export default async function ProductosPage({ params }: ProductosPageProps) {
     categoryMap.set(c.id, { nombre: c.nombre, publico: c.publico === true });
     if (c.publico === true) publicCategoryIds.add(c.id);
   }
-
-  const { data: products } = await supabase
-    .from("productos")
-    .select("id, nombre, descripcion, imagen_url, precio_venta, puntos_otorgados, categoria_producto_id")
-    .eq("esta_activo", true)
-    .eq("publico", true)
-    .order("categoria_producto_id", { ascending: true });
 
   const mapped: Producto[] = (products ?? [])
     .map((p) => {

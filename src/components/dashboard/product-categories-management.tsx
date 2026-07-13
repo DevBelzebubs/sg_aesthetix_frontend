@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, ArrowDown, ArrowLeft, ArrowUp, Loader2, PencilLine, Plus, Search, Tag, Trash2, X } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowLeft, ArrowUp, Loader2, PencilLine, Plus, Search, Tag, Trash2, Undo2, X } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { createClient } from "@/lib/supabase/client";
@@ -35,6 +35,7 @@ export default function ProductCategoriesManagement() {
   const [items, setItems] = useState<Category[]>([]);
   const [inactiveItems, setInactiveItems] = useState<Category[]>([]);
   const [showInactive, setShowInactive] = useState(false);
+  const [loadingInactive, setLoadingInactive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState("");
@@ -53,14 +54,14 @@ export default function ProductCategoriesManagement() {
 
   useEffect(() => {
     if (!showInactive) return;
-    setLoading(true);
-    supabase
+    setLoadingInactive(true);
+    Promise.resolve(supabase
       .from("categoria_producto")
       .select("*")
       .eq("esta_activo", false)
-      .order("orden", { ascending: true })
+      .order("orden", { ascending: true }))
       .then(({ data }) => setInactiveItems(data ?? []))
-      .finally(() => setLoading(false));
+      .finally(() => setLoadingInactive(false));
   }, [showInactive]);
 
   async function fetchItems() {
@@ -208,7 +209,7 @@ export default function ProductCategoriesManagement() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => { setShowInactive((v) => !v); setQuery(""); setPage(1); }}
+              onClick={() => { setShowInactive((v) => !v); setPage(1); }}
               className={`inline-flex items-center gap-2 rounded-full border border-[var(--destructive-border)] px-4 py-2 text-sm font-semibold text-[var(--destructive)] transition ${
                 showInactive ? "bg-[var(--destructive-hover)]" : "hover:bg-[var(--destructive-hover)]"
               }`}

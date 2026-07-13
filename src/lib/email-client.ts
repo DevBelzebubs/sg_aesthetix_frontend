@@ -1,53 +1,72 @@
 "use client";
 
-import emailjs from "@emailjs/browser";
-
-emailjs.init("wlLKvAYcMcUff-SVa");
-
 export async function sendConfirmationEmail(customerId: string, toEmail: string) {
+  if (!toEmail) { console.warn("[EMAIL] No hay email, se omite confirmación"); return; }
   try {
-    await emailjs.send("service_h3vf3lk", "template_5775tlq", {
-      to_email: toEmail,
-      subject: "Confirma tu correo - Aesthetix",
-      message: "Gracias por registrarte en Aesthetix. Tu cuenta ha sido creada.",
-      to_name: "Cliente",
-      from_name: "Aesthetix",
+    const token = btoa(`${customerId}:confirm`);
+    const confirmUrl = `${window.location.origin}/api/email/confirm?id=${customerId}&token=${token}`;
+    const res = await fetch("/api/email/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: toEmail,
+        templateId: "template_nhrtjp9",
+        templateParams: { to_name: toEmail.split("@")[0] },
+      }),
     });
-  } catch {}
+    if (!res.ok) {
+      const err = await res.text();
+      console.error("[EMAIL] Error enviando confirmación:", err);
+    } else {
+      console.log("[EMAIL] Confirmación enviada a", toEmail);
+    }
+  } catch (e) {
+    console.error("[EMAIL] Error de red al enviar confirmación:", e);
+  }
 }
 
 export async function sendPinResetEmail(customerId: string, toEmail: string, tempPin: string) {
+  if (!toEmail) { console.warn("[EMAIL] No hay email, se omite reset PIN"); return; }
   try {
-    await emailjs.send("service_h3vf3lk", "template_5775tlq", {
-      to_email: toEmail,
-      subject: "Recuperación de PIN - Aesthetix",
-      message: `Tu PIN temporal es: ${tempPin}. Ingresa a la app con este PIN.`,
-      to_name: "Cliente",
-      from_name: "Aesthetix",
+    const res = await fetch("/api/email/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: toEmail,
+        templateId: "template_nhrtjp9",
+        templateParams: { to_name: toEmail.split("@")[0], pin: tempPin },
+      }),
     });
-  } catch {}
+    if (!res.ok) {
+      const err = await res.text();
+      console.error("[EMAIL] Error enviando PIN reset:", err);
+    } else {
+      console.log("[EMAIL] PIN reset enviado a", toEmail);
+    }
+  } catch (e) {
+    console.error("[EMAIL] Error de red al enviar PIN reset:", e);
+  }
 }
 
 export async function sendNewClientPinEmail(toEmail: string, nombres: string, pin: string) {
+  if (!toEmail) { console.warn("[EMAIL] No hay email, se omite nuevo cliente"); return; }
   try {
-    await emailjs.send("service_h3vf3lk", "template_5775tlq", {
-      to_email: toEmail,
-      subject: "Tu cuenta ha sido creada - Aesthetix",
-      message: `Bienvenido a Aesthetix, ${nombres}. Tu PIN de acceso es: ${pin}`,
-      to_name: nombres,
-      from_name: "Aesthetix",
+    const res = await fetch("/api/email/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: toEmail,
+        templateId: "template_nhrtjp9",
+        templateParams: { to_name: nombres, pin },
+      }),
     });
-  } catch {}
-}
-
-export async function sendVerificationEmail(toEmail: string, nombres: string, code: string) {
-  try {
-    await emailjs.send("service_h3vf3lk", "template_5775tlq", {
-      to_email: toEmail,
-      subject: "Código de verificación - Aesthetix",
-      message: `${nombres}, tu código de verificación es: ${code}. Ingresa este código en la app.`,
-      to_name: nombres,
-      from_name: "Aesthetix",
-    });
-  } catch {}
+    if (!res.ok) {
+      const err = await res.text();
+      console.error("[EMAIL] Error enviando nuevo cliente:", err);
+    } else {
+      console.log("[EMAIL] Nuevo cliente email enviado a", toEmail);
+    }
+  } catch (e) {
+    console.error("[EMAIL] Error de red al enviar nuevo cliente:", e);
+  }
 }

@@ -9,7 +9,6 @@ function mapRowToCustomer(row: Record<string, unknown>): Customer {
     dni: row.dni as string | undefined,
     telefono: row.telefono as string | undefined,
     correoElectronico: row.correo_electronico as string | undefined,
-    authUserId: row.auth_user_id as string | undefined,
     estaActivo: row.esta_activo as boolean,
     createdAt: row.creado_en as string | undefined,
     promocionEstado: row.promocion_estado as string | undefined,
@@ -20,8 +19,10 @@ function mapRowToCustomer(row: Record<string, unknown>): Customer {
     intentosFallidos: (row.intentos_fallidos as number) ?? 0,
     bloqueadoHasta: row.bloqueado_hasta as string | undefined,
     emailConfirmado: (row.email_confirmado as boolean) ?? false,
-    codigoVerificacion: row.codigo_verificacion as string | undefined,
-    codigoExpiracion: row.codigo_expiracion as string | undefined,
+    codigoVerificacionHash: row.codigo_verificacion_hash as string | undefined,
+    codigoVerificacionSalt: row.codigo_verificacion_salt as string | undefined,
+    codigoVerificacionExpira: row.codigo_verificacion_expira as string | undefined,
+    esFrecuente: row.es_frecuente as boolean | undefined,
   };
 }
 
@@ -99,13 +100,13 @@ export const CustomersService = {
         telefono: data.telefono || null,
         correo_electronico: data.correoElectronico || null,
         esta_activo: true,
-        auth_user_id: data.authUserId || null,
         promocion_estado: data.promocionEstado || null,
         promocion_creado_en: data.promocionEstado ? new Date().toISOString() : null,
         fecha_nacimiento: data.fechaNacimiento || null,
         pin_hash: data.pinHash || null,
         pin_salt: data.pinSalt || null,
         email_confirmado: data.emailConfirmado ?? false,
+        es_frecuente: data.esFrecuente ?? false,
       })
       .select()
       .single();
@@ -122,7 +123,6 @@ export const CustomersService = {
     if (data.apellidos !== undefined) updateData.apellidos = data.apellidos;
     if (data.telefono !== undefined) updateData.telefono = data.telefono;
     if (data.correoElectronico !== undefined) updateData.correo_electronico = data.correoElectronico;
-    if (data.authUserId !== undefined) updateData.auth_user_id = data.authUserId;
     if (data.promocionEstado !== undefined) updateData.promocion_estado = data.promocionEstado;
     if (data.fechaNacimiento !== undefined) updateData.fecha_nacimiento = data.fechaNacimiento;
     if (data.pinHash !== undefined) updateData.pin_hash = data.pinHash;
@@ -130,8 +130,9 @@ export const CustomersService = {
     if (data.intentosFallidos !== undefined) updateData.intentos_fallidos = data.intentosFallidos;
     if (data.bloqueadoHasta !== undefined) updateData.bloqueado_hasta = data.bloqueadoHasta;
     if (data.emailConfirmado !== undefined) updateData.email_confirmado = data.emailConfirmado;
-    if (data.codigoVerificacion !== undefined) updateData.codigo_verificacion = data.codigoVerificacion;
-    if (data.codigoExpiracion !== undefined) updateData.codigo_expiracion = data.codigoExpiracion;
+    if (data.codigoVerificacionHash !== undefined) updateData.codigo_verificacion_hash = data.codigoVerificacionHash;
+    if (data.codigoVerificacionSalt !== undefined) updateData.codigo_verificacion_salt = data.codigoVerificacionSalt;
+    if (data.codigoVerificacionExpira !== undefined) updateData.codigo_verificacion_expira = data.codigoVerificacionExpira;
 
     const { data: row, error } = await supabase
       .from("clientes")
@@ -159,74 +160,6 @@ export const CustomersService = {
       .from("clientes")
       .update({ email_confirmado: true })
       .eq("id", id);
-    if (error) throw new Error(error.message);
-  },
-
-  async saveVerificationCode(id: string, code: string): Promise<void> {
-    const supabase = createClient();
-    const expiracion = new Date(Date.now() + 15 * 60000).toISOString(); // 15 minutos
-    const { error } = await supabase
-      .from("clientes")
-      .update({ codigo_verificacion: code, codigo_expiracion: expiracion })
-      .eq("id", id);
-    if (error) throw new Error(error.message);
-  },
-
-  async verifyCode(id: string, code: string): Promise<boolean> {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("clientes")
-      .select("codigo_verificacion, codigo_expiracion")
-      .eq("id", id)
-      .single();
-
-    if (error || !data) return false;
-    
-    if (data.codigo_expiracion && new Date(data.codigo_expiracion) < new Date()) {
-      return false;
-    }
-    
-    return data.codigo_verificacion === code;
-  },
-
-  async clearVerificationCode(id: string): Promise<void> {
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("clientes")
-      .update({ codigo_verificacion: null, codigo_expiracion: null })
-      .eq("id", id);
-    if (error) throw new Error(error.message);
-  },
-
-  async getPendingPromociones(): Promise<Customer[]> {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("clientes")
-      .select("*")
-      .eq("promocion_estado", "pendiente")
-      .order("promocion_creado_en", { ascending: false });
-
-    if (error) throw new Error(error.message);
-    return (data ?? []).map((row) => mapRowToCustomer(row as Record<string, unknown>));
-  },
-
-  async approvePromocion(id: string): Promise<void> {
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("clientes")
-      .update({ promocion_estado: "aprobado" })
-      .eq("id", id);
-
-    if (error) throw new Error(error.message);
-  },
-
-  async rejectPromocion(id: string): Promise<void> {
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("clientes")
-      .update({ promocion_estado: "rechazado" })
-      .eq("id", id);
-
     if (error) throw new Error(error.message);
   },
 };

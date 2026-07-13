@@ -5,7 +5,6 @@ export interface Customer {
   dni?: string;
   telefono?: string;
   correoElectronico?: string;
-  authUserId?: string;
   estaActivo: boolean;
   createdAt?: string;
   promocionEstado?: string;
@@ -16,8 +15,10 @@ export interface Customer {
   intentosFallidos: number;
   bloqueadoHasta?: string;
   emailConfirmado: boolean;
-  codigoVerificacion?: string;
-  codigoExpiracion?: string;
+  codigoVerificacionHash?: string;
+  codigoVerificacionSalt?: string;
+  codigoVerificacionExpira?: string;
+  esFrecuente?: boolean;
 }
 
 export interface CreateCustomerPayload {
@@ -26,18 +27,15 @@ export interface CreateCustomerPayload {
   dni?: string;
   telefono?: string;
   correoElectronico?: string;
-  authUserId?: string;
   promocionEstado?: string;
   fechaNacimiento?: string;
   pinHash?: string;
   pinSalt?: string;
   emailConfirmado?: boolean;
-  codigoVerificacion?: string;
-  codigoExpiracion?: string;
+  esFrecuente?: boolean;
 }
 
 export interface UpdateCustomerPayload {
-  authUserId?: string;
   dni?: string;
   nombres?: string;
   apellidos?: string;
@@ -50,6 +48,8 @@ export interface UpdateCustomerPayload {
   intentosFallidos?: number;
   bloqueadoHasta?: string;
   emailConfirmado?: boolean;
-  codigoVerificacion?: string;
-  codigoExpiracion?: string;
+  codigoVerificacionHash?: string | null;
+  codigoVerificacionSalt?: string | null;
+  codigoVerificacionExpira?: string | null;
+  esFrecuente?: boolean;
 }

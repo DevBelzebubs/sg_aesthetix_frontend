@@ -1,30 +1,40 @@
 type EmailPayload = {
   to: string;
   subject: string;
-  html: string;
+  html?: string;
+  templateId?: string;
+  templateParams?: Record<string, string>;
 };
 
 export async function sendEmail(payload: EmailPayload): Promise<{ success: boolean; error?: string }> {
-  const resendApiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.EMAIL_FROM || "noreply@aesthetix.pe";
+  const serviceId = process.env.EMAILJS_SERVICE_ID;
+  const defaultTemplateId = process.env.EMAILJS_TEMPLATE_ID;
+  const publicKey = process.env.EMAILJS_PUBLIC_KEY;
+  const privateKey = process.env.EMAILJS_PRIVATE_KEY;
 
-  if (!resendApiKey) {
-    console.warn("[EMAIL] RESEND_API_KEY no configurada. Email no enviado:", payload.subject);
-    return { success: false, error: "RESEND_API_KEY no configurada" };
+  const templateId = payload.templateId || defaultTemplateId;
+
+  if (!serviceId || !templateId || !publicKey || !privateKey) {
+    console.warn("[EMAIL] EmailJS no configurado. Email no enviado:", payload.subject);
+    return { success: false, error: "EmailJS no configurado" };
   }
 
   try {
-    const res = await fetch("https://api.resend.com/emails", {
+    const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: `Aesthetix <${fromEmail}>`,
-        to: [payload.to],
-        subject: payload.subject,
-        html: payload.html,
+        service_id: serviceId,
+        template_id: templateId,
+        user_id: publicKey,
+        accessToken: privateKey,
+        template_params: {
+          to_name: payload.to.split("@")[0],
+          email: payload.to,
+          from_name: "ZonaFade",
+          ...payload.templateParams,
+          ...(payload.templateParams ? {} : { subject: payload.subject, content: payload.html }),
+        },
       }),
     });
 

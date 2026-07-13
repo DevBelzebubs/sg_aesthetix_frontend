@@ -42,7 +42,6 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     if (!stored) return;
     try {
       const parsed = JSON.parse(stored) as CustomerSession;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSession(parsed);
     } catch {
       localStorage.removeItem(STORAGE_KEY);

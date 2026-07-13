@@ -3,25 +3,22 @@
 import { useEffect, useRef, useState } from "react";
 import { CajaService } from "@/services/caja.service";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import type { Caja } from "@/types/caja";
 import { Loader2, AlertCircle } from "lucide-react";
 
 export function CajaToggle() {
+  const { userId } = useAuth();
   const [caja, setCaja] = useState<Caja | null>(null);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
   const [saldoInput, setSaldoInput] = useState("0");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [userId, setUserId] = useState<string | null>(null);
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
     supabaseRef.current = supabase;
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) setUserId(data.session.user.id);
-    });
 
     CajaService.get().then((data) => {
       setCaja(data);

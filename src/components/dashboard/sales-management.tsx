@@ -2,15 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft, Check, DollarSign, FileText, Loader2, Minus, Plus,
+  AlertCircle, ArrowLeft, Check, DollarSign, FileText, Loader2, Minus, Plus,
   ReceiptText, Search, ShoppingCart, TrendingUp, Trash2, UserPlus, X,
 } from "lucide-react";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { Pagination } from "@/components/dashboard/pagination";
 import { Toast } from "@/components/dashboard/toast";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { hashPin } from "@/lib/pin";
 import { sendNewClientPinEmail } from "@/lib/email-client";
+import { RewardsService } from "@/services/rewards.service";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -234,6 +236,7 @@ function ClientRightbar({
   selectedId,
   onSelect,
   onCreate,
+  onUseAppointment,
 }: {
   open: boolean;
   onClose: () => void;
@@ -241,16 +244,49 @@ function ClientRightbar({
   selectedId: string;
   onSelect: (id: string) => void;
   onCreate: (cliente: { id: string; nombres: string; apellidos: string; dni: string | null }) => void;
+  onUseAppointment: (servicioId: string) => void;
 }) {
   const supabase = createClient();
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [newClient, setNewClient] = useState({ nombres: "", apellidos: "", dni: "", telefono: "", email: "", fechaNacimiento: "", pin: "" });
+  const [newClient, setNewClient] = useState({ nombres: "", apellidos: "", dni: "", telefono: "", email: "", fechaNacimiento: "", pin: "", confirmPin: "", esFrecuente: false });
+  const [appointments, setAppointments] = useState<{ id: string; fecha_reserva: string; hora_inicio: string; servicio_nombre: string; empleado_nombre: string; estado: string; servicio_id: string }[]>([]);
+  const [loadingApps, setLoadingApps] = useState(false);
 
   useEffect(() => {
-    if (open) { setSearch(""); setShowCreate(false); setSaving(false); setNewClient({ nombres: "", apellidos: "", dni: "", telefono: "", email: "", fechaNacimiento: "", pin: "" }); }
+    if (open) { setSearch(""); setShowCreate(false); setSaving(false); setNewClient({ nombres: "", apellidos: "", dni: "", telefono: "", email: "", fechaNacimiento: "", pin: "", confirmPin: "", esFrecuente: false }); }
   }, [open]);
+
+  useEffect(() => {
+    if (!selectedId) { setAppointments([]); return; }
+    setLoadingApps(true);
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("reservas")
+          .select(`
+            id, fecha_reserva, hora_inicio, estado, servicio_id,
+            servicios!servicio_id (nombre),
+            usuarios!usuario_id (nombres, apellidos)
+          `)
+          .eq("cliente_id", selectedId)
+          .order("fecha_reserva", { ascending: false })
+          .limit(5);
+        setAppointments((data ?? []).map((r: Record<string, unknown>) => ({
+          id: r.id as string,
+          fecha_reserva: r.fecha_reserva as string,
+          hora_inicio: r.hora_inicio as string,
+          servicio_id: r.servicio_id as string,
+          servicio_nombre: (r.servicios as { nombre: string } | null)?.nombre ?? "—",
+          empleado_nombre: (r.usuarios as { nombres: string; apellidos: string } | null)
+            ? `${((r.usuarios as { nombres: string; apellidos: string }).nombres)} ${((r.usuarios as { nombres: string; apellidos: string }).apellidos)}`.trim()
+            : "—",
+          estado: r.estado as string,
+        })));
+      } catch {} finally { setLoadingApps(false); }
+    })();
+  }, [selectedId, supabase]);
 
   const filtered = useMemo(() => {
     if (!search) return clientes.slice(0, 15);
@@ -266,8 +302,9 @@ function ClientRightbar({
 
   async function handleCreate() {
     if (!newClient.nombres) return;
+    if (newClient.pin !== newClient.confirmPin) return;
     setSaving(true);
-    const generatedPin = newClient.pin || String(Math.floor(1000 + Math.random() * 9000));
+    const generatedPin = newClient.pin || String(Math.floor(100000 + Math.random() * 900000));
     const { hash, salt } = await hashPin(generatedPin);
     const payload: Record<string, unknown> = {
       nombres: newClient.nombres,
@@ -279,6 +316,7 @@ function ClientRightbar({
       esta_activo: true,
       pin_hash: hash,
       pin_salt: salt,
+      es_frecuente: newClient.esFrecuente,
     };
     const { data, error } = await supabase.from("clientes").insert(payload).select().single();
     setSaving(false);
@@ -313,9 +351,8 @@ function ClientRightbar({
 
         <div className="p-5">
           {showCreate ? (
-            <div className="space-y-5">
-              {/* Fila 1: Nombres + Apellidos */}
-              <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-6">
+              <div className="grid grid-cols-2 gap-6">
                 <Field label="Nombres" required>
                   <input className={inputClassName} value={newClient.nombres} onChange={(e) => setNewClient((c) => ({ ...c, nombres: e.target.value }))} placeholder="Ej. Juan" />
                 </Field>
@@ -323,9 +360,7 @@ function ClientRightbar({
                   <input className={inputClassName} value={newClient.apellidos} onChange={(e) => setNewClient((c) => ({ ...c, apellidos: e.target.value }))} placeholder="Ej. Pérez" />
                 </Field>
               </div>
-
-              {/* Fila 2: DNI + Teléfono */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-6">
                 <Field label="DNI" required>
                   <input className={inputClassName} value={newClient.dni} onChange={(e) => setNewClient((c) => ({ ...c, dni: e.target.value.replace(/\D/g, "").slice(0, 8) }))} placeholder="12345678" inputMode="numeric" />
                 </Field>
@@ -333,25 +368,27 @@ function ClientRightbar({
                   <input className={inputClassName} value={newClient.telefono} onChange={(e) => setNewClient((c) => ({ ...c, telefono: e.target.value.replace(/\D/g, "").slice(0, 9) }))} placeholder="987654321" inputMode="numeric" />
                 </Field>
               </div>
+              <Field label="Email" required>
+                <input className={inputClassName} value={newClient.email} onChange={(e) => setNewClient((c) => ({ ...c, email: e.target.value }))} placeholder="correo@gmail.com" type="email" />
+              </Field>
+              <Field label="Fecha de nacimiento" required>
+                <input type="date" className={inputClassName} value={newClient.fechaNacimiento} onChange={(e) => setNewClient((c) => ({ ...c, fechaNacimiento: e.target.value }))} />
+              </Field>
+              <div className="grid grid-cols-2 gap-6">
+                <Field label="PIN (6 dígitos)">
+                  <input className={inputClassName} value={newClient.pin} onChange={(e) => setNewClient((c) => ({ ...c, pin: e.target.value.replace(/\D/g, "").slice(0, 6) }))} placeholder="Dejar vacío para auto-generar" inputMode="numeric" />
+                </Field>
+                <Field label="Confirmar PIN">
+                  <input className={`${inputClassName} ${newClient.confirmPin && newClient.pin !== newClient.confirmPin ? "border-red-400" : ""}`} value={newClient.confirmPin} onChange={(e) => setNewClient((c) => ({ ...c, confirmPin: e.target.value.replace(/\D/g, "").slice(0, 6) }))} placeholder="Repetir PIN" inputMode="numeric" />
+                </Field>
+              </div>
+              {newClient.confirmPin && newClient.pin !== newClient.confirmPin && (
+                <p className="flex items-center gap-1 text-[11px] text-red-500"><AlertCircle size={11} /> Los PIN no coinciden</p>
+              )}
 
-              {/* Fila 3: Email + Fecha de nacimiento */}
-               <div className="grid grid-cols-2 gap-4">
-                 <Field label="Email" required>
-                   <input className={inputClassName} value={newClient.email} onChange={(e) => setNewClient((c) => ({ ...c, email: e.target.value }))} placeholder="correo@gmail.com" type="email" />
-                 </Field>
-                 <Field label="Fecha de nacimiento" required>
-                   <input type="date" className={inputClassName} value={newClient.fechaNacimiento} onChange={(e) => setNewClient((c) => ({ ...c, fechaNacimiento: e.target.value }))} />
-                 </Field>
-               </div>
-
-               {/* Fila 4: PIN */}
-               <Field label="PIN (4 dígitos, opcional - se genera automático)">
-                 <input className={inputClassName} value={newClient.pin} onChange={(e) => setNewClient((c) => ({ ...c, pin: e.target.value.replace(/\D/g, "").slice(0, 6) }))} placeholder="Dejar vacío para auto-generar" inputMode="numeric" />
-               </Field>
-
-              <div className="flex gap-3 pt-4">
-                <button onClick={() => setShowCreate(false)} className="flex-1 rounded-full border border-[var(--border)] px-4 py-2.5 text-sm text-[var(--foreground)] transition hover:bg-[var(--background-secondary)]">Cancelar</button>
-                <button onClick={handleCreate} disabled={!newClient.nombres || !newClient.apellidos || !newClient.dni || !newClient.telefono || !newClient.email || !newClient.fechaNacimiento || saving} className="flex-1 rounded-full bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-50">
+              <div className="flex gap-4">
+                <button onClick={() => setShowCreate(false)} className="flex-1 rounded-full border border-[var(--border)] px-4 py-3 text-sm text-[var(--foreground)] transition hover:bg-[var(--background-secondary)]">Cancelar</button>
+                <button onClick={handleCreate} disabled={!newClient.nombres || !newClient.apellidos || !newClient.dni || !newClient.telefono || !newClient.email || !newClient.fechaNacimiento || (newClient.pin !== newClient.confirmPin) || saving} className="flex-1 rounded-full bg-emerald-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-50">
                   {saving ? <Loader2 size={16} className="animate-spin mx-auto" /> : "Crear cliente"}
                 </button>
               </div>
@@ -376,6 +413,30 @@ function ClientRightbar({
                 Crear nuevo cliente
               </button>
 
+              {/* Cliente frecuente toggle */}
+              <button
+                type="button"
+                onClick={() => setNewClient((c) => ({ ...c, esFrecuente: !c.esFrecuente }))}
+                className={`mb-3 flex w-full items-center gap-4 rounded-2xl border-2 px-5 py-4 text-left transition ${
+                  newClient.esFrecuente
+                    ? "border-emerald-400 bg-emerald-50"
+                    : "border-[var(--border)] bg-[var(--background-secondary)] hover:border-[var(--hover)]"
+                }`}
+              >
+                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl transition ${
+                  newClient.esFrecuente ? "bg-emerald-500 text-white" : "bg-[var(--background)] text-[var(--text-muted)]"
+                }`}>
+                  <UserPlus size={20} />
+                </div>
+                <div className="flex-1">
+                  <p className={`text-sm font-semibold ${newClient.esFrecuente ? "text-emerald-700" : "text-[var(--foreground)]"}`}>
+                    Cliente frecuente
+                  </p>
+                  <p className="text-xs text-[var(--text-muted)]">El cliente podrá iniciar sesión con su PIN y acceder a promociones.</p>
+                </div>
+                {newClient.esFrecuente && <Check size={20} className="text-emerald-500 shrink-0" />}
+              </button>
+
               {selected && (
                 <div className="mb-3 rounded-2xl border border-[var(--hover)]/30 bg-[var(--hover)]/5 px-4 py-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-2">Seleccionado</p>
@@ -389,6 +450,34 @@ function ClientRightbar({
                     </div>
                   </div>
                   <button onClick={() => onSelect("")} className="mt-2 text-xs text-[var(--text-muted)] hover:text-[var(--destructive)]">Quitar selección</button>
+
+                  {loadingApps ? (
+                    <div className="mt-3 flex items-center gap-2 text-xs text-[var(--text-muted)]"><Loader2 size={12} className="animate-spin" /> Cargando citas...</div>
+                  ) : appointments.length > 0 ? (
+                    <div className="mt-3 space-y-2 border-t border-[var(--border)] pt-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Citas ({appointments.length})</p>
+                      {appointments.map((app) => (
+                        <div key={app.id} className="flex items-center justify-between gap-2 rounded-xl bg-[var(--background)] px-3 py-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium text-[var(--foreground)] truncate">{app.servicio_nombre}</p>
+                            <p className="text-[10px] text-[var(--text-muted)]">{app.fecha_reserva} · {app.hora_inicio.slice(0, 5)} · {app.empleado_nombre}</p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${app.estado.toLowerCase() === "completada" ? "bg-emerald-500/15 text-emerald-500" : app.estado.toLowerCase() === "pendiente" ? "bg-amber-500/15 text-amber-500" : "bg-[var(--hover)]/15 text-[var(--hover)]"}`}>{app.estado}</span>
+                            {app.estado.toLowerCase() === "pendiente" && (
+                              <button
+                                type="button"
+                                onClick={() => { onUseAppointment(app.servicio_id); onClose(); }}
+                                className="rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-semibold text-white transition hover:bg-emerald-600"
+                              >
+                                Usar
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               )}
 
@@ -473,7 +562,7 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
   const [editObsText, setEditObsText] = useState("");
 
   // ---- current user ----
-  const [userId, setUserId] = useState<string | null>(null);
+  const { userId } = useAuth();
 
   // ------------------------------------------------------------------
   // Data fetching
@@ -484,7 +573,6 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
     fetchProductos();
     fetchServicios();
     fetchClientes();
-    fetchUser();
   }, []);
 
   async function fetchSales() {
@@ -523,21 +611,6 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
       .eq("esta_activo", true)
       .order("nombres");
     setClientes((data as ClientOption[]) ?? []);
-  }
-
-  async function fetchUser() {
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) return;
-
-    const authUserId = data.session.user.id;
-
-    const { data: usuario } = await supabase
-      .from("usuarios")
-      .select("id")
-      .eq("auth_user_id", authUserId)
-      .maybeSingle();
-
-    if (usuario) setUserId((usuario as Record<string, unknown>).id as string);
   }
 
   // ------------------------------------------------------------------
@@ -816,71 +889,20 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
 
       if (draft.cliente_id && puntos > 0) {
         try {
-          const { data: cuenta } = await supabase
-            .from("cuenta_puntos")
-            .select("id, puntos_disponibles, puntos_acumulados")
-            .eq("cliente_id", draft.cliente_id)
-            .maybeSingle();
-
-          let cuentaId: string;
-          let disponibles: number;
-          let acumulados: number;
-
-          const record = cuenta as Record<string, unknown> | null;
-          if (record) {
-            cuentaId = record.id as string;
-            disponibles = record.puntos_disponibles as number;
-            acumulados = record.puntos_acumulados as number;
-          } else {
-            const { data: nueva, error: createErr } = await supabase
-              .from("cuenta_puntos")
-              .insert({
-                cliente_id: draft.cliente_id,
-                puntos_disponibles: 0,
-                puntos_acumulados: 0,
-                puntos_canjeados: 0,
-              })
-              .select()
-              .single();
-
-            if (createErr) throw createErr;
-
-            const nr = nueva as Record<string, unknown>;
-            cuentaId = nr.id as string;
-            disponibles = 0;
-            acumulados = 0;
-          }
-
-          const { error: txErr } = await supabase.from("transacciones_puntos").insert({
-            cuenta_puntos_id: cuentaId,
-            venta_id: ventaId,
-            tipo: "compra",
+          await RewardsService.addPoints(
+            draft.cliente_id,
             puntos,
-            saldo_anterior: disponibles,
-            saldo_nuevo: disponibles + puntos,
-            descripcion: `Puntos por compra (S/${formatCurrency(total)})`,
-          });
-
-          if (txErr) throw txErr;
-
-          const { error: updateErr } = await supabase
-            .from("cuenta_puntos")
-            .update({
-              puntos_disponibles: disponibles + puntos,
-              puntos_acumulados: acumulados + puntos,
-              actualizado_en: new Date().toISOString(),
-            })
-            .eq("id", cuentaId);
-
-          if (updateErr) throw updateErr;
+            "acumulacion",
+            `Puntos por compra (S/${formatCurrency(total)})`,
+          );
         } catch (ptsErr) {
-          console.error("Error al asignar puntos:", ptsErr);
+          const msg = ptsErr instanceof Error ? ptsErr.message : JSON.stringify(ptsErr);
+          console.error("Error al asignar puntos:", msg);
         }
       }
 
       // Vincular citas pendientes del cliente a los servicios vendidos
       if (draft.cliente_id) {
-        const todayStr = new Date().toISOString().split("T")[0];
         for (const item of draft.items) {
           if (item.type !== "servicio") continue;
           try {
@@ -889,16 +911,15 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
               .select("id")
               .eq("cliente_id", draft.cliente_id)
               .eq("servicio_id", item.id)
-              .eq("fecha_reserva", todayStr)
-              .in("estado", ["Pendiente", "Confirmada"])
-              .order("hora_inicio", { ascending: true })
+              .in("estado", ["pendiente", "confirmada"])
+              .order("fecha_reserva", { ascending: true })
               .limit(1)
               .maybeSingle();
 
             if (reservaMatch) {
               await supabase
                 .from("reservas")
-                .update({ estado: "Completada" })
+                .update({ estado: "completada" })
                 .eq("id", (reservaMatch as Record<string, unknown>).id as string);
             }
           } catch {
@@ -1429,15 +1450,15 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
                     S/{formatCurrency(draftTotal)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-medium text-[var(--text-muted)]">Metodo de pago</span>
-                  <div className="flex gap-1.5">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="mt-2 text-sm font-medium text-[var(--text-muted)] shrink-0">Metodo de pago</span>
+                  <div className="flex flex-wrap gap-2 justify-end">
                     {METODOS_PAGO.map((m) => (
                       <button
                         key={m.value}
                         type="button"
                         onClick={() => setDraft((d) => ({ ...d, metodo_pago: m.value }))}
-                        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                        className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                           draft.metodo_pago === m.value
                             ? "bg-[var(--hover)] text-white"
                             : "bg-[var(--background-secondary)] text-[var(--text-muted)] hover:bg-[var(--hover)]/15"
@@ -1523,6 +1544,12 @@ export function SalesManagement({ totalVentas, totalDia, ingresoTotal }: Props) 
         onCreate={(cliente) => {
           setClientes((prev) => [...prev, cliente]);
           setDraft((d) => ({ ...d, cliente_id: cliente.id }));
+        }}
+        onUseAppointment={(servicioId) => {
+          const serv = servicios.find((s) => s.id === servicioId);
+          if (!serv) return;
+          addServiceById(serv.id);
+          setToast({ message: "Servicio agregado al carrito", type: "success", open: true });
         }}
       />
 
