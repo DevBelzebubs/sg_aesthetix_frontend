@@ -121,6 +121,11 @@ export function BookingForm({
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<BookingDraft>(initialDraft);
+  const [reservations, setReservations] = useState<ExistingReservation[]>(existingReservations);
+
+  useEffect(() => {
+    setReservations(existingReservations);
+  }, [existingReservations]);
 
   const { session: customerSession } = useCustomerAuth();
   const hasLoadedCustomerRef = useRef(false);
@@ -465,7 +470,7 @@ export function BookingForm({
       const selectedServiceObj = services.find((s) => s.id === formData.serviceId);
       const duration = selectedServiceObj?.durationMinutes ?? 30;
       const slotEnd = addMinutesToTime(formData.time, duration);
-      const conflicted = existingReservations.some(
+      const conflicted = reservations.some(
         (r) =>
           r.empleadoId === formData.barberId &&
           r.fecha === formData.date &&
@@ -515,6 +520,10 @@ export function BookingForm({
       };
 
       await AppointmentsService.createPublic(payload);
+      setReservations((prev) => [
+        ...prev,
+        { empleadoId, fecha: formData.date, horaInicio: `${formData.time}:00`, horaFin: `${endTimeHHMM}:00` },
+      ]);
       unlockAllBySession();
       setIsSubmitted(true);
       setShowConfirm(false);
@@ -1075,10 +1084,7 @@ export function BookingForm({
                 const isToday = selectedDate?.value === todayStr;
                 const minTime = new Date(now.getTime() + 30 * 60 * 1000);
 
-                const selectedServiceObj = services.find((s) => s.id === formData.serviceId);
-                const selectedDuration = selectedServiceObj?.durationMinutes ?? 30;
-
-                const occupiedRanges = existingReservations
+                const occupiedRanges = reservations
                   .filter((r) => r.empleadoId === formData.barberId && r.fecha === selectedDate?.value && r.horaInicio && r.horaFin)
                   .map((r) => ({ start: r.horaInicio.slice(0, 5), end: r.horaFin.slice(0, 5) }));
 
@@ -1090,8 +1096,7 @@ export function BookingForm({
 
                   if (past) return { slot, isEnabled: false };
 
-                  const slotEnd = addMinutesToTime(slot, selectedDuration);
-                  const conflicted = occupiedRanges.some((r) => isOverlapping(slot, slotEnd, r.start, r.end));
+                  const conflicted = occupiedRanges.some((r) => slot >= r.start && slot < r.end);
 
                   if (conflicted) return { slot, isEnabled: false };
 
